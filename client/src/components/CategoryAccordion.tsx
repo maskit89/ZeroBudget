@@ -1,17 +1,24 @@
 import { useState } from 'react'
 import type { CategoryVM } from '../budgetModel'
 import { categoryPlanned } from '../budgetModel'
-import { formatEuro, type Minor } from '../lib/money'
+import { formatMoney, type Minor } from '../lib/money'
 import { BudgetItemRow } from './BudgetItemRow'
 
 interface Props {
   category: CategoryVM
+  currency: string
   savingItemId: string | null
   defaultOpen?: boolean
   onCommitItem: (itemId: string, plannedMinor: Minor) => void
 }
 
-export function CategoryAccordion({ category, savingItemId, defaultOpen = true, onCommitItem }: Props) {
+export function CategoryAccordion({
+  category,
+  currency,
+  savingItemId,
+  defaultOpen = true,
+  onCommitItem,
+}: Props) {
   const [open, setOpen] = useState(defaultOpen)
 
   return (
@@ -34,7 +41,7 @@ export function CategoryAccordion({ category, savingItemId, defaultOpen = true, 
           </span>
         </div>
         <span className="text-sm font-semibold tabular-nums text-slate-600">
-          {formatEuro(categoryPlanned(category))}
+          {formatMoney(categoryPlanned(category), currency)}
         </span>
       </button>
 
@@ -51,6 +58,7 @@ export function CategoryAccordion({ category, savingItemId, defaultOpen = true, 
               <BudgetItemRow
                 key={item.id}
                 item={item}
+                currency={currency}
                 saving={savingItemId === item.id}
                 onCommit={onCommitItem}
               />

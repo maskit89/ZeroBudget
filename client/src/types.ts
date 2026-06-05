@@ -23,6 +23,7 @@ export interface BudgetMonthDto {
   key: string
   year: number
   month: number
+  baseCurrency: string
   totalIncome: number
   totalPlanned: number
   remainingToBudget: number

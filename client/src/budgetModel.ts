@@ -25,6 +25,7 @@ export interface MonthVM {
   key: string
   year: number
   month: number
+  currency: string
   totalIncomeMinor: Minor
   categories: CategoryVM[]
 }
@@ -36,6 +37,7 @@ export function fromDto(dto: BudgetMonthDto): MonthVM {
     key: dto.key,
     year: dto.year,
     month: dto.month,
+    currency: dto.baseCurrency,
     totalIncomeMinor: fromAmount(dto.totalIncome),
     categories: dto.categories.map((c) => ({
       id: c.id,

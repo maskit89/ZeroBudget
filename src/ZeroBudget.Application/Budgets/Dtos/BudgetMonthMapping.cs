@@ -15,6 +15,7 @@ public static class BudgetMonthMapping
         Key = month.Key,
         Year = month.Year,
         Month = month.Month,
+        BaseCurrency = month.BaseCurrency.Value,
         TotalIncome = month.TotalIncome,
         TotalPlanned = month.TotalPlanned,
         RemainingToBudget = month.RemainingToBudget,
