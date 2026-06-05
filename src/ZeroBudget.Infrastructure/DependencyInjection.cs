@@ -49,6 +49,17 @@ public static class DependencyInjection
         var jwt = jwtSection.Get<JwtSettings>()
             ?? throw new InvalidOperationException("Missing 'Jwt' configuration section.");
 
+        // Fail fast on a missing/weak signing key. The key is intentionally NOT
+        // committed — supply it via user-secrets or the Jwt__Key environment variable.
+        // HS256 needs a key of at least 256 bits (32 bytes).
+        if (string.IsNullOrWhiteSpace(jwt.Key) || Encoding.UTF8.GetByteCount(jwt.Key) < 32)
+        {
+            throw new InvalidOperationException(
+                "Jwt:Key is not configured or is shorter than 32 bytes. Set it with " +
+                "`dotnet user-secrets set \"Jwt:Key\" \"<a long random secret>\" " +
+                "--project src/ZeroBudget.Api` or the Jwt__Key environment variable.");
+        }
+
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
         services
