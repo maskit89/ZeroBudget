@@ -126,9 +126,11 @@ user **cannot mutate another user's** budget line.
   reads/writes to the caller's `OwnerId` (defence in depth — no IDOR).
 - Login returns the **same message** for unknown email and wrong password (no
   account enumeration).
-- The JWT signing key in `appsettings.json` is a **development placeholder**. For
-  any real deployment, supply `Jwt:Key` via user-secrets / environment variables
-  and use a key of at least 32 bytes.
+- The JWT signing key is **never committed**. `appsettings.json` carries no key,
+  and the API **fails fast at startup** if `Jwt:Key` is missing or shorter than
+  32 bytes (HS256 needs ≥ 256 bits). Supply it once via user-secrets (or the
+  `Jwt__Key` environment variable in deployment):
 ```
-dotnet user-secrets set "Jwt:Key" "<a long random secret>" --project src/ZeroBudget.Api
+dotnet user-secrets set "Jwt:Key" "<a long random secret, 32+ bytes>" --project src/ZeroBudget.Api
 ```
+  Generate one quickly, e.g. `node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"`.
