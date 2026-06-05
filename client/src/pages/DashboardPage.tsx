@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
-import type { BudgetMonthDto } from '../types'
+import type { BudgetMonthDto, ImportStatementResult } from '../types'
 import {
   fromDto,
   monthPlanned,
@@ -12,6 +12,7 @@ import {
 import { toAmount, type Minor } from '../lib/money'
 import { RemainingBanner } from '../components/RemainingBanner'
 import { CategoryAccordion } from '../components/CategoryAccordion'
+import { ImportStatementButton } from '../components/ImportStatementButton'
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -24,6 +25,7 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingItemId, setSavingItemId] = useState<string | null>(null)
+  const [importSummary, setImportSummary] = useState<ImportStatementResult | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -78,6 +80,16 @@ export function DashboardPage() {
           </div>
           <div className="flex items-center gap-4">
             <span className="hidden text-sm text-slate-500 sm:inline">{email}</span>
+            <ImportStatementButton
+              onImported={(r) => {
+                setError(null)
+                setImportSummary(r)
+              }}
+              onError={(msg) => {
+                setImportSummary(null)
+                setError(msg)
+              }}
+            />
             <button
               onClick={logout}
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
@@ -94,6 +106,25 @@ export function DashboardPage() {
         {error && (
           <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}
+          </div>
+        )}
+
+        {importSummary && (
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <span>
+              Imported <strong>{importSummary.imported}</strong> of {importSummary.totalEntries} entries
+              {importSummary.skippedDuplicates > 0 && ` (skipped ${importSummary.skippedDuplicates} duplicate${importSummary.skippedDuplicates === 1 ? '' : 's'})`}
+              {' — '}
+              {importSummary.credits} credit{importSummary.credits === 1 ? '' : 's'}, {importSummary.debits} debit{importSummary.debits === 1 ? '' : 's'}
+              {importSummary.iban && ` · ${importSummary.iban}`}.
+            </span>
+            <button
+              onClick={() => setImportSummary(null)}
+              className="shrink-0 text-emerald-600 hover:text-emerald-800"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
           </div>
         )}
 

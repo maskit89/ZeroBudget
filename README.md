@@ -76,6 +76,21 @@ on every edit so the banner updates dynamically.
 
 ---
 
+## Bank statement import (ISO 20022 / CAMT.053)
+
+Upload a CAMT.053 XML statement and its entries become `Transaction`s.
+
+- `POST /api/import/camt053` (multipart `file`, `[Authorize]`d) → import summary
+  (`imported`, `skippedDuplicates`, `credits`, `debits`, `iban`).
+- `Camt053StatementParser` (Infrastructure, behind the `IStatementParser`
+  abstraction) reads `<Ntry>` elements **by local name**, so it handles every
+  `camt.053.001.xx` namespace version. `CdtDbtInd` maps to income/expense, the
+  entry keeps its own `Ccy`, and the payee comes from the creditor/debtor name.
+- Re-importing is **idempotent**: entries are de-duplicated per user on their
+  bank reference (`AcctSvcrRef`, falling back to `EndToEndId`).
+
+---
+
 ## Running the backend
 
 **Prerequisites:** .NET 10 SDK and SQL Server (LocalDB works out of the box on

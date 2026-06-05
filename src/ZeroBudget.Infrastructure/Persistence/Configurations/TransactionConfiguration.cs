@@ -41,9 +41,15 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
         builder.Property(t => t.Notes)
             .HasMaxLength(1000);
 
+        builder.Property(t => t.BankReference)
+            .HasMaxLength(140);
+
         builder.Property(t => t.Type)
             .HasConversion<int>();
 
         builder.HasIndex(t => t.OwnerId);
+
+        // Speeds up the dedup lookup on re-import.
+        builder.HasIndex(t => new { t.OwnerId, t.BankReference });
     }
 }
