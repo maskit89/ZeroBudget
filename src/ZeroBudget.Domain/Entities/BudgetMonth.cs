@@ -1,0 +1,50 @@
+using ZeroBudget.Domain.Common;
+
+namespace ZeroBudget.Domain.Entities;
+
+/// <summary>
+/// The aggregate root for a user's budget for one calendar month
+/// (identified to the outside world by a key such as "2026-06").
+///
+/// In zero-based budgeting every Euro of income must be assigned a job,
+/// so the goal is to drive <see cref="RemainingToBudget"/> to exactly 0.
+/// </summary>
+public class BudgetMonth : BaseEntity
+{
+    /// <summary>Identity (ASP.NET Core Identity) user id that owns this budget.</summary>
+    public string OwnerId { get; set; } = string.Empty;
+
+    /// <summary>Four digit year, e.g. 2026.</summary>
+    public int Year { get; set; }
+
+    /// <summary>Month number 1-12.</summary>
+    public int Month { get; set; }
+
+    /// <summary>
+    /// Total income available to allocate this month. In ZBB this is the
+    /// pool that gets distributed across the budget lines.
+    /// Mapped to decimal(18,4).
+    /// </summary>
+    public decimal TotalIncome { get; set; }
+
+    public ICollection<BudgetCategory> Categories { get; set; } = new List<BudgetCategory>();
+
+    /// <summary>Stable, human-readable key such as "2026-06".</summary>
+    public string Key => $"{Year:D4}-{Month:D2}";
+
+    /// <summary>Sum of every planned amount across all categories and lines.</summary>
+    public decimal TotalPlanned => Categories.Sum(c => c.TotalPlanned);
+
+    /// <summary>
+    /// The core ZBB metric: income that has not yet been assigned to a line.
+    ///   == 0  -> the budget is perfectly balanced (the goal)
+    ///   &gt; 0 -> money still needs a job
+    ///   &lt; 0 -> over-budgeted; more was planned than earned
+    /// Handles a zero (or absent) income gracefully — it simply returns the
+    /// negated total planned, never throwing or dividing.
+    /// </summary>
+    public decimal RemainingToBudget => TotalIncome - TotalPlanned;
+
+    /// <summary>True when every Euro is assigned and nothing is over-allocated.</summary>
+    public bool IsBalanced => RemainingToBudget == 0m;
+}
