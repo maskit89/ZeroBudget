@@ -1,0 +1,52 @@
+import { describe, it, expect } from 'vitest'
+import { fromAmount, toAmount, sumMinor, parseMinor, formatMoney, toEditString } from './money'
+
+describe('money — integer minor units', () => {
+  it('round-trips amount <-> minor at scale 4', () => {
+    expect(fromAmount(1100)).toBe(11_000_000)
+    expect(fromAmount(33.3333)).toBe(333_333)
+    expect(toAmount(11_005_000)).toBe(1100.5)
+  })
+
+  it('sums exactly where floating point drifts', () => {
+    // 0.1 + 0.2 !== 0.3 in IEEE-754, but integer minor units are exact.
+    expect(0.1 + 0.2).not.toBe(0.3)
+    expect(sumMinor([fromAmount(0.1), fromAmount(0.2)])).toBe(fromAmount(0.3))
+  })
+
+  it('sums a budget with no drift', () => {
+    const planned = sumMinor([1100, 180, 120, 60, 400, 90, 250].map(fromAmount))
+    expect(toAmount(fromAmount(3000) - planned)).toBe(800)
+  })
+})
+
+describe('parseMinor', () => {
+  it.each([
+    ['1100', 11_000_000],
+    ['1100,50', 11_005_000], // comma decimal separator
+    ['1100.50', 11_005_000],
+    ['33.3333', 333_333],
+    ['0', 0],
+    ['12.99999', 130_000], // rounds half-up beyond 4 dp -> 13.0000
+  ])('parses %s -> %i', (input, expected) => {
+    expect(parseMinor(input)).toBe(expected)
+  })
+
+  it.each(['', '  ', '-5', 'abc', '1.2.3', '1,2,3'])('rejects %j -> null', (input) => {
+    expect(parseMinor(input)).toBeNull()
+  })
+})
+
+describe('formatting', () => {
+  it('formats with the budget currency', () => {
+    // Non-breaking spaces vary by runtime; assert on the meaningful parts.
+    expect(formatMoney(11_000_000, 'EUR')).toContain('1.100,00')
+    expect(formatMoney(11_000_000, 'EUR')).toContain('€')
+    expect(formatMoney(4550, 'GBP')).toContain('£')
+  })
+
+  it('produces a plain editable string', () => {
+    expect(toEditString(11_005_000)).toBe('1100.5')
+    expect(toEditString(11_000_000)).toBe('1100')
+  })
+})

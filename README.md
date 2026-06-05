@@ -142,13 +142,23 @@ planned amount until the banner turns green at €0.00.
 ## Tests
 
 ```bash
-dotnet test
+dotnet test                 # backend: xUnit (+ FluentAssertions, NSubstitute)
+cd client && npm run test   # frontend: Vitest + React Testing Library
 ```
 
-`RemainingToBudgetTests` validate the calculation across positive / zero / negative
-/ over-budget cases, **including zero income** and four-decimal precision.
-`UpdateBudgetItemHandlerTests` prove the pool recomputes after an edit and that a
-user **cannot mutate another user's** budget line.
+**Backend** (xUnit): `RemainingToBudgetTests` cover positive / zero / negative /
+over-budget cases, **including zero income** and four-decimal precision;
+`UpdateBudgetItemHandlerTests` prove the pool recomputes and that a user **cannot
+mutate another user's** line; `Money`/`CurrencyCode` value-object tests; CAMT.053
+parser and import-handler tests (idempotency, per-user scoping). NSubstitute is
+used to isolate handlers from collaborators.
+
+> FluentAssertions is pinned to **7.2.0** — the last Apache-2.0 release (8.x is
+> commercially licensed).
+
+**Frontend** (Vitest + RTL): `money`/`budgetModel` precision + selector tests, and
+a `DashboardPage` test asserting **optimistic update + rollback** on a failed save.
+Both suites run in CI on every push and PR.
 
 ---
 
