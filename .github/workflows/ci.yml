@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore ZeroBudget.slnx
+
+      - name: Build
+        run: dotnet build ZeroBudget.slnx --no-restore -c Release
+
+      # Tests use the EF Core in-memory provider, so no SQL Server is needed.
+      - name: Test
+        run: dotnet test ZeroBudget.slnx --no-build -c Release --verbosity normal
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # Runs tsc type-check + vite production build.
+      - name: Build
+        run: npm run build
