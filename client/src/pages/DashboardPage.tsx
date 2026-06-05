@@ -2,6 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
 import type { BudgetMonthDto } from '../types'
+import {
+  fromDto,
+  monthPlanned,
+  remainingToBudget,
+  withItemPlanned,
+  type MonthVM,
+} from '../budgetModel'
+import { toAmount, type Minor } from '../lib/money'
 import { RemainingBanner } from '../components/RemainingBanner'
 import { CategoryAccordion } from '../components/CategoryAccordion'
 
@@ -12,7 +20,7 @@ const MONTH_NAMES = [
 
 export function DashboardPage() {
   const { email, logout } = useAuth()
-  const [budget, setBudget] = useState<BudgetMonthDto | null>(null)
+  const [month, setMonth] = useState<MonthVM | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingItemId, setSavingItemId] = useState<string | null>(null)
@@ -23,7 +31,7 @@ export function DashboardPage() {
     api
       .get<BudgetMonthDto>('/budget/current')
       .then(({ data }) => {
-        if (!cancelled) setBudget(data)
+        if (!cancelled) setMonth(fromDto(data))
       })
       .catch(() => {
         if (!cancelled) setError('Could not load your budget. Is the API running?')
@@ -36,20 +44,29 @@ export function DashboardPage() {
     }
   }, [])
 
-  // Commit a planned-amount edit. The API returns the fully recomputed month,
-  // so we simply replace state and the banner + totals update reactively.
-  const commitItem = useCallback(async (itemId: string, plannedAmount: number) => {
-    setSavingItemId(itemId)
-    setError(null)
-    try {
-      const { data } = await api.put<BudgetMonthDto>(`/budget/items/${itemId}`, { plannedAmount })
-      setBudget(data)
-    } catch {
-      setError('Failed to save that change.')
-    } finally {
-      setSavingItemId(null)
-    }
-  }, [])
+  // Optimistic commit: apply the edit locally and recompute the banner instantly
+  // (exact integer math), then persist. The server stores precisely what we send,
+  // so success keeps the optimistic state; a failure rolls back and explains why.
+  const commitItem = useCallback(
+    async (itemId: string, plannedMinor: Minor) => {
+      if (!month) return
+
+      const snapshot = month // captured synchronously for a clean rollback
+      setError(null)
+      setSavingItemId(itemId)
+      setMonth(withItemPlanned(month, itemId, plannedMinor)) // optimistic
+
+      try {
+        await api.put(`/budget/items/${itemId}`, { plannedAmount: toAmount(plannedMinor) })
+      } catch {
+        setMonth(snapshot) // roll back to the pre-edit state
+        setError('Could not save that change — reverted to the previous value.')
+      } finally {
+        setSavingItemId(null)
+      }
+    },
+    [month],
+  )
 
   return (
     <div className="min-h-full bg-slate-50">
@@ -80,11 +97,11 @@ export function DashboardPage() {
           </div>
         )}
 
-        {budget && (
+        {month && (
           <>
             <div>
               <h2 className="mb-1 text-2xl font-bold text-slate-800">
-                {MONTH_NAMES[budget.month - 1]} {budget.year}
+                {MONTH_NAMES[month.month - 1]} {month.year}
               </h2>
               <p className="text-sm text-slate-500">
                 Assign every Euro of income until “Remaining to Budget” reaches €0.00.
@@ -92,13 +109,13 @@ export function DashboardPage() {
             </div>
 
             <RemainingBanner
-              totalIncome={budget.totalIncome}
-              totalPlanned={budget.totalPlanned}
-              remainingToBudget={budget.remainingToBudget}
+              totalIncomeMinor={month.totalIncomeMinor}
+              totalPlannedMinor={monthPlanned(month)}
+              remainingMinor={remainingToBudget(month)}
             />
 
             <div className="space-y-3">
-              {budget.categories.map((category) => (
+              {month.categories.map((category) => (
                 <CategoryAccordion
                   key={category.id}
                   category={category}
