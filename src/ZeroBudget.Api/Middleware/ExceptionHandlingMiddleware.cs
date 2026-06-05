@@ -37,6 +37,10 @@ public class ExceptionHandlingMiddleware
         {
             await WriteProblem(context, StatusCodes.Status403Forbidden, ex.Message);
         }
+        catch (StatementParseException ex)
+        {
+            await WriteProblem(context, StatusCodes.Status422UnprocessableEntity, ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception processing {Path}", context.Request.Path);

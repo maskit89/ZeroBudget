@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using ZeroBudget.Application.Common.Interfaces;
 using ZeroBudget.Infrastructure.Identity;
 using ZeroBudget.Infrastructure.Persistence;
+using ZeroBudget.Infrastructure.Statements;
 
 namespace ZeroBudget.Infrastructure;
 
@@ -31,6 +32,9 @@ public static class DependencyInjection
 
         // Expose the context to the Application layer through its abstraction.
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
+
+        // Statement import (CAMT.053) format adapter.
+        services.AddScoped<IStatementParser, Camt053StatementParser>();
 
         // --- Identity ----------------------------------------------------------
         services

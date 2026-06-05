@@ -39,4 +39,10 @@ public class Transaction : BaseEntity
     public string Payee { get; set; } = string.Empty;
 
     public string? Notes { get; set; }
+
+    /// <summary>
+    /// The bank's reference for this entry (ISO 20022 AcctSvcrRef / EndToEndId).
+    /// Used to deduplicate re-imported statements so importing is idempotent.
+    /// </summary>
+    public string? BankReference { get; set; }
 }

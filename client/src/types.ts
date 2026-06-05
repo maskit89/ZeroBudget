@@ -31,6 +31,15 @@ export interface BudgetMonthDto {
   categories: BudgetCategoryDto[]
 }
 
+export interface ImportStatementResult {
+  totalEntries: number
+  imported: number
+  skippedDuplicates: number
+  credits: number
+  debits: number
+  iban: string | null
+}
+
 export interface AuthResponse {
   token: string
   expiresAtUtc: string
