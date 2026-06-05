@@ -6,6 +6,10 @@ public class BudgetMonthDto
     public string Key { get; set; } = string.Empty;
     public int Year { get; set; }
     public int Month { get; set; }
+
+    /// <summary>ISO 4217 code the whole budget is planned in (e.g. "EUR").</summary>
+    public string BaseCurrency { get; set; } = "EUR";
+
     public decimal TotalIncome { get; set; }
     public decimal TotalPlanned { get; set; }
 

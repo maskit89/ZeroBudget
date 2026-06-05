@@ -7,7 +7,8 @@ Euro of income is given a job until **"Remaining to Budget" reaches €0.00**.
 - **Auth:** ASP.NET Core Identity issuing JWTs
 - **Patterns:** CQRS via MediatR, FluentValidation pipeline
 - **Frontend:** React + TypeScript (Vite) + TailwindCSS v4
-- **Currency:** Euro, stored as `decimal(18,4)` for financial precision
+- **Currency:** multi-currency — each budget has a `BaseCurrency` (default EUR);
+  all amounts are `decimal(18,4)`; transactions carry their own currency + FX rate
 
 > Targets **.NET 10** (the SDK installed on this machine). The original brief
 > asked for .NET 8; only the `TargetFramework` string differs — the architecture,
@@ -56,6 +57,22 @@ public bool    IsBalanced         => RemainingToBudget == 0m;
 
 `RemainingToBudget` is computed server-side, shipped in the DTO, and returned again
 on every edit so the banner updates dynamically.
+
+---
+
+## Multi-currency model
+
+- A `BudgetMonth` has a **`BaseCurrency`** (`CurrencyCode` value object, ISO 4217,
+  default `EUR`). Every planned/actual amount in the tree is in that currency, so
+  totals stay summable and `RemainingToBudget` is unambiguous.
+- A `Transaction` carries its **own `Currency` + `ExchangeRate`** (decimal(18,6))
+  and exposes `BaseAmount = Amount × ExchangeRate` — the seam for converting
+  foreign spending (e.g. GBP abroad) into the budget's base currency.
+- `Money` (`decimal Amount` + `CurrencyCode`) is a value object that **forbids
+  cross-currency arithmetic** — adding EUR to GBP throws rather than silently
+  producing nonsense. Convert through an explicit rate first.
+- The client formats every amount with the budget's currency symbol and never
+  does money math in floating point (integer minor units at scale 4).
 
 ---
 

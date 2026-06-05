@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { ItemVM } from '../budgetModel'
 import { itemRemaining } from '../budgetModel'
-import { formatEuro, parseMinor, toEditString, type Minor } from '../lib/money'
+import { currencySymbol, formatMoney, parseMinor, toEditString, type Minor } from '../lib/money'
 
 interface Props {
   item: ItemVM
+  currency: string
   saving: boolean
   onCommit: (itemId: string, plannedMinor: Minor) => void
 }
@@ -15,7 +16,7 @@ interface Props {
  * or Enter (Escape reverts), and only when the value actually changed and is a
  * valid non-negative number.
  */
-export function BudgetItemRow({ item, saving, onCommit }: Props) {
+export function BudgetItemRow({ item, currency, saving, onCommit }: Props) {
   const [draft, setDraft] = useState(toEditString(item.plannedMinor))
 
   // Re-sync when the underlying value changes (optimistic update or rollback).
@@ -51,7 +52,7 @@ export function BudgetItemRow({ item, saving, onCommit }: Props) {
       </div>
 
       <div className="col-span-3 flex items-center justify-end">
-        <span className="mr-1 text-slate-400">€</span>
+        <span className="mr-1 text-slate-400">{currencySymbol(currency)}</span>
         <input
           type="text"
           inputMode="decimal"
@@ -67,7 +68,7 @@ export function BudgetItemRow({ item, saving, onCommit }: Props) {
       </div>
 
       <div className="col-span-2 text-right text-sm tabular-nums text-slate-500">
-        {formatEuro(item.actualMinor)}
+        {formatMoney(item.actualMinor, currency)}
       </div>
 
       <div
@@ -75,7 +76,7 @@ export function BudgetItemRow({ item, saving, onCommit }: Props) {
           overspent ? 'text-rose-600' : 'text-slate-700'
         }`}
       >
-        {formatEuro(remaining)}
+        {formatMoney(remaining, currency)}
       </div>
     </div>
   )

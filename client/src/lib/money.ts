@@ -36,16 +36,34 @@ export function toEditString(minor: Minor): string {
   return (minor / FACTOR).toString()
 }
 
-const euroFormatter = new Intl.NumberFormat('de-DE', {
-  style: 'currency',
-  currency: 'EUR',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
+// Cache one formatter per currency (constructing Intl.NumberFormat isn't free).
+const formatters = new Map<string, Intl.NumberFormat>()
 
-/** Format integer minor units as a localized Euro string (e.g. "1.100,00 €"). */
-export function formatEuro(minor: Minor): string {
-  return euroFormatter.format(toAmount(minor))
+function formatterFor(currency: string): Intl.NumberFormat {
+  let fmt = formatters.get(currency)
+  if (!fmt) {
+    fmt = new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+    formatters.set(currency, fmt)
+  }
+  return fmt
+}
+
+/** Format integer minor units as a localized currency string (e.g. "1.100,00 €"). */
+export function formatMoney(minor: Minor, currency: string): string {
+  return formatterFor(currency).format(toAmount(minor))
+}
+
+/** The currency's symbol for the active locale (e.g. "EUR" -> "€", "GBP" -> "£"). */
+export function currencySymbol(currency: string): string {
+  const part = formatterFor(currency)
+    .formatToParts(0)
+    .find((p) => p.type === 'currency')
+  return part?.value ?? currency
 }
 
 /**

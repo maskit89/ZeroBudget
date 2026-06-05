@@ -1,4 +1,5 @@
 using ZeroBudget.Domain.Common;
+using ZeroBudget.Domain.ValueObjects;
 
 namespace ZeroBudget.Domain.Entities;
 
@@ -19,6 +20,14 @@ public class BudgetMonth : BaseEntity
 
     /// <summary>Month number 1-12.</summary>
     public int Month { get; set; }
+
+    /// <summary>
+    /// The home currency this budget is planned in. Every planned/actual amount
+    /// in the tree is expressed in this currency, which keeps the totals summable.
+    /// Foreign-currency transactions are converted to this currency before they
+    /// affect the budget.
+    /// </summary>
+    public CurrencyCode BaseCurrency { get; set; } = CurrencyCode.Eur;
 
     /// <summary>
     /// Total income available to allocate this month. In ZBB this is the
@@ -45,6 +54,9 @@ public class BudgetMonth : BaseEntity
     /// </summary>
     public decimal RemainingToBudget => TotalIncome - TotalPlanned;
 
-    /// <summary>True when every Euro is assigned and nothing is over-allocated.</summary>
+    /// <summary>The same metric as <see cref="RemainingToBudget"/>, carrying its currency.</summary>
+    public Money RemainingToBudgetMoney => new(RemainingToBudget, BaseCurrency);
+
+    /// <summary>True when every unit of income is assigned and nothing is over-allocated.</summary>
     public bool IsBalanced => RemainingToBudget == 0m;
 }

@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ZeroBudget.Domain.Entities;
+using ZeroBudget.Domain.ValueObjects;
+using ZeroBudget.Infrastructure.Persistence.Converters;
 
 namespace ZeroBudget.Infrastructure.Persistence.Configurations;
 
@@ -18,11 +20,20 @@ public class BudgetMonthConfiguration : IEntityTypeConfiguration<BudgetMonth>
         builder.Property(m => m.TotalIncome)
             .HasPrecision(18, 4);
 
+        // Home currency, stored as its ISO 4217 string with an EUR default for
+        // existing rows.
+        builder.Property(m => m.BaseCurrency)
+            .HasConversion(new CurrencyCodeConverter())
+            .HasMaxLength(3)
+            .IsRequired()
+            .HasDefaultValue(CurrencyCode.Eur);
+
         // The computed Key / TotalPlanned / RemainingToBudget properties are
         // pure C# and must not be persisted.
         builder.Ignore(m => m.Key);
         builder.Ignore(m => m.TotalPlanned);
         builder.Ignore(m => m.RemainingToBudget);
+        builder.Ignore(m => m.RemainingToBudgetMoney);
         builder.Ignore(m => m.IsBalanced);
 
         // A user has exactly one budget per calendar month.

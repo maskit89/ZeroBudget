@@ -112,6 +112,7 @@ export function DashboardPage() {
               totalIncomeMinor={month.totalIncomeMinor}
               totalPlannedMinor={monthPlanned(month)}
               remainingMinor={remainingToBudget(month)}
+              currency={month.currency}
             />
 
             <div className="space-y-3">
@@ -119,6 +120,7 @@ export function DashboardPage() {
                 <CategoryAccordion
                   key={category.id}
                   category={category}
+                  currency={month.currency}
                   savingItemId={savingItemId}
                   onCommitItem={commitItem}
                 />
