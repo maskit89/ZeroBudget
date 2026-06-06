@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ZeroBudget.Application.Common.Exceptions;
 using ZeroBudget.Application.Common.Interfaces;
+using ZeroBudget.Application.Transactions;
 using ZeroBudget.Domain.Entities;
 using ZeroBudget.Domain.Enums;
 using ZeroBudget.Domain.ValueObjects;
@@ -41,6 +42,7 @@ public class ImportStatementCommandHandler : IRequestHandler<ImportStatementComm
         var seen = new HashSet<string>(existingReferences, StringComparer.Ordinal);
 
         int imported = 0, skipped = 0, credits = 0, debits = 0;
+        var created = new List<Transaction>();
 
         foreach (var entry in statement.Entries)
         {
@@ -51,7 +53,7 @@ public class ImportStatementCommandHandler : IRequestHandler<ImportStatementComm
                 continue;
             }
 
-            _db.Transactions.Add(new Transaction
+            var transaction = new Transaction
             {
                 OwnerId = userId,
                 Amount = entry.Amount,
@@ -61,14 +63,19 @@ public class ImportStatementCommandHandler : IRequestHandler<ImportStatementComm
                 Date = entry.BookingDate,
                 Payee = Truncate(entry.Payee, 200),
                 BankReference = entry.Reference,
-            });
+            };
+            _db.Transactions.Add(transaction);
+            created.Add(transaction);
 
             imported++;
             if (entry.IsCredit) credits++; else debits++;
         }
 
-        if (imported > 0)
+        var autoCategorized = 0;
+        if (created.Count > 0)
         {
+            // Apply learned payee -> line rules before saving.
+            autoCategorized = await AutoCategorizer.ApplyAsync(_db, userId, created, cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
         }
 
@@ -78,7 +85,8 @@ public class ImportStatementCommandHandler : IRequestHandler<ImportStatementComm
             SkippedDuplicates: skipped,
             Credits: credits,
             Debits: debits,
-            Iban: statement.Iban);
+            Iban: statement.Iban,
+            AutoCategorized: autoCategorized);
     }
 
     private static string Truncate(string value, int max) =>

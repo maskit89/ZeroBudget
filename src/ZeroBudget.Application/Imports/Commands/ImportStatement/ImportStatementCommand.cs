@@ -12,4 +12,5 @@ public record ImportStatementResult(
     int SkippedDuplicates,
     int Credits,
     int Debits,
-    string? Iban);
+    string? Iban,
+    int AutoCategorized = 0);
