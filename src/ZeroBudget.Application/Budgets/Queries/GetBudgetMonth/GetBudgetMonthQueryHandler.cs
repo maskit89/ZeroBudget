@@ -40,6 +40,9 @@ public class GetBudgetMonthQueryHandler : IRequestHandler<GetBudgetMonthQuery, B
                 $"No budget found for {request.Year:D4}-{request.Month:D2}.");
         }
 
+        // Roll actual spending up from assigned transactions.
+        await BudgetActuals.ApplyAsync(_db, userId, month, cancellationToken);
+
         return month.ToDto();
     }
 }

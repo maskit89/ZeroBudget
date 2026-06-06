@@ -91,6 +91,19 @@ Upload a CAMT.053 XML statement and its entries become `Transaction`s.
 
 ---
 
+## Transactions & actual spending
+
+- `GET /api/transactions` lists the user's transactions (filterable by month /
+  unassigned); the **Transactions** page assigns each to a budget line.
+- `PUT /api/transactions/{id}/assignment` sets/clears a line (ownership checked
+  on both the transaction and the target line).
+- A line's **`ActualAmount` is derived at read time** from the expense
+  transactions assigned to it (summed in base currency via `Amount ×
+  ExchangeRate`) — no denormalized total to keep in sync. This is what fills the
+  dashboard's "Actual" / "Remaining" columns.
+
+---
+
 ## Running the backend
 
 **Prerequisites:** .NET 10 SDK and SQL Server (LocalDB works out of the box on
