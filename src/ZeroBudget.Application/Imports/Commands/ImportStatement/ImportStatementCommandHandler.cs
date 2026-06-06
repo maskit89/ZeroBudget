@@ -14,15 +14,18 @@ public class ImportStatementCommandHandler : IRequestHandler<ImportStatementComm
     private readonly IApplicationDbContext _db;
     private readonly ICurrentUser _currentUser;
     private readonly IStatementParser _parser;
+    private readonly IExchangeRateProvider _exchangeRates;
 
     public ImportStatementCommandHandler(
         IApplicationDbContext db,
         ICurrentUser currentUser,
-        IStatementParser parser)
+        IStatementParser parser,
+        IExchangeRateProvider exchangeRates)
     {
         _db = db;
         _currentUser = currentUser;
         _parser = parser;
+        _exchangeRates = exchangeRates;
     }
 
     public async Task<ImportStatementResult> Handle(ImportStatementCommand request, CancellationToken cancellationToken)
@@ -74,7 +77,9 @@ public class ImportStatementCommandHandler : IRequestHandler<ImportStatementComm
         var autoCategorized = 0;
         if (created.Count > 0)
         {
-            // Apply learned payee -> line rules before saving.
+            // Resolve FX rates to the budget base currency, then apply learned
+            // payee -> line rules, then persist once.
+            await FxRateResolver.ApplyAsync(_db, _exchangeRates, userId, created, cancellationToken);
             autoCategorized = await AutoCategorizer.ApplyAsync(_db, userId, created, cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
         }

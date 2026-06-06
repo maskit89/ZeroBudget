@@ -10,6 +10,7 @@ using ZeroBudget.Domain.Enums;
 using ZeroBudget.Infrastructure.Persistence;
 using ZeroBudget.Infrastructure.Statements;
 using ZeroBudget.Application.Tests.Imports;
+using ZeroBudget.Application.Tests.TestDoubles;
 
 namespace ZeroBudget.Application.Tests.Transactions;
 
@@ -154,7 +155,7 @@ public class AutoCategorizationTests
         await db.SaveChangesAsync();
         SeedRule(db, "user-1", "Landlord GmbH", "Housing", "Rent");
 
-        var handler = new ImportStatementCommandHandler(db, new CurrentUserStub("user-1"), new Camt053StatementParser());
+        var handler = new ImportStatementCommandHandler(db, new CurrentUserStub("user-1"), new Camt053StatementParser(), new FakeExchangeRateProvider());
         var result = await handler.Handle(new ImportStatementCommand(Camt053Samples.ThreeEntries), CancellationToken.None);
 
         result.Imported.Should().Be(3);

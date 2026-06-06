@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Xunit;
 using ZeroBudget.Application.Common.Interfaces;
 using ZeroBudget.Application.Imports.Commands.ImportStatement;
+using ZeroBudget.Application.Tests.TestDoubles;
 using ZeroBudget.Domain.Enums;
 using ZeroBudget.Infrastructure.Persistence;
 using ZeroBudget.Infrastructure.Statements;
@@ -22,7 +23,7 @@ public class ImportStatementHandlerTests
             .Options);
 
     private static ImportStatementCommandHandler NewHandler(ApplicationDbContext db, string userId) =>
-        new(db, new CurrentUserStub(userId), new Camt053StatementParser());
+        new(db, new CurrentUserStub(userId), new Camt053StatementParser(), new FakeExchangeRateProvider());
 
     [Fact]
     public async Task Handle_ImportsAllEntries_WithCorrectSummary()

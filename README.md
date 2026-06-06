@@ -66,8 +66,11 @@ on every edit so the banner updates dynamically.
   default `EUR`). Every planned/actual amount in the tree is in that currency, so
   totals stay summable and `RemainingToBudget` is unambiguous.
 - A `Transaction` carries its **own `Currency` + `ExchangeRate`** (decimal(18,6))
-  and exposes `BaseAmount = Amount × ExchangeRate` — the seam for converting
-  foreign spending (e.g. GBP abroad) into the budget's base currency.
+  and exposes `BaseAmount = Amount × ExchangeRate` — converting foreign spending
+  (e.g. GBP abroad) into the budget's base currency. On import the rate is
+  **resolved from real ECB reference rates** (the free, key-less Frankfurter API,
+  behind `IExchangeRateProvider`, historical by booking date, cached) and falls
+  back to 1 if a rate can't be fetched — FX never blocks an import.
 - `Money` (`decimal Amount` + `CurrencyCode`) is a value object that **forbids
   cross-currency arithmetic** — adding EUR to GBP throws rather than silently
   producing nonsense. Convert through an explicit rate first.
