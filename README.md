@@ -101,6 +101,10 @@ Upload a CAMT.053 XML statement and its entries become `Transaction`s.
   transactions assigned to it (summed in base currency via `Amount ×
   ExchangeRate`) — no denormalized total to keep in sync. This is what fills the
   dashboard's "Actual" / "Remaining" columns.
+- **Auto-categorization:** assigning a transaction **learns** a `payee → line`
+  rule (`CategorizationRule`, keyed on a normalized payee). On the next import,
+  matching entries are auto-assigned to the line of the same name **in that
+  entry's month** — the import summary reports how many were auto-categorized.
 
 ---
 

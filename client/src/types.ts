@@ -55,6 +55,7 @@ export interface ImportStatementResult {
   credits: number
   debits: number
   iban: string | null
+  autoCategorized: number
 }
 
 export interface AuthResponse {

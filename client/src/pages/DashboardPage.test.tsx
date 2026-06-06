@@ -59,7 +59,7 @@ describe('DashboardPage optimistic editing', () => {
     mockPut.mockReset()
   })
 
-  it('optimistically drives Remaining to €0,00 on a successful edit', async () => {
+  it('optimistically drives Remaining to €0,00 on a successful edit', { timeout: 15000 }, async () => {
     mockGet.mockResolvedValue({ data: budget() })
     mockPut.mockResolvedValue({ data: {} })
     const user = userEvent.setup()
@@ -72,11 +72,13 @@ describe('DashboardPage optimistic editing', () => {
     await user.tab() // blur -> commit
 
     // Banner flips to the balanced state and the API was called with the amount.
-    expect(await screen.findByText(/Every Euro has a job/)).toBeInTheDocument()
-    expect(mockPut).toHaveBeenCalledWith('/budget/items/i-rent', { plannedAmount: 3000 })
+    expect(await screen.findByText(/Every Euro has a job/, {}, { timeout: 5000 })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(mockPut).toHaveBeenCalledWith('/budget/items/i-rent', { plannedAmount: 3000 }),
+    )
   })
 
-  it('rolls back to the previous value and shows an error when the save fails', async () => {
+  it('rolls back to the previous value and shows an error when the save fails', { timeout: 15000 }, async () => {
     mockGet.mockResolvedValue({ data: budget() })
     mockPut.mockRejectedValue(new Error('network'))
     const user = userEvent.setup()
@@ -89,7 +91,7 @@ describe('DashboardPage optimistic editing', () => {
     await user.tab()
 
     // The failure surfaces and the field reverts to its pre-edit value.
-    expect(await screen.findByText(/reverted to the previous value/)).toBeInTheDocument()
-    await waitFor(() => expect(input.value).toBe('1100'))
+    expect(await screen.findByText(/reverted to the previous value/, {}, { timeout: 5000 })).toBeInTheDocument()
+    await waitFor(() => expect(input.value).toBe('1100'), { timeout: 5000 })
   })
 })

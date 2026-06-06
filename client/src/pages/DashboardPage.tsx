@@ -130,6 +130,7 @@ export function DashboardPage() {
               {importSummary.skippedDuplicates > 0 && ` (skipped ${importSummary.skippedDuplicates} duplicate${importSummary.skippedDuplicates === 1 ? '' : 's'})`}
               {' — '}
               {importSummary.credits} credit{importSummary.credits === 1 ? '' : 's'}, {importSummary.debits} debit{importSummary.debits === 1 ? '' : 's'}
+              {importSummary.autoCategorized > 0 && `, ${importSummary.autoCategorized} auto-categorized`}
               {importSummary.iban && ` · ${importSummary.iban}`}.
             </span>
             <button

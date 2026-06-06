@@ -14,6 +14,7 @@ public interface IApplicationDbContext
     DbSet<BudgetCategory> BudgetCategories { get; }
     DbSet<BudgetItem> BudgetItems { get; }
     DbSet<Transaction> Transactions { get; }
+    DbSet<CategorizationRule> CategorizationRules { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
