@@ -36,6 +36,13 @@ public static class DependencyInjection
         // Statement import (CAMT.053) format adapter.
         services.AddScoped<IStatementParser, Camt053StatementParser>();
 
+        // FX rates via the free, key-less Frankfurter (ECB) API.
+        services.AddHttpClient<IExchangeRateProvider, FrankfurterExchangeRateProvider>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.frankfurter.app/");
+            client.Timeout = TimeSpan.FromSeconds(5);
+        });
+
         // --- Identity ----------------------------------------------------------
         services
             .AddIdentityCore<ApplicationUser>(options =>
