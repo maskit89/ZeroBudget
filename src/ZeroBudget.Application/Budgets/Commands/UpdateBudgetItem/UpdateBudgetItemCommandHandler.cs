@@ -56,6 +56,8 @@ public class UpdateBudgetItemCommandHandler : IRequestHandler<UpdateBudgetItemCo
                 .ThenInclude(c => c.Items)
             .FirstAsync(m => m.Id == monthId, cancellationToken);
 
+        await BudgetActuals.ApplyAsync(_db, userId, month, cancellationToken);
+
         return month.ToDto();
     }
 }

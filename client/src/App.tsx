@@ -3,6 +3,7 @@ import type { JSX } from 'react'
 import { useAuth } from './auth/AuthContext'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { TransactionsPage } from './pages/TransactionsPage'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { isAuthenticated } = useAuth()
@@ -23,6 +24,14 @@ export default function App() {
         element={
           <RequireAuth>
             <DashboardPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/transactions"
+        element={
+          <RequireAuth>
+            <TransactionsPage />
           </RequireAuth>
         }
       />

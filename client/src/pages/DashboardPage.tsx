@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
 import type { BudgetMonthDto, ImportStatementResult } from '../types'
@@ -74,9 +75,22 @@ export function DashboardPage() {
     <div className="min-h-full bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">💶</span>
-            <h1 className="text-lg font-bold text-slate-800">ZeroBudget</h1>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">💶</span>
+              <h1 className="text-lg font-bold text-slate-800">ZeroBudget</h1>
+            </div>
+            <nav className="flex gap-1 text-sm">
+              <span className="rounded-md bg-slate-100 px-3 py-1.5 font-semibold text-slate-800">
+                Budget
+              </span>
+              <Link
+                to="/transactions"
+                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
+              >
+                Transactions
+              </Link>
+            </nav>
           </div>
           <div className="flex items-center gap-4">
             <span className="hidden text-sm text-slate-500 sm:inline">{email}</span>
