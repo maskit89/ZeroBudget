@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ZeroBudget.Application.Common.Interfaces;
 using ZeroBudget.Domain.Entities;
+using ZeroBudget.Domain.Enums;
 
 namespace ZeroBudget.Application.Transactions;
 
@@ -50,8 +51,8 @@ public static class AutoCategorizer
                 .ThenInclude(c => c.Items)
             .ToListAsync(cancellationToken);
 
-        // (year, month, categoryName, itemName) -> item id
-        var itemLookup = new Dictionary<(int, int, string, string), Guid>();
+        // (year, month, categoryName, itemName) -> the line entity
+        var itemLookup = new Dictionary<(int, int, string, string), BudgetItem>();
         foreach (var month in months)
         {
             foreach (var category in month.Categories)
@@ -60,7 +61,7 @@ public static class AutoCategorizer
                 {
                     var key = (month.Year, month.Month,
                         category.Name.ToLowerInvariant(), item.Name.ToLowerInvariant());
-                    itemLookup[key] = item.Id;
+                    itemLookup[key] = item;
                 }
             }
         }
@@ -76,9 +77,11 @@ public static class AutoCategorizer
 
             var lookupKey = (tx.Date.Year, tx.Date.Month,
                 rule.CategoryName.ToLowerInvariant(), rule.ItemName.ToLowerInvariant());
-            if (itemLookup.TryGetValue(lookupKey, out var itemId))
+            if (itemLookup.TryGetValue(lookupKey, out var item))
             {
-                tx.BudgetItemId = itemId;
+                tx.BudgetItemId = item.Id;
+                // An auto-categorized line is tracked by its transactions.
+                item.ActualEntryMode = ActualEntryMode.Tracked;
                 assigned++;
             }
         }

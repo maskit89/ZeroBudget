@@ -3,8 +3,13 @@ import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
 import type { BudgetMonthDto, TransactionDto } from '../types'
-import { formatMoney, fromAmount } from '../lib/money'
+import { TransactionType } from '../types'
+import { formatMoney, fromAmount, parseMinor, toAmount } from '../lib/money'
 import { buildItemOptions, transactionTypeLabel } from '../lib/transactions'
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10)
+}
 
 export function TransactionsPage() {
   const { logout } = useAuth()
@@ -13,6 +18,14 @@ export function TransactionsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
+
+  // Add-transaction form state.
+  const [date, setDate] = useState(today)
+  const [payee, setPayee] = useState('')
+  const [amount, setAmount] = useState('')
+  const [type, setType] = useState<number>(TransactionType.Expense)
+  const [assignTo, setAssignTo] = useState('')
+  const [adding, setAdding] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -41,6 +54,45 @@ export function TransactionsPage() {
       setTransactions((prev) => prev.map((t) => (t.id === id ? data : t)))
     } catch {
       setError('Could not save that assignment.')
+    } finally {
+      setSavingId(null)
+    }
+  }, [])
+
+  const addTransaction = useCallback(async () => {
+    const minor = parseMinor(amount)
+    if (minor === null || minor <= 0) {
+      setError('Enter a valid amount greater than zero.')
+      return
+    }
+    setAdding(true)
+    setError(null)
+    try {
+      const { data } = await api.post<TransactionDto>('/transactions', {
+        date,
+        payee,
+        amount: toAmount(minor),
+        type,
+        budgetItemId: assignTo || null,
+      })
+      setTransactions((prev) => [data, ...prev])
+      setPayee('')
+      setAmount('')
+    } catch {
+      setError('Could not add that transaction.')
+    } finally {
+      setAdding(false)
+    }
+  }, [date, payee, amount, type, assignTo])
+
+  const removeTransaction = useCallback(async (id: string) => {
+    setSavingId(id)
+    setError(null)
+    try {
+      await api.delete(`/transactions/${id}`)
+      setTransactions((prev) => prev.filter((t) => t.id !== id))
+    } catch {
+      setError('Could not delete that transaction.')
     } finally {
       setSavingId(null)
     }
@@ -79,7 +131,8 @@ export function TransactionsPage() {
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Transactions</h2>
           <p className="text-sm text-slate-500">
-            Assign each transaction to a budget line — its spending then rolls up into that line.
+            Add what you’ve spent (or received) by hand, then assign each to a budget line — its
+            spending rolls up into that line.
           </p>
         </div>
 
@@ -89,11 +142,95 @@ export function TransactionsPage() {
           </div>
         )}
 
+        {/* Add-transaction form (the manual "sheet" entry). */}
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-slate-700">Add a transaction</h3>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+              Date
+              <input
+                type="date"
+                value={date}
+                aria-label="Transaction date"
+                onChange={(e) => setDate(e.target.value)}
+                className="rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-700 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </label>
+            <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-slate-500">
+              Payee
+              <input
+                type="text"
+                value={payee}
+                placeholder="e.g. Tesco"
+                aria-label="Transaction payee"
+                onChange={(e) => setPayee(e.target.value)}
+                className="min-w-32 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+              Amount
+              <input
+                type="text"
+                inputMode="decimal"
+                value={amount}
+                placeholder="0,00"
+                aria-label="Transaction amount"
+                onChange={(e) => setAmount(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') addTransaction()
+                }}
+                className="w-28 rounded-md border border-slate-300 px-2 py-1.5 text-right text-sm tabular-nums focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+              Type
+              <select
+                value={type}
+                aria-label="Transaction type"
+                onChange={(e) => setType(Number(e.target.value))}
+                className="rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              >
+                <option value={TransactionType.Expense}>Expense</option>
+                <option value={TransactionType.Income}>Income</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+              Assign to
+              <select
+                value={assignTo}
+                aria-label="Assign transaction to"
+                onChange={(e) => setAssignTo(e.target.value)}
+                className="w-48 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              >
+                <option value="">Unassigned</option>
+                {optionGroups.map((g) => (
+                  <optgroup key={g.category} label={g.category}>
+                    {g.items.map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={addTransaction}
+              disabled={adding}
+              aria-label="Add transaction"
+              className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+
         {loading && <p className="text-slate-500">Loading…</p>}
 
         {!loading && transactions.length === 0 && (
           <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-slate-500">
-            No transactions yet. Import a CAMT.053 statement from the Budget page.
+            No transactions yet. Add one above, or import a CAMT.053 statement from the Budget page.
           </div>
         )}
 
@@ -106,6 +243,7 @@ export function TransactionsPage() {
                   <th className="px-4 py-2 font-medium">Payee</th>
                   <th className="px-4 py-2 text-right font-medium">Amount</th>
                   <th className="px-4 py-2 font-medium">Assigned to</th>
+                  <th className="px-4 py-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -127,6 +265,7 @@ export function TransactionsPage() {
                         <select
                           value={t.budgetItemId ?? ''}
                           disabled={savingId === t.id}
+                          aria-label={`Assign ${t.payee || 'transaction'}`}
                           onChange={(e) => assign(t.id, e.target.value || null)}
                           className="w-56 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50"
                         >
@@ -141,6 +280,18 @@ export function TransactionsPage() {
                             </optgroup>
                           ))}
                         </select>
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => removeTransaction(t.id)}
+                          disabled={savingId === t.id}
+                          aria-label={`Delete transaction: ${t.payee || t.date}`}
+                          title="Delete transaction"
+                          className="rounded-md px-2 py-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                        >
+                          ✕
+                        </button>
                       </td>
                     </tr>
                   )

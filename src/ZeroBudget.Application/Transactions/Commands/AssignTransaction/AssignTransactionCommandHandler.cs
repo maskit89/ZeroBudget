@@ -4,6 +4,7 @@ using ZeroBudget.Application.Common.Exceptions;
 using ZeroBudget.Application.Common.Interfaces;
 using ZeroBudget.Application.Transactions.Dtos;
 using ZeroBudget.Domain.Entities;
+using ZeroBudget.Domain.Enums;
 
 namespace ZeroBudget.Application.Transactions.Commands.AssignTransaction;
 
@@ -55,6 +56,10 @@ public class AssignTransactionCommandHandler : IRequestHandler<AssignTransaction
 
             transaction.BudgetItem = item;
             transaction.BudgetItemId = item.Id;
+
+            // Putting a transaction on a line means the user is tracking it by
+            // transactions — switch it out of manual entry so the roll-up shows.
+            item.ActualEntryMode = ActualEntryMode.Tracked;
 
             // Learn the payee -> line mapping so future imports auto-categorize.
             await LearnRuleAsync(userId, transaction.Payee, item, cancellationToken);
