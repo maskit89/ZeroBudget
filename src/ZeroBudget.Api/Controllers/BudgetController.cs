@@ -7,6 +7,7 @@ using ZeroBudget.Application.Budgets.Commands.DeleteBudgetCategory;
 using ZeroBudget.Application.Budgets.Commands.DeleteBudgetItem;
 using ZeroBudget.Application.Budgets.Commands.RenameBudgetCategory;
 using ZeroBudget.Application.Budgets.Commands.SetBudgetItemActual;
+using ZeroBudget.Application.Budgets.Commands.SetBudgetItemActualMode;
 using ZeroBudget.Application.Budgets.Commands.UpdateBudgetItem;
 using ZeroBudget.Application.Budgets.Dtos;
 using ZeroBudget.Application.Budgets.Queries.GetBudgetMonth;
@@ -148,6 +149,24 @@ public class BudgetController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Switches a line between manual spent entry and transaction tracking, and
+    /// returns the recomputed month.
+    /// </summary>
+    [HttpPut("items/{id:guid}/actual-mode")]
+    [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BudgetMonthDto>> SetItemActualMode(
+        Guid id,
+        SetBudgetItemActualModeRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(
+            new SetBudgetItemActualModeCommand(id, request.TrackByTransactions), ct);
+        return Ok(result);
+    }
+
     /// <summary>Deletes a single budget line and returns the recomputed month.</summary>
     [HttpDelete("items/{id:guid}")]
     [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
@@ -168,6 +187,9 @@ public record AddBudgetItemRequest(string Name, decimal PlannedAmount = 0m);
 
 /// <summary>Request body for setting a line's manual spent amount (the id comes from the route).</summary>
 public record SetBudgetItemActualRequest(decimal ActualAmount);
+
+/// <summary>Request body for switching a line's actual-entry mode (the id comes from the route).</summary>
+public record SetBudgetItemActualModeRequest(bool TrackByTransactions);
 
 /// <summary>Request body for creating a category group.</summary>
 public record AddBudgetCategoryRequest(Guid BudgetMonthId, string Name);

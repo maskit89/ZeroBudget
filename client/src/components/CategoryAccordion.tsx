@@ -11,6 +11,7 @@ interface Props {
   defaultOpen?: boolean
   onCommitItem: (itemId: string, plannedMinor: Minor) => void
   onCommitActual: (itemId: string, actualMinor: Minor) => void
+  onSetActualMode: (itemId: string, trackByTransactions: boolean) => void
   onRenameItem: (itemId: string, name: string) => void
   onDeleteItem: (itemId: string) => void
   onAddItem: (categoryId: string, name: string) => void
@@ -30,6 +31,7 @@ export function CategoryAccordion({
   defaultOpen = true,
   onCommitItem,
   onCommitActual,
+  onSetActualMode,
   onRenameItem,
   onDeleteItem,
   onAddItem,
@@ -145,6 +147,7 @@ export function CategoryAccordion({
                 saving={savingItemId === item.id}
                 onCommit={onCommitItem}
                 onCommitActual={onCommitActual}
+                onSetActualMode={onSetActualMode}
                 onRename={onRenameItem}
                 onDelete={onDeleteItem}
               />
