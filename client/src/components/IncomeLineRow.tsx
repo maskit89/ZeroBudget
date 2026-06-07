@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ItemVM } from '../budgetModel'
-import { currencySymbol, parseMinor, toEditString, type Minor } from '../lib/money'
+import { currencySymbol, formatMoney, parseMinor, toEditString, type Minor } from '../lib/money'
 
 interface Props {
   item: ItemVM
@@ -8,14 +8,16 @@ interface Props {
   saving: boolean
   onRename: (itemId: string, name: string) => void
   onCommitPlanned: (itemId: string, plannedMinor: Minor) => void
+  onCommitReceived: (itemId: string, actualMinor: Minor) => void
+  onSetActualMode: (itemId: string, trackByTransactions: boolean) => void
   onDelete: (itemId: string) => void
 }
 
 /**
- * A single income source: an editable name and an inline-editable planned
- * amount (parsed straight to integer minor units — no floating point), plus a
- * delete affordance. Income lines have no "actual/remaining" columns — they
- * feed the pool to allocate, they are not spending.
+ * A single income source: an editable name, an inline-editable planned amount,
+ * a received amount (typed manually, or rolled up from assigned income
+ * transactions), plus a tracking toggle and delete. Planned income feeds the
+ * pool to allocate; received is just this line's actual inflow.
  */
 export function IncomeLineRow({
   item,
@@ -23,19 +25,22 @@ export function IncomeLineRow({
   saving,
   onRename,
   onCommitPlanned,
+  onCommitReceived,
+  onSetActualMode,
   onDelete,
 }: Props) {
   const [name, setName] = useState(item.name)
   const [draft, setDraft] = useState(toEditString(item.plannedMinor))
+  const [receivedDraft, setReceivedDraft] = useState(toEditString(item.actualMinor))
 
-  // Re-sync when the underlying value changes (optimistic update or rollback).
   useEffect(() => setName(item.name), [item.name])
   useEffect(() => setDraft(toEditString(item.plannedMinor)), [item.plannedMinor])
+  useEffect(() => setReceivedDraft(toEditString(item.actualMinor)), [item.actualMinor])
 
   function commitName() {
     const trimmed = name.trim()
     if (trimmed === '') {
-      setName(item.name) // revert empty
+      setName(item.name)
       return
     }
     if (trimmed !== item.name) onRename(item.id, trimmed)
@@ -44,15 +49,26 @@ export function IncomeLineRow({
   function commitPlanned() {
     const parsed = parseMinor(draft)
     if (parsed === null) {
-      setDraft(toEditString(item.plannedMinor)) // revert invalid input
+      setDraft(toEditString(item.plannedMinor))
       return
     }
     if (parsed !== item.plannedMinor) onCommitPlanned(item.id, parsed)
   }
 
+  function commitReceived() {
+    const parsed = parseMinor(receivedDraft)
+    if (parsed === null) {
+      setReceivedDraft(toEditString(item.actualMinor))
+      return
+    }
+    if (parsed !== item.actualMinor) onCommitReceived(item.id, parsed)
+  }
+
+  const receivedEditable = !item.actualIsTracked
+
   return (
     <div className="grid grid-cols-12 items-center gap-2 px-4 py-2.5 hover:bg-emerald-50/40">
-      <div className="col-span-6 flex items-center gap-2">
+      <div className="col-span-5 flex items-center gap-2">
         <input
           type="text"
           value={name}
@@ -74,7 +90,7 @@ export function IncomeLineRow({
         )}
       </div>
 
-      <div className="col-span-4 flex items-center justify-end">
+      <div className="col-span-3 flex items-center justify-end">
         <span className="mr-1 text-slate-400">{currencySymbol(currency)}</span>
         <input
           type="text"
@@ -87,17 +103,56 @@ export function IncomeLineRow({
             if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
             if (e.key === 'Escape') setDraft(toEditString(item.plannedMinor))
           }}
-          className="w-28 rounded-md border border-slate-300 px-2 py-1 text-right text-sm tabular-nums focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          className="w-24 rounded-md border border-slate-300 px-2 py-1 text-right text-sm tabular-nums focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         />
       </div>
 
-      <div className="col-span-2 flex justify-end">
+      <div className="col-span-3 flex items-center justify-end gap-1">
+        <button
+          type="button"
+          onClick={() => onSetActualMode(item.id, !item.actualIsTracked)}
+          aria-label={
+            item.actualIsTracked
+              ? `Enter ${item.name} received manually`
+              : `Track ${item.name} by transactions`
+          }
+          title={
+            item.actualIsTracked
+              ? 'Received from transactions — switch to manual entry'
+              : 'Manual entry — switch to transaction tracking'
+          }
+          className="shrink-0 rounded px-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+        >
+          {item.actualIsTracked ? '🔗' : '✎'}
+        </button>
+        {receivedEditable ? (
+          <input
+            type="text"
+            inputMode="decimal"
+            value={receivedDraft}
+            aria-label={`Received for ${item.name}`}
+            onChange={(e) => setReceivedDraft(e.target.value)}
+            onBlur={commitReceived}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+              if (e.key === 'Escape') setReceivedDraft(toEditString(item.actualMinor))
+            }}
+            className="w-20 rounded-md border border-slate-200 px-2 py-1 text-right text-sm tabular-nums text-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
+        ) : (
+          <span className="text-sm tabular-nums text-slate-500" title="Received from transactions">
+            {formatMoney(item.actualMinor, currency)}
+          </span>
+        )}
+      </div>
+
+      <div className="col-span-1 flex justify-end">
         <button
           type="button"
           onClick={() => onDelete(item.id)}
           aria-label={`Delete ${item.name}`}
           title="Delete income source"
-          className="rounded-md px-2 py-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+          className="rounded-md px-1.5 py-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
         >
           ✕
         </button>

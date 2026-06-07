@@ -167,6 +167,42 @@ public class ManualActualTests
     }
 
     [Fact]
+    public async Task IncomeLine_RollsUpIncomeTransactions_WhenTracked()
+    {
+        await using var db = NewContext();
+        var user = new CurrentUserStub("user-1");
+
+        var pay = new BudgetItem
+        {
+            Name = "Take-home Pay",
+            PlannedAmount = 3000m,
+            ActualEntryMode = ActualEntryMode.Tracked,
+        };
+        db.BudgetMonths.Add(new BudgetMonth
+        {
+            OwnerId = "user-1",
+            Year = 2026,
+            Month = 6,
+            Categories = new List<BudgetCategory>
+            {
+                new() { Name = "Income", Kind = CategoryKind.Income, Items = new List<BudgetItem> { pay } },
+            },
+        });
+        // An income transaction on the income line; an expense on it must be ignored.
+        db.Transactions.AddRange(
+            new Transaction { OwnerId = "user-1", BudgetItemId = pay.Id, Amount = 1800m, Type = TransactionType.Income },
+            new Transaction { OwnerId = "user-1", BudgetItemId = pay.Id, Amount = 50m, Type = TransactionType.Expense });
+        await db.SaveChangesAsync();
+
+        var month = await new GetBudgetMonthQueryHandler(db, user)
+            .Handle(new GetBudgetMonthQuery(2026, 6), CancellationToken.None);
+
+        var income = month.Categories.Single(c => c.Kind == "Income").Items.Single();
+        income.ActualAmount.Should().Be(1800m); // income transaction only
+        income.IsActualTracked.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task SetMode_Throws_WhenUserDoesNotOwnTheItem()
     {
         await using var db = NewContext();

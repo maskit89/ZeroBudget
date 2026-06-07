@@ -10,6 +10,8 @@ interface Props {
   savingItemId: string | null
   onRenameItem: (itemId: string, name: string) => void
   onCommitPlanned: (itemId: string, plannedMinor: Minor) => void
+  onCommitReceived: (itemId: string, actualMinor: Minor) => void
+  onSetActualMode: (itemId: string, trackByTransactions: boolean) => void
   onDeleteItem: (itemId: string) => void
   onAddItem: (categoryId: string, name: string) => void
 }
@@ -25,6 +27,8 @@ export function IncomeGroup({
   savingItemId,
   onRenameItem,
   onCommitPlanned,
+  onCommitReceived,
+  onSetActualMode,
   onDeleteItem,
   onAddItem,
 }: Props) {
@@ -65,9 +69,10 @@ export function IncomeGroup({
       {open && (
         <div className="border-t border-emerald-100">
           <div className="grid grid-cols-12 gap-2 bg-emerald-50/50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-emerald-700/70">
-            <div className="col-span-6">Source</div>
-            <div className="col-span-4 text-right">Planned</div>
-            <div className="col-span-2" />
+            <div className="col-span-5">Source</div>
+            <div className="col-span-3 text-right">Planned</div>
+            <div className="col-span-3 text-right">Received</div>
+            <div className="col-span-1" />
           </div>
 
           <div className="divide-y divide-slate-100">
@@ -79,6 +84,8 @@ export function IncomeGroup({
                 saving={savingItemId === item.id}
                 onRename={onRenameItem}
                 onCommitPlanned={onCommitPlanned}
+                onCommitReceived={onCommitReceived}
+                onSetActualMode={onSetActualMode}
                 onDelete={onDeleteItem}
               />
             ))}

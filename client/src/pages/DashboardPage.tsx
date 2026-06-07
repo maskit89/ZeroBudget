@@ -394,6 +394,8 @@ export function DashboardPage() {
                   savingItemId={savingItemId}
                   onRenameItem={renameItem}
                   onCommitPlanned={commitItem}
+                  onCommitReceived={commitActual}
+                  onSetActualMode={setActualMode}
                   onDeleteItem={deleteItem}
                   onAddItem={addItem}
                 />
