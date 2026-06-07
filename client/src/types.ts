@@ -7,6 +7,8 @@ export interface BudgetItemDto {
   plannedAmount: number
   actualAmount: number
   remaining: number
+  /** True when actualAmount is transaction-driven (read-only); false when it's the manual value (editable). */
+  isActualTracked: boolean
 }
 
 export interface BudgetCategoryDto {

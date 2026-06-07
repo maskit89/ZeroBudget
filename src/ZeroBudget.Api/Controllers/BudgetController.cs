@@ -6,6 +6,7 @@ using ZeroBudget.Application.Budgets.Commands.AddBudgetItem;
 using ZeroBudget.Application.Budgets.Commands.DeleteBudgetCategory;
 using ZeroBudget.Application.Budgets.Commands.DeleteBudgetItem;
 using ZeroBudget.Application.Budgets.Commands.RenameBudgetCategory;
+using ZeroBudget.Application.Budgets.Commands.SetBudgetItemActual;
 using ZeroBudget.Application.Budgets.Commands.UpdateBudgetItem;
 using ZeroBudget.Application.Budgets.Dtos;
 using ZeroBudget.Application.Budgets.Queries.GetBudgetMonth;
@@ -128,6 +129,25 @@ public class BudgetController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Sets a line's manually-entered spent amount (for users tracking actuals by
+    /// hand) and returns the recomputed month. Ignored on lines that have
+    /// transactions — those drive the displayed actual.
+    /// </summary>
+    [HttpPut("items/{id:guid}/actual")]
+    [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BudgetMonthDto>> SetItemActual(
+        Guid id,
+        SetBudgetItemActualRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(new SetBudgetItemActualCommand(id, request.ActualAmount), ct);
+        return Ok(result);
+    }
+
     /// <summary>Deletes a single budget line and returns the recomputed month.</summary>
     [HttpDelete("items/{id:guid}")]
     [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
@@ -145,6 +165,9 @@ public record UpdateBudgetItemRequest(decimal PlannedAmount, string? Name = null
 
 /// <summary>Request body for adding a budget line (the category id comes from the route).</summary>
 public record AddBudgetItemRequest(string Name, decimal PlannedAmount = 0m);
+
+/// <summary>Request body for setting a line's manual spent amount (the id comes from the route).</summary>
+public record SetBudgetItemActualRequest(decimal ActualAmount);
 
 /// <summary>Request body for creating a category group.</summary>
 public record AddBudgetCategoryRequest(Guid BudgetMonthId, string Name);

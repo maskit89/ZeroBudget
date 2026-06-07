@@ -17,8 +17,28 @@ public class BudgetItem : BaseEntity
     /// <summary>The amount the user has assigned/planned for this line this month.</summary>
     public decimal PlannedAmount { get; set; }
 
-    /// <summary>The amount actually spent so far (rolled up from transactions / entered manually).</summary>
+    /// <summary>
+    /// The displayed amount spent so far. Derived at read time (see
+    /// ZeroBudget.Application.Budgets.BudgetActuals): the sum of the line's
+    /// assigned expense transactions when it has any, otherwise the user's
+    /// <see cref="ManualActualAmount"/>. Not authored directly.
+    /// </summary>
     public decimal ActualAmount { get; set; }
+
+    /// <summary>
+    /// The amount the user typed in manually for this line. Used as the spent
+    /// value when the line has no transactions to roll up — so people who don't
+    /// import or log individual transactions can still track actuals. Mapped to
+    /// decimal(18,4).
+    /// </summary>
+    public decimal ManualActualAmount { get; set; }
+
+    /// <summary>
+    /// Transient (not persisted): true when <see cref="ActualAmount"/> is being
+    /// driven by transactions rather than the manual value. Lets the UI show the
+    /// spent cell as read-only (transaction-tracked) vs editable (manual).
+    /// </summary>
+    public bool IsActualTracked { get; set; }
 
     public int DisplayOrder { get; set; }
 

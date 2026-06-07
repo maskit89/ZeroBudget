@@ -12,6 +12,8 @@ interface Props {
   onRename?: (itemId: string, name: string) => void
   /** When provided, a delete affordance is shown. */
   onDelete?: (itemId: string) => void
+  /** When provided, the spent amount is manually editable (unless transaction-tracked). */
+  onCommitActual?: (itemId: string, actualMinor: Minor) => void
 }
 
 /**
@@ -20,13 +22,23 @@ interface Props {
  * its actual + remaining, and an optional delete. Commits on blur or Enter
  * (Escape reverts), only when the value actually changed and is valid.
  */
-export function BudgetItemRow({ item, currency, saving, onCommit, onRename, onDelete }: Props) {
+export function BudgetItemRow({
+  item,
+  currency,
+  saving,
+  onCommit,
+  onRename,
+  onDelete,
+  onCommitActual,
+}: Props) {
   const [name, setName] = useState(item.name)
   const [draft, setDraft] = useState(toEditString(item.plannedMinor))
+  const [actualDraft, setActualDraft] = useState(toEditString(item.actualMinor))
 
   // Re-sync when the underlying values change (optimistic update or rollback).
   useEffect(() => setName(item.name), [item.name])
   useEffect(() => setDraft(toEditString(item.plannedMinor)), [item.plannedMinor])
+  useEffect(() => setActualDraft(toEditString(item.actualMinor)), [item.actualMinor])
 
   function commitName() {
     if (!onRename) return
@@ -47,8 +59,20 @@ export function BudgetItemRow({ item, currency, saving, onCommit, onRename, onDe
     if (parsed !== item.plannedMinor) onCommit(item.id, parsed)
   }
 
+  function commitActual() {
+    if (!onCommitActual) return
+    const parsed = parseMinor(actualDraft)
+    if (parsed === null) {
+      setActualDraft(toEditString(item.actualMinor)) // revert invalid input
+      return
+    }
+    if (parsed !== item.actualMinor) onCommitActual(item.id, parsed)
+  }
+
   const remaining = itemRemaining(item)
   const overspent = remaining < 0
+  // The spent cell is editable only when manual (no transactions drive it).
+  const actualEditable = Boolean(onCommitActual) && !item.actualIsTracked
 
   return (
     <div className="grid grid-cols-12 items-center gap-2 px-4 py-2.5 hover:bg-slate-50">
@@ -95,8 +119,29 @@ export function BudgetItemRow({ item, currency, saving, onCommit, onRename, onDe
         />
       </div>
 
-      <div className="col-span-2 text-right text-sm tabular-nums text-slate-500">
-        {formatMoney(item.actualMinor, currency)}
+      <div className="col-span-2 flex items-center justify-end">
+        {actualEditable ? (
+          <input
+            type="text"
+            inputMode="decimal"
+            value={actualDraft}
+            aria-label={`Spent for ${item.name}`}
+            onChange={(e) => setActualDraft(e.target.value)}
+            onBlur={commitActual}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+              if (e.key === 'Escape') setActualDraft(toEditString(item.actualMinor))
+            }}
+            className="w-20 rounded-md border border-slate-200 px-2 py-1 text-right text-sm tabular-nums text-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
+        ) : (
+          <span
+            className="text-sm tabular-nums text-slate-500"
+            title={item.actualIsTracked ? 'From transactions' : undefined}
+          >
+            {formatMoney(item.actualMinor, currency)}
+          </span>
+        )}
       </div>
 
       <div

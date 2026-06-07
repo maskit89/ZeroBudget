@@ -13,6 +13,8 @@ export interface ItemVM {
   displayOrder: number
   plannedMinor: Minor
   actualMinor: Minor
+  /** True when the spent amount is driven by transactions (read-only in the UI). */
+  actualIsTracked: boolean
 }
 
 export interface CategoryVM {
@@ -51,6 +53,7 @@ export function fromDto(dto: BudgetMonthDto): MonthVM {
         displayOrder: i.displayOrder,
         plannedMinor: fromAmount(i.plannedAmount),
         actualMinor: fromAmount(i.actualAmount),
+        actualIsTracked: i.isActualTracked,
       })),
     })),
   }
@@ -103,6 +106,17 @@ export function withItemPlanned(m: MonthVM, itemId: string, plannedMinor: Minor)
     categories: m.categories.map((c) => ({
       ...c,
       items: c.items.map((i) => (i.id === itemId ? { ...i, plannedMinor } : i)),
+    })),
+  }
+}
+
+/** Set one line's manual spent amount (only meaningful for non-tracked lines). */
+export function withItemActual(m: MonthVM, itemId: string, actualMinor: Minor): MonthVM {
+  return {
+    ...m,
+    categories: m.categories.map((c) => ({
+      ...c,
+      items: c.items.map((i) => (i.id === itemId ? { ...i, actualMinor } : i)),
     })),
   }
 }
