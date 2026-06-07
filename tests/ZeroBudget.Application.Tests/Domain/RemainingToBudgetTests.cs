@@ -1,19 +1,30 @@
 using Xunit;
 using ZeroBudget.Domain.Entities;
+using ZeroBudget.Domain.Enums;
 
 namespace ZeroBudget.Application.Tests.Domain;
 
 /// <summary>
 /// Validates the core zero-based-budgeting metric: RemainingToBudget == Income - Sum(Planned).
-/// These are pure domain tests — no database, no mocks.
+/// Income is now itself a category group (one line carrying the income), so these
+/// pure domain tests also prove income lines feed TotalIncome and are never counted
+/// as planned spending. No database, no mocks.
 /// </summary>
 public class RemainingToBudgetTests
 {
     private static BudgetMonth BuildMonth(decimal income, params decimal[] plannedAmounts)
     {
-        var category = new BudgetCategory
+        var incomeGroup = new BudgetCategory
+        {
+            Name = "Income",
+            Kind = CategoryKind.Income,
+            Items = new List<BudgetItem> { new() { Name = "Pay", PlannedAmount = income } }
+        };
+
+        var expenseGroup = new BudgetCategory
         {
             Name = "Test",
+            Kind = CategoryKind.Expense,
             Items = plannedAmounts
                 .Select((amount, i) => new BudgetItem { Name = $"Item {i}", PlannedAmount = amount })
                 .ToList()
@@ -24,8 +35,7 @@ public class RemainingToBudgetTests
             OwnerId = "user-1",
             Year = 2026,
             Month = 6,
-            TotalIncome = income,
-            Categories = new List<BudgetCategory> { category }
+            Categories = new List<BudgetCategory> { incomeGroup, expenseGroup }
         };
     }
 
@@ -105,19 +115,25 @@ public class RemainingToBudgetTests
     }
 
     [Fact]
-    public void TotalPlanned_SumsAcrossMultipleCategories()
+    public void TotalPlanned_SumsAcrossMultipleExpenseCategories_ExcludingIncome()
     {
         var month = new BudgetMonth
         {
-            TotalIncome = 1000m,
             Categories = new List<BudgetCategory>
             {
+                new()
+                {
+                    Name = "Income",
+                    Kind = CategoryKind.Income,
+                    Items = new List<BudgetItem> { new() { PlannedAmount = 1000m } }
+                },
                 new() { Name = "Housing", Items = new List<BudgetItem> { new() { PlannedAmount = 600m } } },
                 new() { Name = "Food", Items = new List<BudgetItem> { new() { PlannedAmount = 250m } } },
             }
         };
 
-        Assert.Equal(850m, month.TotalPlanned);
+        Assert.Equal(1000m, month.TotalIncome);
+        Assert.Equal(850m, month.TotalPlanned); // income line excluded
         Assert.Equal(150m, month.RemainingToBudget);
     }
 }

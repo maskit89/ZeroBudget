@@ -1,9 +1,12 @@
 using ZeroBudget.Domain.Common;
+using ZeroBudget.Domain.Enums;
 
 namespace ZeroBudget.Domain.Entities;
 
 /// <summary>
-/// A grouping of budget lines (e.g. "Housing", "Transport") within a single month.
+/// A grouping of budget lines within a single month. Most groups are expenses
+/// (e.g. "Housing", "Transport"); an <see cref="CategoryKind.Income"/> group sits
+/// at the top and holds the user's income sources.
 /// </summary>
 public class BudgetCategory : BaseEntity
 {
@@ -11,6 +14,9 @@ public class BudgetCategory : BaseEntity
     public BudgetMonth BudgetMonth { get; set; } = null!;
 
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>Whether this group holds income sources or planned expenses.</summary>
+    public CategoryKind Kind { get; set; } = CategoryKind.Expense;
 
     public int DisplayOrder { get; set; }
 

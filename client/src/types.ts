@@ -12,6 +12,7 @@ export interface BudgetItemDto {
 export interface BudgetCategoryDto {
   id: string
   name: string
+  kind: 'Income' | 'Expense'
   displayOrder: number
   totalPlanned: number
   totalActual: number

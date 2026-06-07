@@ -57,6 +57,7 @@ export function BudgetItemRow({ item, currency, saving, onCommit }: Props) {
           type="text"
           inputMode="decimal"
           value={draft}
+          aria-label={`Planned amount for ${item.name}`}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => {

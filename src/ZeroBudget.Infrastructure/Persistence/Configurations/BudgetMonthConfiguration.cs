@@ -17,9 +17,6 @@ public class BudgetMonthConfiguration : IEntityTypeConfiguration<BudgetMonth>
             .IsRequired()
             .HasMaxLength(450); // matches AspNetUsers.Id length
 
-        builder.Property(m => m.TotalIncome)
-            .HasPrecision(18, 4);
-
         // Home currency, stored as its ISO 4217 string with an EUR default for
         // existing rows.
         builder.Property(m => m.BaseCurrency)
@@ -28,9 +25,11 @@ public class BudgetMonthConfiguration : IEntityTypeConfiguration<BudgetMonth>
             .IsRequired()
             .HasDefaultValue(CurrencyCode.Eur);
 
-        // The computed Key / TotalPlanned / RemainingToBudget properties are
-        // pure C# and must not be persisted.
+        // The computed Key / TotalIncome / TotalPlanned / RemainingToBudget
+        // properties are pure C# (derived from the category tree) and must not
+        // be persisted. TotalIncome is now the sum of the income-group lines.
         builder.Ignore(m => m.Key);
+        builder.Ignore(m => m.TotalIncome);
         builder.Ignore(m => m.TotalPlanned);
         builder.Ignore(m => m.RemainingToBudget);
         builder.Ignore(m => m.RemainingToBudgetMoney);

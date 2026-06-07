@@ -1,4 +1,5 @@
 using ZeroBudget.Domain.Entities;
+using ZeroBudget.Domain.Enums;
 
 namespace ZeroBudget.Application.Budgets.Dtos;
 
@@ -21,11 +22,15 @@ public static class BudgetMonthMapping
         RemainingToBudget = month.RemainingToBudget,
         IsBalanced = month.IsBalanced,
         Categories = month.Categories
-            .OrderBy(c => c.DisplayOrder)
+            // Income groups always render first (like EveryDollar), then by the
+            // user's chosen display order within each kind.
+            .OrderBy(c => c.Kind == CategoryKind.Income ? 0 : 1)
+            .ThenBy(c => c.DisplayOrder)
             .Select(c => new BudgetCategoryDto
             {
                 Id = c.Id,
                 Name = c.Name,
+                Kind = c.Kind.ToString(),
                 DisplayOrder = c.DisplayOrder,
                 TotalPlanned = c.TotalPlanned,
                 TotalActual = c.TotalActual,

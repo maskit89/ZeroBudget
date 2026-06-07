@@ -1,4 +1,5 @@
 using ZeroBudget.Domain.Common;
+using ZeroBudget.Domain.Enums;
 using ZeroBudget.Domain.ValueObjects;
 
 namespace ZeroBudget.Domain.Entities;
@@ -29,20 +30,27 @@ public class BudgetMonth : BaseEntity
     /// </summary>
     public CurrencyCode BaseCurrency { get; set; } = CurrencyCode.Eur;
 
-    /// <summary>
-    /// Total income available to allocate this month. In ZBB this is the
-    /// pool that gets distributed across the budget lines.
-    /// Mapped to decimal(18,4).
-    /// </summary>
-    public decimal TotalIncome { get; set; }
-
     public ICollection<BudgetCategory> Categories { get; set; } = new List<BudgetCategory>();
 
     /// <summary>Stable, human-readable key such as "2026-06".</summary>
     public string Key => $"{Year:D4}-{Month:D2}";
 
-    /// <summary>Sum of every planned amount across all categories and lines.</summary>
-    public decimal TotalPlanned => Categories.Sum(c => c.TotalPlanned);
+    /// <summary>
+    /// Total income available to allocate this month — the sum of the planned
+    /// amounts on every line in the <see cref="CategoryKind.Income"/> groups.
+    /// In ZBB this is the pool that gets distributed across the expense lines.
+    /// Derived from the income lines so there is a single source of truth.
+    /// </summary>
+    public decimal TotalIncome =>
+        Categories.Where(c => c.Kind == CategoryKind.Income).Sum(c => c.TotalPlanned);
+
+    /// <summary>
+    /// Sum of every planned amount across the <see cref="CategoryKind.Expense"/>
+    /// groups — i.e. how much income has been given a job. Income lines are
+    /// deliberately excluded so they are never counted as spending.
+    /// </summary>
+    public decimal TotalPlanned =>
+        Categories.Where(c => c.Kind == CategoryKind.Expense).Sum(c => c.TotalPlanned);
 
     /// <summary>
     /// The core ZBB metric: income that has not yet been assigned to a line.

@@ -1,16 +1,22 @@
 import { describe, it, expect } from 'vitest'
 import {
   fromDto,
+  findItem,
   itemRemaining,
   categoryPlanned,
   monthPlanned,
+  totalIncome,
   remainingToBudget,
   isBalanced,
   withItemPlanned,
+  withItemName,
+  withNewItem,
+  withoutItem,
 } from './budgetModel'
 import { fromAmount } from './lib/money'
 import type { BudgetMonthDto } from './types'
 
+// Income(Take-home Pay 3000) + Housing(Rent 1100) + Food(Groceries 200).
 function dto(): BudgetMonthDto {
   return {
     id: 'm1',
@@ -24,8 +30,20 @@ function dto(): BudgetMonthDto {
     isBalanced: false,
     categories: [
       {
+        id: 'inc',
+        name: 'Income',
+        kind: 'Income',
+        displayOrder: 0,
+        totalPlanned: 3000,
+        totalActual: 0,
+        items: [
+          { id: 'pay', name: 'Take-home Pay', displayOrder: 0, plannedAmount: 3000, actualAmount: 0, remaining: 3000 },
+        ],
+      },
+      {
         id: 'c1',
         name: 'Housing',
+        kind: 'Expense',
         displayOrder: 0,
         totalPlanned: 1100,
         totalActual: 0,
@@ -36,6 +54,7 @@ function dto(): BudgetMonthDto {
       {
         id: 'c2',
         name: 'Food',
+        kind: 'Expense',
         displayOrder: 1,
         totalPlanned: 200,
         totalActual: 0,
@@ -48,35 +67,68 @@ function dto(): BudgetMonthDto {
 }
 
 describe('budgetModel selectors', () => {
-  it('maps the DTO into integer minor units carrying the currency', () => {
+  it('maps the DTO into integer minor units, carrying the currency and kind', () => {
     const vm = fromDto(dto())
     expect(vm.currency).toBe('EUR')
-    expect(vm.totalIncomeMinor).toBe(fromAmount(3000))
-    expect(vm.categories[0].items[0].plannedMinor).toBe(fromAmount(1100))
+    expect(vm.categories[0].kind).toBe('income')
+    expect(vm.categories[1].kind).toBe('expense')
+    expect(totalIncome(vm)).toBe(fromAmount(3000))
   })
 
   it('computes item remaining = planned - actual', () => {
     const vm = fromDto(dto())
-    expect(itemRemaining(vm.categories[0].items[0])).toBe(fromAmount(900))
+    expect(itemRemaining(vm.categories[1].items[0])).toBe(fromAmount(900))
   })
 
-  it('sums category and month planned exactly', () => {
+  it('excludes income from planned; remaining = income - expense planned', () => {
     const vm = fromDto(dto())
-    expect(categoryPlanned(vm.categories[0])).toBe(fromAmount(1100))
-    expect(monthPlanned(vm)).toBe(fromAmount(1300))
+    expect(categoryPlanned(vm.categories[1])).toBe(fromAmount(1100))
+    expect(monthPlanned(vm)).toBe(fromAmount(1300)) // expenses only — income not counted
+    expect(totalIncome(vm)).toBe(fromAmount(3000))
     expect(remainingToBudget(vm)).toBe(fromAmount(1700))
     expect(isBalanced(vm)).toBe(false)
   })
 
   it('withItemPlanned updates one line immutably and recomputes the pool', () => {
     const vm = fromDto(dto())
-    const next = withItemPlanned(vm, 'i2', fromAmount(1900)) // 200 -> 1900
+    const next = withItemPlanned(vm, 'i2', fromAmount(1900)) // Groceries 200 -> 1900
 
     // original untouched (immutability)
-    expect(vm.categories[1].items[0].plannedMinor).toBe(fromAmount(200))
-    // new tree balances to exactly zero: 1100 + 1900 = 3000 == income
+    expect(findItem(vm, 'i2')!.plannedMinor).toBe(fromAmount(200))
+    // 1100 + 1900 = 3000 == income -> balanced
     expect(monthPlanned(next)).toBe(fromAmount(3000))
     expect(remainingToBudget(next)).toBe(0)
     expect(isBalanced(next)).toBe(true)
+  })
+
+  it('adding an income line raises the pool but never the planned total', () => {
+    const vm = fromDto(dto())
+    const next = withNewItem(vm, 'inc', {
+      id: 'temp',
+      name: 'Freelance',
+      displayOrder: 1,
+      plannedMinor: fromAmount(500),
+      actualMinor: 0,
+    })
+
+    expect(totalIncome(next)).toBe(fromAmount(3500))
+    expect(monthPlanned(next)).toBe(fromAmount(1300)) // unchanged
+    expect(remainingToBudget(next)).toBe(fromAmount(2200))
+  })
+
+  it('removing an income line lowers the pool', () => {
+    const vm = fromDto(dto())
+    const next = withoutItem(vm, 'pay')
+
+    expect(totalIncome(next)).toBe(0)
+    expect(remainingToBudget(next)).toBe(fromAmount(-1300)) // 0 income, 1300 planned
+  })
+
+  it('withItemName renames one line immutably', () => {
+    const vm = fromDto(dto())
+    const next = withItemName(vm, 'pay', 'Salary')
+
+    expect(findItem(vm, 'pay')!.name).toBe('Take-home Pay')
+    expect(findItem(next, 'pay')!.name).toBe('Salary')
   })
 })
