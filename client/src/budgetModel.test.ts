@@ -9,6 +9,7 @@ import {
   remainingToBudget,
   isBalanced,
   withItemPlanned,
+  withItemActual,
   withItemName,
   withNewItem,
   withoutItem,
@@ -40,7 +41,7 @@ function dto(): BudgetMonthDto {
         totalPlanned: 3000,
         totalActual: 0,
         items: [
-          { id: 'pay', name: 'Take-home Pay', displayOrder: 0, plannedAmount: 3000, actualAmount: 0, remaining: 3000 },
+          { id: 'pay', name: 'Take-home Pay', displayOrder: 0, plannedAmount: 3000, actualAmount: 0, remaining: 3000, isActualTracked: false },
         ],
       },
       {
@@ -51,7 +52,7 @@ function dto(): BudgetMonthDto {
         totalPlanned: 1100,
         totalActual: 0,
         items: [
-          { id: 'i1', name: 'Rent', displayOrder: 0, plannedAmount: 1100, actualAmount: 200, remaining: 900 },
+          { id: 'i1', name: 'Rent', displayOrder: 0, plannedAmount: 1100, actualAmount: 200, remaining: 900, isActualTracked: false },
         ],
       },
       {
@@ -62,7 +63,7 @@ function dto(): BudgetMonthDto {
         totalPlanned: 200,
         totalActual: 0,
         items: [
-          { id: 'i2', name: 'Groceries', displayOrder: 0, plannedAmount: 200, actualAmount: 0, remaining: 200 },
+          { id: 'i2', name: 'Groceries', displayOrder: 0, plannedAmount: 200, actualAmount: 0, remaining: 200, isActualTracked: false },
         ],
       },
     ],
@@ -112,6 +113,7 @@ describe('budgetModel selectors', () => {
       displayOrder: 1,
       plannedMinor: fromAmount(500),
       actualMinor: 0,
+      actualIsTracked: false,
     })
 
     expect(totalIncome(next)).toBe(fromAmount(3500))
@@ -125,6 +127,16 @@ describe('budgetModel selectors', () => {
 
     expect(totalIncome(next)).toBe(0)
     expect(remainingToBudget(next)).toBe(fromAmount(-1300)) // 0 income, 1300 planned
+  })
+
+  it('withItemActual sets a line spent immutably; the pool is unaffected', () => {
+    const vm = fromDto(dto())
+    const next = withItemActual(vm, 'i2', fromAmount(50)) // Groceries spent 50
+
+    expect(findItem(vm, 'i2')!.actualMinor).toBe(0) // original untouched
+    expect(findItem(next, 'i2')!.actualMinor).toBe(fromAmount(50))
+    expect(itemRemaining(findItem(next, 'i2')!)).toBe(fromAmount(150)) // 200 planned - 50 spent
+    expect(remainingToBudget(next)).toBe(fromAmount(1700)) // unchanged: spending isn't planning
   })
 
   it('withItemName renames one line immutably', () => {

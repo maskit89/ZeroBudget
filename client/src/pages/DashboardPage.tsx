@@ -11,6 +11,7 @@ import {
   remainingToBudget,
   totalIncome,
   withCategoryName,
+  withItemActual,
   withItemName,
   withItemPlanned,
   withNewCategory,
@@ -82,6 +83,30 @@ export function DashboardPage() {
     [month],
   )
 
+  // Set a line's manual spent amount (for users tracking actuals by hand).
+  // The banner is unaffected — Remaining-to-Budget is about planning, not spending —
+  // but the line's own Remaining recomputes instantly.
+  const commitActual = useCallback(
+    async (itemId: string, actualMinor: Minor) => {
+      if (!month) return
+
+      const snapshot = month
+      setError(null)
+      setSavingItemId(itemId)
+      setMonth(withItemActual(month, itemId, actualMinor)) // optimistic
+
+      try {
+        await api.put(`/budget/items/${itemId}/actual`, { actualAmount: toAmount(actualMinor) })
+      } catch {
+        setMonth(snapshot)
+        setError('Could not save that spent amount — reverted to the previous value.')
+      } finally {
+        setSavingItemId(null)
+      }
+    },
+    [month],
+  )
+
   // Rename a line. The update endpoint takes the planned amount too, so we send
   // the line's current planned value alongside the new name.
   const renameItem = useCallback(
@@ -126,6 +151,7 @@ export function DashboardPage() {
           displayOrder: Number.MAX_SAFE_INTEGER,
           plannedMinor: 0,
           actualMinor: 0,
+          actualIsTracked: false,
         }),
       )
 
@@ -355,6 +381,7 @@ export function DashboardPage() {
                     currency={month.currency}
                     savingItemId={savingItemId}
                     onCommitItem={commitItem}
+                    onCommitActual={commitActual}
                     onRenameItem={renameItem}
                     onDeleteItem={deleteItem}
                     onAddItem={addItem}

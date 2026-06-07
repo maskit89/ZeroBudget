@@ -6,10 +6,13 @@ using ZeroBudget.Domain.Enums;
 namespace ZeroBudget.Application.Budgets;
 
 /// <summary>
-/// Derives each budget line's <see cref="BudgetItem.ActualAmount"/> from the
-/// expense transactions assigned to it (summed in the budget's base currency via
-/// Amount × ExchangeRate). Computing actuals at read time keeps a single source
-/// of truth — there is no denormalized total to keep in sync.
+/// Derives each budget line's <see cref="BudgetItem.ActualAmount"/>. A line that
+/// has assigned expense transactions is the sum of those (in the budget's base
+/// currency via Amount × ExchangeRate); a line with none falls back to the
+/// user's <see cref="BudgetItem.ManualActualAmount"/>. This lets people who do
+/// not import or log individual transactions still track spending by hand, while
+/// transactions transparently take over once they exist. Computing at read time
+/// keeps a single, deterministic source of truth per line.
 /// </summary>
 public static class BudgetActuals
 {
@@ -38,7 +41,16 @@ public static class BudgetActuals
 
         foreach (var item in items)
         {
-            item.ActualAmount = actualByItem.TryGetValue(item.Id, out var total) ? total : 0m;
+            if (actualByItem.TryGetValue(item.Id, out var total))
+            {
+                item.ActualAmount = total;
+                item.IsActualTracked = true;
+            }
+            else
+            {
+                item.ActualAmount = item.ManualActualAmount;
+                item.IsActualTracked = false;
+            }
         }
     }
 }

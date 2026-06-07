@@ -22,7 +22,13 @@ public class BudgetItemConfiguration : IEntityTypeConfiguration<BudgetItem>
         builder.Property(i => i.ActualAmount)
             .HasPrecision(18, 4);
 
+        builder.Property(i => i.ManualActualAmount)
+            .HasPrecision(18, 4);
+
         builder.Ignore(i => i.Remaining);
+
+        // Transient presentation flag derived at read time, never persisted.
+        builder.Ignore(i => i.IsActualTracked);
 
         builder.HasMany(i => i.Transactions)
             .WithOne(t => t.BudgetItem)

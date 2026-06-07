@@ -43,7 +43,8 @@ public static class BudgetMonthMapping
                         DisplayOrder = i.DisplayOrder,
                         PlannedAmount = i.PlannedAmount,
                         ActualAmount = i.ActualAmount,
-                        Remaining = i.Remaining
+                        Remaining = i.Remaining,
+                        IsActualTracked = i.IsActualTracked
                     })
                     .ToList()
             })

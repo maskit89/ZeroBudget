@@ -10,6 +10,7 @@ interface Props {
   savingItemId: string | null
   defaultOpen?: boolean
   onCommitItem: (itemId: string, plannedMinor: Minor) => void
+  onCommitActual: (itemId: string, actualMinor: Minor) => void
   onRenameItem: (itemId: string, name: string) => void
   onDeleteItem: (itemId: string) => void
   onAddItem: (categoryId: string, name: string) => void
@@ -28,6 +29,7 @@ export function CategoryAccordion({
   savingItemId,
   defaultOpen = true,
   onCommitItem,
+  onCommitActual,
   onRenameItem,
   onDeleteItem,
   onAddItem,
@@ -142,6 +144,7 @@ export function CategoryAccordion({
                 currency={currency}
                 saving={savingItemId === item.id}
                 onCommit={onCommitItem}
+                onCommitActual={onCommitActual}
                 onRename={onRenameItem}
                 onDelete={onDeleteItem}
               />

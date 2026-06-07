@@ -42,4 +42,10 @@ public class BudgetItemDto
     public decimal PlannedAmount { get; set; }
     public decimal ActualAmount { get; set; }
     public decimal Remaining { get; set; }
+
+    /// <summary>
+    /// True when ActualAmount is driven by assigned transactions (read-only in the
+    /// UI); false when it reflects the user's manually-entered value (editable).
+    /// </summary>
+    public bool IsActualTracked { get; set; }
 }
