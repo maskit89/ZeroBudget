@@ -1,8 +1,11 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ZeroBudget.Application.Budgets.Commands.AddBudgetCategory;
 using ZeroBudget.Application.Budgets.Commands.AddBudgetItem;
+using ZeroBudget.Application.Budgets.Commands.DeleteBudgetCategory;
 using ZeroBudget.Application.Budgets.Commands.DeleteBudgetItem;
+using ZeroBudget.Application.Budgets.Commands.RenameBudgetCategory;
 using ZeroBudget.Application.Budgets.Commands.UpdateBudgetItem;
 using ZeroBudget.Application.Budgets.Dtos;
 using ZeroBudget.Application.Budgets.Queries.GetBudgetMonth;
@@ -64,6 +67,48 @@ public class BudgetController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Creates a new expense category group and returns the recomputed month.</summary>
+    [HttpPost("categories")]
+    [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BudgetMonthDto>> AddCategory(
+        AddBudgetCategoryRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(
+            new AddBudgetCategoryCommand(request.BudgetMonthId, request.Name), ct);
+        return Ok(result);
+    }
+
+    /// <summary>Renames a category group and returns the recomputed month.</summary>
+    [HttpPut("categories/{id:guid}")]
+    [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BudgetMonthDto>> RenameCategory(
+        Guid id,
+        RenameBudgetCategoryRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(new RenameBudgetCategoryCommand(id, request.Name), ct);
+        return Ok(result);
+    }
+
+    /// <summary>Deletes a category group (and its lines) and returns the recomputed month.</summary>
+    [HttpDelete("categories/{id:guid}")]
+    [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BudgetMonthDto>> DeleteCategory(Guid id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new DeleteBudgetCategoryCommand(id), ct);
+        return Ok(result);
+    }
+
     /// <summary>
     /// Adds a new line to a category (an income source, or a spending line) and
     /// returns the recomputed month. The category id comes from the route.
@@ -100,3 +145,9 @@ public record UpdateBudgetItemRequest(decimal PlannedAmount, string? Name = null
 
 /// <summary>Request body for adding a budget line (the category id comes from the route).</summary>
 public record AddBudgetItemRequest(string Name, decimal PlannedAmount = 0m);
+
+/// <summary>Request body for creating a category group.</summary>
+public record AddBudgetCategoryRequest(Guid BudgetMonthId, string Name);
+
+/// <summary>Request body for renaming a category group (the id comes from the route).</summary>
+public record RenameBudgetCategoryRequest(string Name);

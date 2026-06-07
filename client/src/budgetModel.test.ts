@@ -12,6 +12,9 @@ import {
   withItemName,
   withNewItem,
   withoutItem,
+  withNewCategory,
+  withCategoryName,
+  withoutCategory,
 } from './budgetModel'
 import { fromAmount } from './lib/money'
 import type { BudgetMonthDto } from './types'
@@ -130,5 +133,38 @@ describe('budgetModel selectors', () => {
 
     expect(findItem(vm, 'pay')!.name).toBe('Take-home Pay')
     expect(findItem(next, 'pay')!.name).toBe('Salary')
+  })
+
+  it('withNewCategory appends a group immutably without touching the pool', () => {
+    const vm = fromDto(dto())
+    const next = withNewCategory(vm, {
+      id: 'c-new',
+      name: 'Subscriptions',
+      kind: 'expense',
+      displayOrder: 9,
+      items: [],
+    })
+
+    expect(vm.categories).toHaveLength(3) // original untouched
+    expect(next.categories).toHaveLength(4)
+    expect(totalIncome(next)).toBe(fromAmount(3000)) // empty group adds nothing
+    expect(monthPlanned(next)).toBe(fromAmount(1300))
+  })
+
+  it('withCategoryName renames a group immutably', () => {
+    const vm = fromDto(dto())
+    const next = withCategoryName(vm, 'c1', 'Home')
+
+    expect(vm.categories.find((c) => c.id === 'c1')!.name).toBe('Housing')
+    expect(next.categories.find((c) => c.id === 'c1')!.name).toBe('Home')
+  })
+
+  it('withoutCategory removes a group and its lines from the totals', () => {
+    const vm = fromDto(dto())
+    const next = withoutCategory(vm, 'c1') // drop Housing (Rent 1100)
+
+    expect(next.categories.find((c) => c.id === 'c1')).toBeUndefined()
+    expect(monthPlanned(next)).toBe(fromAmount(200)) // only Food's 200 remains
+    expect(remainingToBudget(next)).toBe(fromAmount(2800))
   })
 })

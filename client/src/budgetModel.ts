@@ -138,3 +138,21 @@ export function withoutItem(m: MonthVM, itemId: string): MonthVM {
     })),
   }
 }
+
+/** Append a (temporary) expense group — reconciled from the server response. */
+export function withNewCategory(m: MonthVM, category: CategoryVM): MonthVM {
+  return { ...m, categories: [...m.categories, category] }
+}
+
+/** Rename one category group. */
+export function withCategoryName(m: MonthVM, categoryId: string, name: string): MonthVM {
+  return {
+    ...m,
+    categories: m.categories.map((c) => (c.id === categoryId ? { ...c, name } : c)),
+  }
+}
+
+/** Remove a category group (and its lines). */
+export function withoutCategory(m: MonthVM, categoryId: string): MonthVM {
+  return { ...m, categories: m.categories.filter((c) => c.id !== categoryId) }
+}
