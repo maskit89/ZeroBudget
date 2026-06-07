@@ -8,11 +8,13 @@ namespace ZeroBudget.Application.Budgets;
 /// <summary>
 /// Derives each budget line's <see cref="BudgetItem.ActualAmount"/> from its
 /// chosen <see cref="BudgetItem.ActualEntryMode"/>:
-///   Tracked — the sum of the assigned expense transactions (in the budget's base
-///             currency via Amount × ExchangeRate);
+///   Tracked — the sum of the assigned transactions of the line's own kind
+///             (income lines roll up income transactions, expense lines roll up
+///             expense transactions), in the budget's base currency via
+///             Amount × ExchangeRate;
 ///   Manual  — the user's <see cref="BudgetItem.ManualActualAmount"/>.
-/// This lets each line independently be hand-tracked or transaction-tracked.
-/// Computing at read time keeps a single, deterministic source of truth per line.
+/// So an income line's "received" and an expense line's "spent" both work the
+/// same way. Computing at read time keeps a single, deterministic source of truth.
 /// </summary>
 public static class BudgetActuals
 {
@@ -28,22 +30,34 @@ public static class BudgetActuals
             return;
         }
 
+        // Income lines roll up income transactions; expense lines roll up expense
+        // transactions. Track which ids are income so each line matches its kind.
+        var incomeItemIds = month.Categories
+            .Where(c => c.Kind == CategoryKind.Income)
+            .SelectMany(c => c.Items)
+            .Select(i => i.Id)
+            .ToHashSet();
+
         var itemIds = items.Select(i => i.Id).ToList();
 
-        var actualByItem = await db.Transactions
+        var sums = await db.Transactions
             .Where(t => t.OwnerId == ownerId
                         && t.BudgetItemId != null
-                        && itemIds.Contains(t.BudgetItemId.Value)
-                        && t.Type == TransactionType.Expense)
-            .GroupBy(t => t.BudgetItemId!.Value)
-            .Select(g => new { ItemId = g.Key, Total = g.Sum(t => t.Amount * t.ExchangeRate) })
-            .ToDictionaryAsync(x => x.ItemId, x => x.Total, cancellationToken);
+                        && itemIds.Contains(t.BudgetItemId.Value))
+            .GroupBy(t => new { ItemId = t.BudgetItemId!.Value, t.Type })
+            .Select(g => new { g.Key.ItemId, g.Key.Type, Total = g.Sum(t => t.Amount * t.ExchangeRate) })
+            .ToListAsync(cancellationToken);
 
         foreach (var item in items)
         {
             if (item.ActualEntryMode == ActualEntryMode.Tracked)
             {
-                item.ActualAmount = actualByItem.TryGetValue(item.Id, out var total) ? total : 0m;
+                var wantType = incomeItemIds.Contains(item.Id)
+                    ? TransactionType.Income
+                    : TransactionType.Expense;
+                item.ActualAmount = sums
+                    .Where(s => s.ItemId == item.Id && s.Type == wantType)
+                    .Sum(s => s.Total);
                 item.IsActualTracked = true;
             }
             else

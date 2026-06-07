@@ -171,6 +171,23 @@ describe('DashboardPage optimistic editing', () => {
     )
   })
 
+  it('saves a manually-entered received amount for an income line', { timeout: 15000 }, async () => {
+    mockGet.mockResolvedValue({ data: budget() })
+    mockPut.mockResolvedValue({ data: {} })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    const received = (await screen.findByLabelText('Received for Take-home Pay', {}, { timeout: 5000 })) as HTMLInputElement
+    await user.clear(received)
+    await user.type(received, '1800')
+    await user.tab()
+
+    await waitFor(() =>
+      expect(mockPut).toHaveBeenCalledWith('/budget/items/i-pay/actual', { actualAmount: 1800 }),
+    )
+  })
+
   it('switches a line to transaction tracking via the mode toggle', { timeout: 15000 }, async () => {
     mockGet.mockResolvedValue({ data: budget() })
     const tracked = budget()
