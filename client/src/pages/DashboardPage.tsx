@@ -10,9 +10,12 @@ import {
   monthPlanned,
   remainingToBudget,
   totalIncome,
+  withCategoryName,
   withItemName,
   withItemPlanned,
+  withNewCategory,
   withNewItem,
+  withoutCategory,
   withoutItem,
   type MonthVM,
 } from '../budgetModel'
@@ -34,6 +37,7 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [savingItemId, setSavingItemId] = useState<string | null>(null)
   const [importSummary, setImportSummary] = useState<ImportStatementResult | null>(null)
+  const [newCategoryName, setNewCategoryName] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -162,6 +166,82 @@ export function DashboardPage() {
     [month],
   )
 
+  // Add an expense category group. Temp group shown instantly, then reconciled.
+  const addCategory = useCallback(
+    async (name: string) => {
+      if (!month) return
+
+      const snapshot = month
+      const tempId = `temp-cat-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      setError(null)
+      setMonth(
+        withNewCategory(month, {
+          id: tempId,
+          name,
+          kind: 'expense',
+          displayOrder: Number.MAX_SAFE_INTEGER,
+          items: [],
+        }),
+      )
+
+      try {
+        const { data } = await api.post<BudgetMonthDto>('/budget/categories', {
+          budgetMonthId: month.id,
+          name,
+        })
+        setMonth(fromDto(data)) // reconcile temp group -> real server group
+      } catch {
+        setMonth(snapshot)
+        setError('Could not add that group — reverted.')
+      }
+    },
+    [month],
+  )
+
+  const renameCategory = useCallback(
+    async (categoryId: string, name: string) => {
+      if (!month) return
+
+      const snapshot = month
+      setError(null)
+      setMonth(withCategoryName(month, categoryId, name)) // optimistic
+
+      try {
+        await api.put(`/budget/categories/${categoryId}`, { name })
+      } catch {
+        setMonth(snapshot)
+        setError('Could not rename that group — reverted to the previous name.')
+      }
+    },
+    [month],
+  )
+
+  const deleteCategory = useCallback(
+    async (categoryId: string) => {
+      if (!month) return
+
+      const snapshot = month
+      setError(null)
+      setMonth(withoutCategory(month, categoryId)) // optimistic
+
+      try {
+        const { data } = await api.delete<BudgetMonthDto>(`/budget/categories/${categoryId}`)
+        setMonth(fromDto(data))
+      } catch {
+        setMonth(snapshot)
+        setError('Could not delete that group — reverted.')
+      }
+    },
+    [month],
+  )
+
+  function submitNewCategory() {
+    const trimmed = newCategoryName.trim()
+    if (trimmed === '') return
+    addCategory(trimmed)
+    setNewCategoryName('')
+  }
+
   return (
     <div className="min-h-full bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
@@ -275,8 +355,36 @@ export function DashboardPage() {
                     currency={month.currency}
                     savingItemId={savingItemId}
                     onCommitItem={commitItem}
+                    onRenameItem={renameItem}
+                    onDeleteItem={deleteItem}
+                    onAddItem={addItem}
+                    onRenameCategory={renameCategory}
+                    onDeleteCategory={deleteCategory}
                   />
                 ))}
+
+              {/* Add a new expense category group (EveryDollar "Add Group"). */}
+              <div className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white/60 px-4 py-3">
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  placeholder="Add a category group (e.g. Subscriptions, Insurance)…"
+                  aria-label="New category group name"
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') submitNewCategory()
+                  }}
+                  className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={submitNewCategory}
+                  aria-label="Add category group"
+                  className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-900"
+                >
+                  + Add group
+                </button>
+              </div>
             </div>
           </>
         )}

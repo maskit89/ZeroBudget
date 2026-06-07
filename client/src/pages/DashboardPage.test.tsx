@@ -128,7 +128,7 @@ describe('DashboardPage optimistic editing', () => {
 
     const addInput = await screen.findByLabelText('New income source name', {}, { timeout: 5000 })
     await user.type(addInput, 'Freelance')
-    await user.click(screen.getByRole('button', { name: '+ Add' }))
+    await user.click(screen.getByRole('button', { name: 'Add income source' }))
 
     await waitFor(() =>
       expect(mockPost).toHaveBeenCalledWith('/budget/categories/inc/items', {
@@ -152,5 +152,62 @@ describe('DashboardPage optimistic editing', () => {
     await user.click(del)
 
     await waitFor(() => expect(mockDelete).toHaveBeenCalledWith('/budget/items/i-pay'))
+  })
+
+  it('adds a category group and reconciles from the server response', { timeout: 15000 }, async () => {
+    mockGet.mockResolvedValue({ data: budget() })
+    const withSubs = budget()
+    withSubs.categories.push({
+      id: 'c-subs', name: 'Subscriptions', kind: 'Expense', displayOrder: 1, totalPlanned: 0, totalActual: 0, items: [],
+    })
+    mockPost.mockResolvedValue({ data: withSubs })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    const input = await screen.findByLabelText('New category group name', {}, { timeout: 5000 })
+    await user.type(input, 'Subscriptions')
+    await user.click(screen.getByRole('button', { name: 'Add category group' }))
+
+    await waitFor(() =>
+      expect(mockPost).toHaveBeenCalledWith('/budget/categories', { budgetMonthId: 'm1', name: 'Subscriptions' }),
+    )
+    expect(await screen.findByDisplayValue('Subscriptions', {}, { timeout: 5000 })).toBeInTheDocument()
+  })
+
+  it('adds an expense line to a group', { timeout: 15000 }, async () => {
+    mockGet.mockResolvedValue({ data: budget() })
+    const withFuel = budget()
+    withFuel.categories[1].items.push({
+      id: 'i-fuel', name: 'Fuel', displayOrder: 1, plannedAmount: 0, actualAmount: 0, remaining: 0,
+    })
+    mockPost.mockResolvedValue({ data: withFuel })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    const input = await screen.findByLabelText('Add a line to Housing', {}, { timeout: 5000 })
+    await user.type(input, 'Fuel{Enter}') // Enter submits — avoids "+ Add" button ambiguity
+
+    await waitFor(() =>
+      expect(mockPost).toHaveBeenCalledWith('/budget/categories/c1/items', { name: 'Fuel', plannedAmount: 0 }),
+    )
+  })
+
+  it('deletes a category group only after confirming', { timeout: 15000 }, async () => {
+    mockGet.mockResolvedValue({ data: budget() })
+    const withoutHousing = budget()
+    withoutHousing.categories = withoutHousing.categories.filter((c) => c.id !== 'c1')
+    mockDelete.mockResolvedValue({ data: withoutHousing })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await user.click(await screen.findByLabelText('Delete group Housing', {}, { timeout: 5000 }))
+    // Nothing deleted until the second (confirm) click.
+    expect(mockDelete).not.toHaveBeenCalled()
+    await user.click(await screen.findByLabelText('Confirm delete Housing', {}, { timeout: 5000 }))
+
+    await waitFor(() => expect(mockDelete).toHaveBeenCalledWith('/budget/categories/c1'))
   })
 })
