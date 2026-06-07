@@ -1,5 +1,6 @@
 using Xunit;
 using ZeroBudget.Domain.Entities;
+using ZeroBudget.Domain.Enums;
 using ZeroBudget.Domain.ValueObjects;
 
 namespace ZeroBudget.Application.Tests.Domain;
@@ -60,9 +61,14 @@ public class MoneyTests
         var month = new BudgetMonth
         {
             BaseCurrency = Gbp,
-            TotalIncome = 2000m,
             Categories = new List<BudgetCategory>
             {
+                new()
+                {
+                    Name = "Income",
+                    Kind = CategoryKind.Income,
+                    Items = new List<BudgetItem> { new() { PlannedAmount = 2000m } }
+                },
                 new() { Name = "Housing", Items = new List<BudgetItem> { new() { PlannedAmount = 1500m } } },
             },
         };

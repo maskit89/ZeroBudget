@@ -37,7 +37,6 @@ public class BudgetActualsTests
             OwnerId = "user-1",
             Year = 2026,
             Month = 6,
-            TotalIncome = 3000m,
             BaseCurrency = CurrencyCode.Eur,
             Categories = new List<BudgetCategory>
             {

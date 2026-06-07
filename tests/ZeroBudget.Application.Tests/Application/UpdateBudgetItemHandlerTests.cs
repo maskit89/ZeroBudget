@@ -4,6 +4,7 @@ using ZeroBudget.Application.Budgets.Commands.UpdateBudgetItem;
 using ZeroBudget.Application.Common.Exceptions;
 using ZeroBudget.Application.Common.Interfaces;
 using ZeroBudget.Domain.Entities;
+using ZeroBudget.Domain.Enums;
 using ZeroBudget.Infrastructure.Persistence;
 
 namespace ZeroBudget.Application.Tests.Application;
@@ -34,9 +35,14 @@ public class UpdateBudgetItemHandlerTests
             OwnerId = ownerId,
             Year = 2026,
             Month = 6,
-            TotalIncome = 3000m,
             Categories = new List<BudgetCategory>
             {
+                new()
+                {
+                    Name = "Income",
+                    Kind = CategoryKind.Income,
+                    Items = new List<BudgetItem> { new() { Name = "Take-home Pay", PlannedAmount = 3000m } }
+                },
                 new()
                 {
                     Name = "Housing",

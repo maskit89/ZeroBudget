@@ -5,14 +5,21 @@ import { useAuth } from '../auth/AuthContext'
 import type { BudgetMonthDto, ImportStatementResult } from '../types'
 import {
   fromDto,
+  findItem,
+  isIncome,
   monthPlanned,
   remainingToBudget,
+  totalIncome,
+  withItemName,
   withItemPlanned,
+  withNewItem,
+  withoutItem,
   type MonthVM,
 } from '../budgetModel'
 import { toAmount, type Minor } from '../lib/money'
 import { RemainingBanner } from '../components/RemainingBanner'
 import { CategoryAccordion } from '../components/CategoryAccordion'
+import { IncomeGroup } from '../components/IncomeGroup'
 import { ImportStatementButton } from '../components/ImportStatementButton'
 
 const MONTH_NAMES = [
@@ -64,6 +71,90 @@ export function DashboardPage() {
       } catch {
         setMonth(snapshot) // roll back to the pre-edit state
         setError('Could not save that change — reverted to the previous value.')
+      } finally {
+        setSavingItemId(null)
+      }
+    },
+    [month],
+  )
+
+  // Rename a line. The update endpoint takes the planned amount too, so we send
+  // the line's current planned value alongside the new name.
+  const renameItem = useCallback(
+    async (itemId: string, name: string) => {
+      if (!month) return
+      const current = findItem(month, itemId)
+      if (!current) return
+
+      const snapshot = month
+      setError(null)
+      setSavingItemId(itemId)
+      setMonth(withItemName(month, itemId, name)) // optimistic
+
+      try {
+        await api.put(`/budget/items/${itemId}`, {
+          plannedAmount: toAmount(current.plannedMinor),
+          name,
+        })
+      } catch {
+        setMonth(snapshot)
+        setError('Could not rename that line — reverted to the previous name.')
+      } finally {
+        setSavingItemId(null)
+      }
+    },
+    [month],
+  )
+
+  // Add a line to a category. We show a temp row instantly, then reconcile from
+  // the server response to pick up the real id and display order.
+  const addItem = useCallback(
+    async (categoryId: string, name: string) => {
+      if (!month) return
+
+      const snapshot = month
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      setError(null)
+      setMonth(
+        withNewItem(month, categoryId, {
+          id: tempId,
+          name,
+          displayOrder: Number.MAX_SAFE_INTEGER,
+          plannedMinor: 0,
+          actualMinor: 0,
+        }),
+      )
+
+      try {
+        const { data } = await api.post<BudgetMonthDto>(
+          `/budget/categories/${categoryId}/items`,
+          { name, plannedAmount: 0 },
+        )
+        setMonth(fromDto(data)) // reconcile temp row -> real server row
+      } catch {
+        setMonth(snapshot)
+        setError('Could not add that line — reverted.')
+      }
+    },
+    [month],
+  )
+
+  // Delete a line. Optimistically remove it, then reconcile from the response.
+  const deleteItem = useCallback(
+    async (itemId: string) => {
+      if (!month) return
+
+      const snapshot = month
+      setError(null)
+      setSavingItemId(itemId)
+      setMonth(withoutItem(month, itemId)) // optimistic
+
+      try {
+        const { data } = await api.delete<BudgetMonthDto>(`/budget/items/${itemId}`)
+        setMonth(fromDto(data))
+      } catch {
+        setMonth(snapshot)
+        setError('Could not delete that line — reverted.')
       } finally {
         setSavingItemId(null)
       }
@@ -155,22 +246,37 @@ export function DashboardPage() {
             </div>
 
             <RemainingBanner
-              totalIncomeMinor={month.totalIncomeMinor}
+              totalIncomeMinor={totalIncome(month)}
               totalPlannedMinor={monthPlanned(month)}
               remainingMinor={remainingToBudget(month)}
               currency={month.currency}
             />
 
             <div className="space-y-3">
-              {month.categories.map((category) => (
-                <CategoryAccordion
+              {/* Income groups always render first (EveryDollar style). */}
+              {month.categories.filter(isIncome).map((category) => (
+                <IncomeGroup
                   key={category.id}
                   category={category}
                   currency={month.currency}
                   savingItemId={savingItemId}
-                  onCommitItem={commitItem}
+                  onRenameItem={renameItem}
+                  onCommitPlanned={commitItem}
+                  onDeleteItem={deleteItem}
+                  onAddItem={addItem}
                 />
               ))}
+              {month.categories
+                .filter((c) => !isIncome(c))
+                .map((category) => (
+                  <CategoryAccordion
+                    key={category.id}
+                    category={category}
+                    currency={month.currency}
+                    savingItemId={savingItemId}
+                    onCommitItem={commitItem}
+                  />
+                ))}
             </div>
           </>
         )}

@@ -15,6 +15,11 @@ public class BudgetCategoryConfiguration : IEntityTypeConfiguration<BudgetCatego
             .IsRequired()
             .HasMaxLength(120);
 
+        // Stored as the enum's int value; defaults to Expense (0) for existing rows.
+        builder.Property(c => c.Kind)
+            .HasConversion<int>()
+            .HasDefaultValue(Domain.Enums.CategoryKind.Expense);
+
         builder.Ignore(c => c.TotalPlanned);
         builder.Ignore(c => c.TotalActual);
 

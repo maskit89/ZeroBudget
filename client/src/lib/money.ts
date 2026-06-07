@@ -68,12 +68,30 @@ export function currencySymbol(currency: string): string {
 
 /**
  * Parse a user-entered decimal string into integer minor units WITHOUT going
- * through floating point. Accepts '.' or ',' as the decimal separator.
+ * through floating point. Accepts '.' or ',' as the decimal separator, and
+ * tolerates a European thousands separator when the amount carries both — e.g.
+ * "2.500,00" (de-DE) or "1,234.56" (en): the right-most separator is taken as
+ * the decimal point and the other is stripped as grouping. Income figures are
+ * the largest in the budget, so this is where grouping separators show up.
  * Returns null for empty / negative / non-numeric input. Anything beyond 4 dp
  * is rounded half-up to scale 4.
  */
 export function parseMinor(input: string): Minor | null {
-  const trimmed = input.trim().replace(',', '.')
+  let trimmed = input.trim()
+
+  const lastComma = trimmed.lastIndexOf(',')
+  const lastDot = trimmed.lastIndexOf('.')
+  if (lastComma !== -1 && lastDot !== -1) {
+    // Both present: the right-most is the decimal separator; strip the grouping one.
+    const decimalSep = lastComma > lastDot ? ',' : '.'
+    const groupSep = decimalSep === ',' ? '.' : ','
+    trimmed = trimmed.split(groupSep).join('').replace(decimalSep, '.')
+  } else {
+    // A single separator is the decimal separator (preserves prior behaviour:
+    // a malformed "1.2.3" / "1,2,3" still fails the strict check below).
+    trimmed = trimmed.replace(',', '.')
+  }
+
   if (trimmed === '' || !/^\d+(\.\d+)?$/.test(trimmed)) {
     return null
   }

@@ -28,10 +28,16 @@ describe('parseMinor', () => {
     ['33.3333', 333_333],
     ['0', 0],
     ['12.99999', 130_000], // rounds half-up beyond 4 dp -> 13.0000
+    // European thousands separators (incomes are the biggest figures in a budget)
+    ['2.500,00', 25_000_000], // de-DE: dot grouping, comma decimal
+    ['1.234.567,89', 12_345_678_900], // multiple grouping separators
+    ['1,234.56', 12_345_600], // en: comma grouping, dot decimal
   ])('parses %s -> %i', (input, expected) => {
     expect(parseMinor(input)).toBe(expected)
   })
 
+  // Single-separator ambiguity is preserved: a lone "." or "," is the decimal
+  // point, and these malformed inputs still fail the strict check.
   it.each(['', '  ', '-5', 'abc', '1.2.3', '1,2,3'])('rejects %j -> null', (input) => {
     expect(parseMinor(input)).toBeNull()
   })

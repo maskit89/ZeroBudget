@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ZeroBudget.Domain.Entities;
+using ZeroBudget.Domain.Enums;
 
 namespace ZeroBudget.Infrastructure.Persistence;
 
@@ -29,9 +30,18 @@ public static class BudgetSeeder
             OwnerId = ownerId,
             Year = year,
             Month = month,
-            TotalIncome = 3000.00m,
             Categories = new List<BudgetCategory>
             {
+                new()
+                {
+                    Name = "Income",
+                    Kind = CategoryKind.Income,
+                    DisplayOrder = 0,
+                    Items = new List<BudgetItem>
+                    {
+                        new() { Name = "Take-home Pay", PlannedAmount = 3000.00m, DisplayOrder = 0 },
+                    }
+                },
                 new()
                 {
                     Name = "Housing",

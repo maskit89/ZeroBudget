@@ -24,6 +24,10 @@ public class BudgetCategoryDto
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>"Income" or "Expense" — drives where the group renders (income at the top).</summary>
+    public string Kind { get; set; } = "Expense";
+
     public int DisplayOrder { get; set; }
     public decimal TotalPlanned { get; set; }
     public decimal TotalActual { get; set; }

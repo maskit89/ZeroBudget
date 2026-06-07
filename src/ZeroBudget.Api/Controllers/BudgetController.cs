@@ -1,6 +1,8 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ZeroBudget.Application.Budgets.Commands.AddBudgetItem;
+using ZeroBudget.Application.Budgets.Commands.DeleteBudgetItem;
 using ZeroBudget.Application.Budgets.Commands.UpdateBudgetItem;
 using ZeroBudget.Application.Budgets.Dtos;
 using ZeroBudget.Application.Budgets.Queries.GetBudgetMonth;
@@ -61,7 +63,40 @@ public class BudgetController : ControllerBase
             new UpdateBudgetItemCommand(id, request.PlannedAmount, request.Name), ct);
         return Ok(result);
     }
+
+    /// <summary>
+    /// Adds a new line to a category (an income source, or a spending line) and
+    /// returns the recomputed month. The category id comes from the route.
+    /// </summary>
+    [HttpPost("categories/{categoryId:guid}/items")]
+    [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BudgetMonthDto>> AddItem(
+        Guid categoryId,
+        AddBudgetItemRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(
+            new AddBudgetItemCommand(categoryId, request.Name, request.PlannedAmount), ct);
+        return Ok(result);
+    }
+
+    /// <summary>Deletes a single budget line and returns the recomputed month.</summary>
+    [HttpDelete("items/{id:guid}")]
+    [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BudgetMonthDto>> DeleteItem(Guid id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new DeleteBudgetItemCommand(id), ct);
+        return Ok(result);
+    }
 }
 
 /// <summary>Request body for updating a budget line (the id comes from the route).</summary>
 public record UpdateBudgetItemRequest(decimal PlannedAmount, string? Name = null);
+
+/// <summary>Request body for adding a budget line (the category id comes from the route).</summary>
+public record AddBudgetItemRequest(string Name, decimal PlannedAmount = 0m);
