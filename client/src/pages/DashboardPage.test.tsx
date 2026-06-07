@@ -171,6 +171,23 @@ describe('DashboardPage optimistic editing', () => {
     )
   })
 
+  it('switches a line to transaction tracking via the mode toggle', { timeout: 15000 }, async () => {
+    mockGet.mockResolvedValue({ data: budget() })
+    const tracked = budget()
+    tracked.categories[1].items[0].isActualTracked = true
+    mockPut.mockResolvedValue({ data: tracked })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    const toggle = await screen.findByLabelText('Track Rent by transactions', {}, { timeout: 5000 })
+    await user.click(toggle)
+
+    await waitFor(() =>
+      expect(mockPut).toHaveBeenCalledWith('/budget/items/i-rent/actual-mode', { trackByTransactions: true }),
+    )
+  })
+
   it('adds a category group and reconciles from the server response', { timeout: 15000 }, async () => {
     mockGet.mockResolvedValue({ data: budget() })
     const withSubs = budget()

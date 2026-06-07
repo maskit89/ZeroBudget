@@ -1,4 +1,5 @@
 using ZeroBudget.Domain.Common;
+using ZeroBudget.Domain.Enums;
 
 namespace ZeroBudget.Domain.Entities;
 
@@ -34,9 +35,17 @@ public class BudgetItem : BaseEntity
     public decimal ManualActualAmount { get; set; }
 
     /// <summary>
+    /// The user's chosen way of determining this line's spent amount — type it in
+    /// (<see cref="ActualEntryMode.Manual"/>) or roll it up from assigned
+    /// transactions (<see cref="ActualEntryMode.Tracked"/>). New lines default to
+    /// Manual so people who don't track transactions can just type a value.
+    /// </summary>
+    public ActualEntryMode ActualEntryMode { get; set; } = ActualEntryMode.Manual;
+
+    /// <summary>
     /// Transient (not persisted): true when <see cref="ActualAmount"/> is being
-    /// driven by transactions rather than the manual value. Lets the UI show the
-    /// spent cell as read-only (transaction-tracked) vs editable (manual).
+    /// driven by transactions rather than the manual value (i.e. mode is Tracked).
+    /// Lets the UI show the spent cell as read-only vs editable.
     /// </summary>
     public bool IsActualTracked { get; set; }
 

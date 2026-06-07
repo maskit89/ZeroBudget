@@ -14,6 +14,8 @@ interface Props {
   onDelete?: (itemId: string) => void
   /** When provided, the spent amount is manually editable (unless transaction-tracked). */
   onCommitActual?: (itemId: string, actualMinor: Minor) => void
+  /** When provided, a toggle switches the line between manual entry and transaction tracking. */
+  onSetActualMode?: (itemId: string, trackByTransactions: boolean) => void
 }
 
 /**
@@ -30,6 +32,7 @@ export function BudgetItemRow({
   onRename,
   onDelete,
   onCommitActual,
+  onSetActualMode,
 }: Props) {
   const [name, setName] = useState(item.name)
   const [draft, setDraft] = useState(toEditString(item.plannedMinor))
@@ -119,7 +122,26 @@ export function BudgetItemRow({
         />
       </div>
 
-      <div className="col-span-2 flex items-center justify-end">
+      <div className="col-span-2 flex items-center justify-end gap-1">
+        {onSetActualMode && (
+          <button
+            type="button"
+            onClick={() => onSetActualMode(item.id, !item.actualIsTracked)}
+            aria-label={
+              item.actualIsTracked
+                ? `Enter ${item.name} spent manually`
+                : `Track ${item.name} by transactions`
+            }
+            title={
+              item.actualIsTracked
+                ? 'Tracked by transactions — switch to manual entry'
+                : 'Manual entry — switch to transaction tracking'
+            }
+            className="shrink-0 rounded px-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            {item.actualIsTracked ? '🔗' : '✎'}
+          </button>
+        )}
         {actualEditable ? (
           <input
             type="text"
@@ -132,12 +154,12 @@ export function BudgetItemRow({
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
               if (e.key === 'Escape') setActualDraft(toEditString(item.actualMinor))
             }}
-            className="w-20 rounded-md border border-slate-200 px-2 py-1 text-right text-sm tabular-nums text-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="w-16 rounded-md border border-slate-200 px-2 py-1 text-right text-sm tabular-nums text-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
         ) : (
           <span
             className="text-sm tabular-nums text-slate-500"
-            title={item.actualIsTracked ? 'From transactions' : undefined}
+            title="Tracked from transactions"
           >
             {formatMoney(item.actualMinor, currency)}
           </span>

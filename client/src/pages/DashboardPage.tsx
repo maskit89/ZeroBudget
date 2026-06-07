@@ -107,6 +107,32 @@ export function DashboardPage() {
     [month],
   )
 
+  // Switch a line between manual spent entry and transaction tracking. The new
+  // actual is server-derived (we don't know the transaction sum client-side), so
+  // we reconcile from the response rather than guessing optimistically.
+  const setActualMode = useCallback(
+    async (itemId: string, trackByTransactions: boolean) => {
+      if (!month) return
+
+      const snapshot = month
+      setError(null)
+      setSavingItemId(itemId)
+
+      try {
+        const { data } = await api.put<BudgetMonthDto>(`/budget/items/${itemId}/actual-mode`, {
+          trackByTransactions,
+        })
+        setMonth(fromDto(data))
+      } catch {
+        setMonth(snapshot)
+        setError('Could not change how that line is tracked — reverted.')
+      } finally {
+        setSavingItemId(null)
+      }
+    },
+    [month],
+  )
+
   // Rename a line. The update endpoint takes the planned amount too, so we send
   // the line's current planned value alongside the new name.
   const renameItem = useCallback(
@@ -382,6 +408,7 @@ export function DashboardPage() {
                     savingItemId={savingItemId}
                     onCommitItem={commitItem}
                     onCommitActual={commitActual}
+                    onSetActualMode={setActualMode}
                     onRenameItem={renameItem}
                     onDeleteItem={deleteItem}
                     onAddItem={addItem}
