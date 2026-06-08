@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
-import type { BudgetMonthDto, ImportStatementResult } from '../types'
+import type { BudgetMonthDto, BudgetMonthSummaryDto, ImportStatementResult } from '../types'
 import {
   fromDto,
   findItem,
@@ -31,25 +31,37 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
+const now = new Date()
+
 export function DashboardPage() {
   const { email, logout } = useAuth()
+  const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 })
   const [month, setMonth] = useState<MonthVM | null>(null)
   const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+  const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [savingItemId, setSavingItemId] = useState<string | null>(null)
   const [importSummary, setImportSummary] = useState<ImportStatementResult | null>(null)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [months, setMonths] = useState<BudgetMonthSummaryDto[]>([])
 
+  // Load the viewed month whenever it changes; a 404 means "no budget yet".
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    setError(null)
+    setNotFound(false)
     api
-      .get<BudgetMonthDto>('/budget/current')
+      .get<BudgetMonthDto>(`/budget/${view.year}/${view.month}`)
       .then(({ data }) => {
         if (!cancelled) setMonth(fromDto(data))
       })
-      .catch(() => {
-        if (!cancelled) setError('Could not load your budget. Is the API running?')
+      .catch((err) => {
+        if (cancelled) return
+        setMonth(null)
+        if (err?.response?.status === 404) setNotFound(true)
+        else setError('Could not load your budget. Is the API running?')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -57,7 +69,57 @@ export function DashboardPage() {
     return () => {
       cancelled = true
     }
+  }, [view])
+
+  const refreshMonths = useCallback(() => {
+    api
+      .get<BudgetMonthSummaryDto[]>('/budget/months')
+      .then(({ data }) => setMonths(data))
+      .catch(() => {})
   }, [])
+
+  useEffect(() => refreshMonths(), [refreshMonths])
+
+  const hasPrevBudget = useMemo(
+    () =>
+      months.some(
+        (m) => m.year < view.year || (m.year === view.year && m.month < view.month),
+      ),
+    [months, view],
+  )
+
+  const goToMonth = useCallback((year: number, month: number) => setView({ year, month }), [])
+  const goPrev = useCallback(
+    () => setView((v) => (v.month === 1 ? { year: v.year - 1, month: 12 } : { ...v, month: v.month - 1 })),
+    [],
+  )
+  const goNext = useCallback(
+    () => setView((v) => (v.month === 12 ? { year: v.year + 1, month: 1 } : { ...v, month: v.month + 1 })),
+    [],
+  )
+
+  // Create the viewed month — copying the previous month's plan, or blank.
+  const createMonth = useCallback(
+    async (copyFromPrevious: boolean) => {
+      setCreating(true)
+      setError(null)
+      try {
+        const { data } = await api.post<BudgetMonthDto>('/budget', {
+          year: view.year,
+          month: view.month,
+          copyFromPrevious,
+        })
+        setMonth(fromDto(data))
+        setNotFound(false)
+        refreshMonths()
+      } catch {
+        setError('Could not create that budget.')
+      } finally {
+        setCreating(false)
+      }
+    },
+    [view, refreshMonths],
+  )
 
   // Optimistic commit: apply the edit locally and recompute the banner instantly
   // (exact integer math), then persist. The server stores precisely what we send,
@@ -338,6 +400,38 @@ export function DashboardPage() {
       </header>
 
       <main className="mx-auto max-w-4xl space-y-6 px-6 py-8">
+        {/* Month navigator — always visible so you can move between / create months. */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={goPrev}
+              aria-label="Previous month"
+              className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-slate-600 hover:bg-slate-50"
+            >
+              ◀
+            </button>
+            <h2 className="min-w-44 text-center text-2xl font-bold tabular-nums text-slate-800">
+              {MONTH_NAMES[view.month - 1]} {view.year}
+            </h2>
+            <button
+              type="button"
+              onClick={goNext}
+              aria-label="Next month"
+              className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-slate-600 hover:bg-slate-50"
+            >
+              ▶
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => goToMonth(now.getFullYear(), now.getMonth() + 1)}
+            className="text-sm font-medium text-emerald-700 hover:text-emerald-800"
+          >
+            This month
+          </button>
+        </div>
+
         {loading && <p className="text-slate-500">Loading your budget…</p>}
 
         {error && (
@@ -366,16 +460,39 @@ export function DashboardPage() {
           </div>
         )}
 
+        {notFound && !loading && (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+            <p className="text-slate-600">
+              No budget for {MONTH_NAMES[view.month - 1]} {view.year} yet.
+            </p>
+            <div className="mt-4 flex flex-wrap justify-center gap-3">
+              {hasPrevBudget && (
+                <button
+                  type="button"
+                  onClick={() => createMonth(true)}
+                  disabled={creating}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  Copy last month’s budget
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => createMonth(false)}
+                disabled={creating}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Start a blank budget
+              </button>
+            </div>
+          </div>
+        )}
+
         {month && (
           <>
-            <div>
-              <h2 className="mb-1 text-2xl font-bold text-slate-800">
-                {MONTH_NAMES[month.month - 1]} {month.year}
-              </h2>
-              <p className="text-sm text-slate-500">
-                Assign every Euro of income until “Remaining to Budget” reaches €0.00.
-              </p>
-            </div>
+            <p className="text-sm text-slate-500">
+              Assign every Euro of income until “Remaining to Budget” reaches €0.00.
+            </p>
 
             <RemainingBanner
               totalIncomeMinor={totalIncome(month)}

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ZeroBudget.Application.Budgets.Commands.AddBudgetCategory;
 using ZeroBudget.Application.Budgets.Commands.AddBudgetItem;
+using ZeroBudget.Application.Budgets.Commands.CreateBudgetMonth;
 using ZeroBudget.Application.Budgets.Commands.DeleteBudgetCategory;
 using ZeroBudget.Application.Budgets.Commands.DeleteBudgetItem;
 using ZeroBudget.Application.Budgets.Commands.RenameBudgetCategory;
@@ -11,6 +12,7 @@ using ZeroBudget.Application.Budgets.Commands.SetBudgetItemActualMode;
 using ZeroBudget.Application.Budgets.Commands.UpdateBudgetItem;
 using ZeroBudget.Application.Budgets.Dtos;
 using ZeroBudget.Application.Budgets.Queries.GetBudgetMonth;
+using ZeroBudget.Application.Budgets.Queries.GetBudgetMonths;
 
 namespace ZeroBudget.Api.Controllers;
 
@@ -47,6 +49,31 @@ public class BudgetController : ControllerBase
     {
         var now = DateTime.UtcNow;
         var result = await _mediator.Send(new GetBudgetMonthQuery(now.Year, now.Month), ct);
+        return Ok(result);
+    }
+
+    /// <summary>Lists which months the user has a budget for (for the month navigator).</summary>
+    [HttpGet("months")]
+    [ProducesResponseType(typeof(IReadOnlyList<BudgetMonthSummaryDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<BudgetMonthSummaryDto>>> GetMonths(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetBudgetMonthsQuery(), ct);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Creates the user's budget for a month, optionally copying the previous
+    /// month's structure and planned amounts. Returns the new month.
+    /// </summary>
+    [HttpPost]
+    [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BudgetMonthDto>> CreateMonth(
+        CreateBudgetMonthRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(
+            new CreateBudgetMonthCommand(request.Year, request.Month, request.CopyFromPrevious), ct);
         return Ok(result);
     }
 
@@ -178,6 +205,9 @@ public class BudgetController : ControllerBase
         return Ok(result);
     }
 }
+
+/// <summary>Request body for creating a month's budget.</summary>
+public record CreateBudgetMonthRequest(int Year, int Month, bool CopyFromPrevious = true);
 
 /// <summary>Request body for updating a budget line (the id comes from the route).</summary>
 public record UpdateBudgetItemRequest(decimal PlannedAmount, string? Name = null);

@@ -34,6 +34,12 @@ export interface BudgetMonthDto {
   categories: BudgetCategoryDto[]
 }
 
+export interface BudgetMonthSummaryDto {
+  year: number
+  month: number
+  key: string
+}
+
 // Matches Domain.Enums.TransactionType (System.Text.Json serializes as a number).
 export const TransactionType = { Expense: 0, Income: 1 } as const
 
