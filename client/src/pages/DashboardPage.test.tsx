@@ -80,7 +80,9 @@ describe('DashboardPage optimistic editing', () => {
   })
 
   it('optimistically drives Remaining to €0,00 on a successful edit', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: budget() })
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
+    )
     mockPut.mockResolvedValue({ data: {} })
     const user = userEvent.setup()
 
@@ -99,7 +101,9 @@ describe('DashboardPage optimistic editing', () => {
   })
 
   it('rolls back to the previous value and shows an error when the save fails', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: budget() })
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
+    )
     mockPut.mockRejectedValue(new Error('network'))
     const user = userEvent.setup()
 
@@ -116,7 +120,9 @@ describe('DashboardPage optimistic editing', () => {
   })
 
   it('adds an income source and reconciles from the server response', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: budget() })
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
+    )
     const withFreelance = budget()
     withFreelance.categories[0].items.push({
       id: 'i-free', name: 'Freelance', displayOrder: 1, plannedAmount: 0, actualAmount: 0, remaining: 0, isActualTracked: false,
@@ -140,7 +146,9 @@ describe('DashboardPage optimistic editing', () => {
   })
 
   it('deletes an income source', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: budget() })
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
+    )
     const withoutPay = budget()
     withoutPay.categories[0].items = []
     mockDelete.mockResolvedValue({ data: withoutPay })
@@ -155,7 +163,9 @@ describe('DashboardPage optimistic editing', () => {
   })
 
   it('saves a manually-entered spent amount for a line', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: budget() })
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
+    )
     mockPut.mockResolvedValue({ data: {} })
     const user = userEvent.setup()
 
@@ -172,7 +182,9 @@ describe('DashboardPage optimistic editing', () => {
   })
 
   it('saves a manually-entered received amount for an income line', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: budget() })
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
+    )
     mockPut.mockResolvedValue({ data: {} })
     const user = userEvent.setup()
 
@@ -189,7 +201,9 @@ describe('DashboardPage optimistic editing', () => {
   })
 
   it('switches a line to transaction tracking via the mode toggle', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: budget() })
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
+    )
     const tracked = budget()
     tracked.categories[1].items[0].isActualTracked = true
     mockPut.mockResolvedValue({ data: tracked })
@@ -206,7 +220,9 @@ describe('DashboardPage optimistic editing', () => {
   })
 
   it('adds a category group and reconciles from the server response', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: budget() })
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
+    )
     const withSubs = budget()
     withSubs.categories.push({
       id: 'c-subs', name: 'Subscriptions', kind: 'Expense', displayOrder: 1, totalPlanned: 0, totalActual: 0, items: [],
@@ -227,7 +243,9 @@ describe('DashboardPage optimistic editing', () => {
   })
 
   it('adds an expense line to a group', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: budget() })
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
+    )
     const withFuel = budget()
     withFuel.categories[1].items.push({
       id: 'i-fuel', name: 'Fuel', displayOrder: 1, plannedAmount: 0, actualAmount: 0, remaining: 0, isActualTracked: false,
@@ -246,7 +264,9 @@ describe('DashboardPage optimistic editing', () => {
   })
 
   it('deletes a category group only after confirming', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: budget() })
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
+    )
     const withoutHousing = budget()
     withoutHousing.categories = withoutHousing.categories.filter((c) => c.id !== 'c1')
     mockDelete.mockResolvedValue({ data: withoutHousing })
@@ -260,5 +280,51 @@ describe('DashboardPage optimistic editing', () => {
     await user.click(await screen.findByLabelText('Confirm delete Housing', {}, { timeout: 5000 }))
 
     await waitFor(() => expect(mockDelete).toHaveBeenCalledWith('/budget/categories/c1'))
+  })
+})
+
+describe('DashboardPage month navigation', () => {
+  beforeEach(() => {
+    mockGet.mockReset()
+    mockPut.mockReset()
+    mockPost.mockReset()
+    mockDelete.mockReset()
+  })
+
+  it('offers to copy the previous month when navigating to an empty month', { timeout: 15000 }, async () => {
+    const now = new Date()
+    const cy = now.getFullYear()
+    const cm = now.getMonth() + 1
+    const ny = cm === 12 ? cy + 1 : cy
+    const nm = cm === 12 ? 1 : cm + 1
+    const curUrl = `/budget/${cy}/${cm}`
+    const nextUrl = `/budget/${ny}/${nm}`
+
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/budget/months') {
+        return Promise.resolve({ data: [{ year: cy, month: cm, key: `${cy}-${cm}` }] })
+      }
+      if (url === nextUrl) return Promise.reject({ response: { status: 404 } })
+      if (url === curUrl) return Promise.resolve({ data: budget() })
+      return Promise.resolve({ data: budget() })
+    })
+    mockPost.mockResolvedValue({ data: budget() })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await screen.findByLabelText('Planned amount for Rent', {}, { timeout: 5000 })
+    await user.click(screen.getByLabelText('Next month'))
+
+    expect(await screen.findByText(/No budget for .* yet/, {}, { timeout: 5000 })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Copy last month’s budget' }))
+
+    await waitFor(() =>
+      expect(mockPost).toHaveBeenCalledWith(
+        '/budget',
+        expect.objectContaining({ year: ny, month: nm, copyFromPrevious: true }),
+      ),
+    )
+    expect(await screen.findByLabelText('Planned amount for Rent', {}, { timeout: 5000 })).toBeInTheDocument()
   })
 })
