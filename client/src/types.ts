@@ -92,6 +92,14 @@ export interface BudgetTrendsDto {
   totalSpent: number
 }
 
+export interface CategorizationRuleDto {
+  id: string
+  /** The normalized payee that was learned. */
+  payee: string
+  categoryName: string
+  itemName: string
+}
+
 export interface ImportStatementResult {
   totalEntries: number
   imported: number

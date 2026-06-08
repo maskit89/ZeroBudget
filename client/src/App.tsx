@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { TransactionsPage } from './pages/TransactionsPage'
 import { ReportsPage } from './pages/ReportsPage'
+import { RulesPage } from './pages/RulesPage'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { isAuthenticated } = useAuth()
@@ -41,6 +42,14 @@ export default function App() {
         element={
           <RequireAuth>
             <ReportsPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/rules"
+        element={
+          <RequireAuth>
+            <RulesPage />
           </RequireAuth>
         }
       />
