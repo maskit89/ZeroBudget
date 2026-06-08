@@ -18,6 +18,7 @@ import {
   withNewItem,
   withoutCategory,
   withoutItem,
+  withReorderedExpenseCategories,
   type MonthVM,
 } from '../budgetModel'
 import { toAmount, type Minor } from '../lib/money'
@@ -349,6 +350,38 @@ export function DashboardPage() {
     [month],
   )
 
+  // Move an expense group up (-1) or down (+1) among the expense groups.
+  const moveCategory = useCallback(
+    async (categoryId: string, direction: -1 | 1) => {
+      if (!month) return
+
+      const expense = month.categories.filter((c) => !isIncome(c))
+      const idx = expense.findIndex((c) => c.id === categoryId)
+      const swap = idx + direction
+      if (idx < 0 || swap < 0 || swap >= expense.length) return
+
+      const reordered = [...expense]
+      ;[reordered[idx], reordered[swap]] = [reordered[swap], reordered[idx]]
+      const orderedIds = reordered.map((c) => c.id)
+
+      const snapshot = month
+      setError(null)
+      setMonth(withReorderedExpenseCategories(month, orderedIds)) // optimistic
+
+      try {
+        const { data } = await api.put<BudgetMonthDto>('/budget/categories/order', {
+          budgetMonthId: month.id,
+          orderedCategoryIds: orderedIds,
+        })
+        setMonth(fromDto(data))
+      } catch {
+        setMonth(snapshot)
+        setError('Could not reorder the groups — reverted.')
+      }
+    },
+    [month],
+  )
+
   function submitNewCategory() {
     const trimmed = newCategoryName.trim()
     if (trimmed === '') return
@@ -519,12 +552,14 @@ export function DashboardPage() {
               ))}
               {month.categories
                 .filter((c) => !isIncome(c))
-                .map((category) => (
+                .map((category, i, arr) => (
                   <CategoryAccordion
                     key={category.id}
                     category={category}
                     currency={month.currency}
                     savingItemId={savingItemId}
+                    isFirst={i === 0}
+                    isLast={i === arr.length - 1}
                     onCommitItem={commitItem}
                     onCommitActual={commitActual}
                     onSetActualMode={setActualMode}
@@ -533,6 +568,7 @@ export function DashboardPage() {
                     onAddItem={addItem}
                     onRenameCategory={renameCategory}
                     onDeleteCategory={deleteCategory}
+                    onMove={moveCategory}
                   />
                 ))}
 

@@ -9,6 +9,9 @@ interface Props {
   currency: string
   savingItemId: string | null
   defaultOpen?: boolean
+  isFirst?: boolean
+  isLast?: boolean
+  onMove?: (categoryId: string, direction: -1 | 1) => void
   onCommitItem: (itemId: string, plannedMinor: Minor) => void
   onCommitActual: (itemId: string, actualMinor: Minor) => void
   onSetActualMode: (itemId: string, trackByTransactions: boolean) => void
@@ -29,6 +32,9 @@ export function CategoryAccordion({
   currency,
   savingItemId,
   defaultOpen = true,
+  isFirst = false,
+  isLast = false,
+  onMove,
   onCommitItem,
   onCommitActual,
   onSetActualMode,
@@ -91,6 +97,30 @@ export function CategoryAccordion({
         </div>
 
         <div className="flex items-center gap-3">
+          {onMove && (
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={() => onMove(category.id, -1)}
+                disabled={isFirst}
+                aria-label={`Move ${category.name} up`}
+                title="Move group up"
+                className="rounded px-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                onClick={() => onMove(category.id, 1)}
+                disabled={isLast}
+                aria-label={`Move ${category.name} down`}
+                title="Move group down"
+                className="rounded px-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                ▼
+              </button>
+            </div>
+          )}
           <span className="text-sm font-semibold tabular-nums text-slate-600">
             {formatMoney(categoryPlanned(category), currency)}
           </span>
