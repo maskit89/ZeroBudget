@@ -246,6 +246,12 @@ export function TransactionsPage() {
               <span className="rounded-md bg-slate-100 px-3 py-1.5 font-semibold text-slate-800">
                 Transactions
               </span>
+              <Link
+                to="/reports"
+                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
+              >
+                Reports
+              </Link>
             </nav>
           </div>
           <button

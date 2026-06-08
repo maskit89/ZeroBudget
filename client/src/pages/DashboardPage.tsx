@@ -486,6 +486,12 @@ export function DashboardPage() {
               >
                 Transactions
               </Link>
+              <Link
+                to="/reports"
+                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
+              >
+                Reports
+              </Link>
             </nav>
           </div>
           <div className="flex items-center gap-4">
