@@ -166,6 +166,16 @@ export function withCategoryName(m: MonthVM, categoryId: string, name: string): 
   }
 }
 
+/** Reorder the expense groups to match the given id order (income stays first). */
+export function withReorderedExpenseCategories(m: MonthVM, orderedExpenseIds: string[]): MonthVM {
+  const byId = new Map(m.categories.map((c) => [c.id, c]))
+  const income = m.categories.filter(isIncome)
+  const expense = orderedExpenseIds
+    .map((id) => byId.get(id))
+    .filter((c): c is CategoryVM => c !== undefined)
+  return { ...m, categories: [...income, ...expense] }
+}
+
 /** Remove a category group (and its lines). */
 export function withoutCategory(m: MonthVM, categoryId: string): MonthVM {
   return { ...m, categories: m.categories.filter((c) => c.id !== categoryId) }

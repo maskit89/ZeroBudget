@@ -281,6 +281,29 @@ describe('DashboardPage optimistic editing', () => {
 
     await waitFor(() => expect(mockDelete).toHaveBeenCalledWith('/budget/categories/c1'))
   })
+
+  it('reorders expense groups via the move buttons', { timeout: 15000 }, async () => {
+    const b = budget()
+    b.categories.push({
+      id: 'c2', name: 'Food', kind: 'Expense', displayOrder: 1, totalPlanned: 0, totalActual: 0, items: [],
+    })
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: b }),
+    )
+    mockPut.mockResolvedValue({ data: b })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await user.click(await screen.findByLabelText('Move Food up', {}, { timeout: 5000 }))
+
+    await waitFor(() =>
+      expect(mockPut).toHaveBeenCalledWith('/budget/categories/order', {
+        budgetMonthId: 'm1',
+        orderedCategoryIds: ['c2', 'c1'],
+      }),
+    )
+  })
 })
 
 describe('DashboardPage month navigation', () => {

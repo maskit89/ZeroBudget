@@ -7,6 +7,7 @@ using ZeroBudget.Application.Budgets.Commands.CreateBudgetMonth;
 using ZeroBudget.Application.Budgets.Commands.DeleteBudgetCategory;
 using ZeroBudget.Application.Budgets.Commands.DeleteBudgetItem;
 using ZeroBudget.Application.Budgets.Commands.RenameBudgetCategory;
+using ZeroBudget.Application.Budgets.Commands.ReorderBudgetCategories;
 using ZeroBudget.Application.Budgets.Commands.SetBudgetItemActual;
 using ZeroBudget.Application.Budgets.Commands.SetBudgetItemActualMode;
 using ZeroBudget.Application.Budgets.Commands.UpdateBudgetItem;
@@ -108,6 +109,21 @@ public class BudgetController : ControllerBase
     {
         var result = await _mediator.Send(
             new AddBudgetCategoryCommand(request.BudgetMonthId, request.Name), ct);
+        return Ok(result);
+    }
+
+    /// <summary>Reorders a month's category groups and returns the recomputed month.</summary>
+    [HttpPut("categories/order")]
+    [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BudgetMonthDto>> ReorderCategories(
+        ReorderBudgetCategoriesRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(
+            new ReorderBudgetCategoriesCommand(request.BudgetMonthId, request.OrderedCategoryIds), ct);
         return Ok(result);
     }
 
@@ -226,3 +242,6 @@ public record AddBudgetCategoryRequest(Guid BudgetMonthId, string Name);
 
 /// <summary>Request body for renaming a category group (the id comes from the route).</summary>
 public record RenameBudgetCategoryRequest(string Name);
+
+/// <summary>Request body for reordering a month's category groups.</summary>
+public record ReorderBudgetCategoriesRequest(Guid BudgetMonthId, IReadOnlyList<Guid> OrderedCategoryIds);
