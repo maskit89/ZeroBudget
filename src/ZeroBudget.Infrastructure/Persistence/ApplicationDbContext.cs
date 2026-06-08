@@ -24,6 +24,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<BudgetCategory> BudgetCategories => Set<BudgetCategory>();
     public DbSet<BudgetItem> BudgetItems => Set<BudgetItem>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
+    public DbSet<TransactionSplit> TransactionSplits => Set<TransactionSplit>();
     public DbSet<CategorizationRule> CategorizationRules => Set<CategorizationRule>();
 
     protected override void OnModelCreating(ModelBuilder builder)

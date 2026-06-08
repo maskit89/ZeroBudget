@@ -45,4 +45,15 @@ public class Transaction : BaseEntity
     /// Used to deduplicate re-imported statements so importing is idempotent.
     /// </summary>
     public string? BankReference { get; set; }
+
+    /// <summary>
+    /// The slices this transaction is split across. Empty for a normal
+    /// (whole) transaction; two or more when the user has split it across
+    /// budget lines, in which case <see cref="BudgetItemId"/> is cleared and
+    /// the slices carry the per-line attribution instead.
+    /// </summary>
+    public ICollection<TransactionSplit> Splits { get; set; } = new List<TransactionSplit>();
+
+    /// <summary>True when this transaction is split across budget lines.</summary>
+    public bool IsSplit => Splits.Count > 0;
 }

@@ -6,13 +6,25 @@ export interface ItemOptionGroup {
   items: { id: string; name: string }[]
 }
 
-/** Build grouped <optgroup> options (category -> lines) for the assign dropdown. */
-export function buildItemOptions(month: BudgetMonthDto | null): ItemOptionGroup[] {
+/**
+ * Build grouped <optgroup> options (category -> lines) for the assign dropdown.
+ * Pass a transaction type to restrict the options to lines of the matching kind
+ * (so an expense only offers expense lines, income only income lines).
+ */
+export function buildItemOptions(
+  month: BudgetMonthDto | null,
+  forType?: number,
+): ItemOptionGroup[] {
   if (!month) return []
-  return month.categories.map((c) => ({
-    category: c.name,
-    items: c.items.map((i) => ({ id: i.id, name: i.name })),
-  }))
+  const wantKind =
+    forType === undefined ? null : forType === TransactionType.Income ? 'Income' : 'Expense'
+  return month.categories
+    .filter((c) => wantKind === null || c.kind === wantKind)
+    .map((c) => ({
+      category: c.name,
+      items: c.items.map((i) => ({ id: i.id, name: i.name })),
+    }))
+    .filter((g) => g.items.length > 0)
 }
 
 export function transactionTypeLabel(type: number): 'Income' | 'Expense' {

@@ -26,6 +26,7 @@ public class AssignTransactionCommandHandler : IRequestHandler<AssignTransaction
 
         var transaction = await _db.Transactions
             .Include(t => t.BudgetItem)
+            .Include(t => t.Splits)
             .FirstOrDefaultAsync(t => t.Id == request.TransactionId, cancellationToken);
 
         if (transaction is null)
@@ -35,6 +36,13 @@ public class AssignTransactionCommandHandler : IRequestHandler<AssignTransaction
         if (transaction.OwnerId != userId)
         {
             throw new ForbiddenAccessException();
+        }
+
+        // Assigning (or clearing) the whole transaction supersedes any split.
+        if (transaction.Splits.Count > 0)
+        {
+            _db.TransactionSplits.RemoveRange(transaction.Splits);
+            transaction.Splits.Clear();
         }
 
         if (request.BudgetItemId is Guid itemId)

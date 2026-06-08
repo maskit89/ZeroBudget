@@ -40,6 +40,7 @@ public static class BudgetActuals
 
         var itemIds = items.Select(i => i.Id).ToList();
 
+        // Whole (non-split) transactions assigned directly to a line.
         var sums = await db.Transactions
             .Where(t => t.OwnerId == ownerId
                         && t.BudgetItemId != null
@@ -48,6 +49,22 @@ public static class BudgetActuals
             .Select(g => new { g.Key.ItemId, g.Key.Type, Total = g.Sum(t => t.Amount * t.ExchangeRate) })
             .ToListAsync(cancellationToken);
 
+        // Slices of split transactions. A split transaction has BudgetItemId == null
+        // so it never appears above — no double counting. Each slice rolls up at the
+        // parent's exchange rate and inherits the parent's direction (Type).
+        var splitRows = await (
+            from s in db.TransactionSplits
+            join t in db.Transactions on s.TransactionId equals t.Id
+            where t.OwnerId == ownerId
+                  && s.BudgetItemId != null
+                  && itemIds.Contains(s.BudgetItemId.Value)
+            select new { ItemId = s.BudgetItemId!.Value, t.Type, Total = s.Amount * t.ExchangeRate })
+            .ToListAsync(cancellationToken);
+
+        var splitSums = splitRows
+            .GroupBy(s => new { s.ItemId, s.Type })
+            .ToDictionary(g => (g.Key.ItemId, g.Key.Type), g => g.Sum(s => s.Total));
+
         foreach (var item in items)
         {
             if (item.ActualEntryMode == ActualEntryMode.Tracked)
@@ -55,9 +72,11 @@ public static class BudgetActuals
                 var wantType = incomeItemIds.Contains(item.Id)
                     ? TransactionType.Income
                     : TransactionType.Expense;
-                item.ActualAmount = sums
+                var whole = sums
                     .Where(s => s.ItemId == item.Id && s.Type == wantType)
                     .Sum(s => s.Total);
+                var fromSplits = splitSums.TryGetValue((item.Id, wantType), out var v) ? v : 0m;
+                item.ActualAmount = whole + fromSplits;
                 item.IsActualTracked = true;
             }
             else
