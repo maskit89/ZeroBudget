@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import type { BudgetMonthDto } from '../types'
+import type { BudgetMonthDto, BudgetTemplateDto } from '../types'
 
 // Control the API from the tests. vi.hoisted lets the mock factory below
 // reference these before the module under test is imported.
@@ -464,5 +464,42 @@ describe('DashboardPage month navigation', () => {
       ),
     )
     expect(await screen.findByLabelText('Planned amount for Rent', {}, { timeout: 5000 })).toBeInTheDocument()
+  })
+
+  it('offers quick-start templates for an empty month and creates from one', { timeout: 15000 }, async () => {
+    const now = new Date()
+    const cy = now.getFullYear()
+    const cm = now.getMonth() + 1
+    const template: BudgetTemplateDto = {
+      key: 'essentials',
+      name: 'Essentials',
+      description: 'A clean start.',
+      groups: [
+        { name: 'Income', kind: 'Income', lines: ['Take-home Pay'] },
+        { name: 'Housing', kind: 'Expense', lines: ['Rent'] },
+      ],
+    }
+
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/budget/months') return Promise.resolve({ data: [] })
+      if (url === '/budget/templates') return Promise.resolve({ data: [template] })
+      if (url === `/budget/${cy}/${cm}`) return Promise.reject({ response: { status: 404 } })
+      return Promise.resolve({ data: budget() })
+    })
+    mockPost.mockResolvedValue({ data: budget() })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await user.click(await screen.findByLabelText('Start from the Essentials template', {}, { timeout: 5000 }))
+
+    await waitFor(() =>
+      expect(mockPost).toHaveBeenCalledWith('/budget', {
+        year: cy,
+        month: cm,
+        copyFromPrevious: false,
+        templateKey: 'essentials',
+      }),
+    )
   })
 })

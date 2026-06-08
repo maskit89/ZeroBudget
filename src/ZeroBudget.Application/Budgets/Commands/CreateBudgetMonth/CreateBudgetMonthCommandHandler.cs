@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ZeroBudget.Application.Budgets.Dtos;
+using ZeroBudget.Application.Budgets.Templates;
 using ZeroBudget.Application.Common.Exceptions;
 using ZeroBudget.Application.Common.Interfaces;
 using ZeroBudget.Domain.Entities;
@@ -56,7 +57,44 @@ public class CreateBudgetMonthCommandHandler : IRequestHandler<CreateBudgetMonth
             BaseCurrency = previous?.BaseCurrency ?? CurrencyCode.Eur,
         };
 
-        if (request.CopyFromPrevious && previous is not null)
+        var template = BudgetTemplates.Find(request.TemplateKey);
+        if (!string.IsNullOrWhiteSpace(request.TemplateKey) && template is null)
+        {
+            throw new ValidationException(new Dictionary<string, string[]>
+            {
+                [nameof(request.TemplateKey)] = new[] { $"Unknown budget template '{request.TemplateKey}'." },
+            });
+        }
+
+        if (template is not null)
+        {
+            // Start from a quick-start template: groups + named lines, each at 0 planned.
+            var orderByKind = new Dictionary<CategoryKind, int>();
+            budget.Categories = template.Groups
+                .Select(g =>
+                {
+                    var order = orderByKind.TryGetValue(g.Kind, out var n) ? n : 0;
+                    orderByKind[g.Kind] = order + 1;
+                    return new BudgetCategory
+                    {
+                        Name = g.Name,
+                        Kind = g.Kind,
+                        DisplayOrder = order,
+                        Items = g.Lines
+                            .Select((line, li) => new BudgetItem
+                            {
+                                Name = line,
+                                PlannedAmount = 0m,
+                                DisplayOrder = li,
+                                // Fund lines need a stable id so their balance can roll over.
+                                FundId = g.Kind == CategoryKind.Fund ? Guid.NewGuid() : null,
+                            })
+                            .ToList(),
+                    };
+                })
+                .ToList();
+        }
+        else if (request.CopyFromPrevious && previous is not null)
         {
             // Copy the structure and planned amounts; actuals start fresh.
             budget.Categories = previous.Categories

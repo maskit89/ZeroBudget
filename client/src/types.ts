@@ -92,6 +92,19 @@ export interface BudgetTrendsDto {
   totalSpent: number
 }
 
+export interface BudgetTemplateGroupDto {
+  name: string
+  kind: 'Income' | 'Expense' | 'Fund'
+  lines: string[]
+}
+
+export interface BudgetTemplateDto {
+  key: string
+  name: string
+  description: string
+  groups: BudgetTemplateGroupDto[]
+}
+
 export interface CategorizationRuleDto {
   id: string
   /** The normalized payee that was learned. */
