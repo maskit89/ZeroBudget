@@ -304,6 +304,29 @@ describe('DashboardPage optimistic editing', () => {
       }),
     )
   })
+
+  it('reorders lines within a group via the move buttons', { timeout: 15000 }, async () => {
+    const b = budget()
+    b.categories[1].items.push({
+      id: 'i-util', name: 'Utilities', displayOrder: 1,
+      plannedAmount: 100, actualAmount: 0, remaining: 100, isActualTracked: false,
+    })
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: b }),
+    )
+    mockPut.mockResolvedValue({ data: b })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await user.click(await screen.findByLabelText('Move Utilities up', {}, { timeout: 5000 }))
+
+    await waitFor(() =>
+      expect(mockPut).toHaveBeenCalledWith('/budget/categories/c1/items/order', {
+        orderedItemIds: ['i-util', 'i-rent'],
+      }),
+    )
+  })
 })
 
 describe('DashboardPage month navigation', () => {

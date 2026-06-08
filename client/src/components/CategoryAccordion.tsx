@@ -20,6 +20,7 @@ interface Props {
   onAddItem: (categoryId: string, name: string) => void
   onRenameCategory: (categoryId: string, name: string) => void
   onDeleteCategory: (categoryId: string) => void
+  onReorderItems: (categoryId: string, orderedItemIds: string[]) => void
 }
 
 /**
@@ -43,6 +44,7 @@ export function CategoryAccordion({
   onAddItem,
   onRenameCategory,
   onDeleteCategory,
+  onReorderItems,
 }: Props) {
   const [open, setOpen] = useState(defaultOpen)
   const [name, setName] = useState(category.name)
@@ -50,6 +52,16 @@ export function CategoryAccordion({
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   useEffect(() => setName(category.name), [category.name])
+
+  // Move a line up (-1) or down (+1) within this category, then persist the order.
+  function moveItem(itemId: string, direction: -1 | 1) {
+    const idx = category.items.findIndex((i) => i.id === itemId)
+    const swap = idx + direction
+    if (idx < 0 || swap < 0 || swap >= category.items.length) return
+    const reordered = [...category.items]
+    ;[reordered[idx], reordered[swap]] = [reordered[swap], reordered[idx]]
+    onReorderItems(category.id, reordered.map((i) => i.id))
+  }
 
   function commitName() {
     const trimmed = name.trim()
@@ -169,12 +181,15 @@ export function CategoryAccordion({
           </div>
 
           <div className="divide-y divide-slate-100">
-            {category.items.map((item) => (
+            {category.items.map((item, i, arr) => (
               <BudgetItemRow
                 key={item.id}
                 item={item}
                 currency={currency}
                 saving={savingItemId === item.id}
+                isFirst={i === 0}
+                isLast={i === arr.length - 1}
+                onMove={moveItem}
                 onCommit={onCommitItem}
                 onCommitActual={onCommitActual}
                 onSetActualMode={onSetActualMode}

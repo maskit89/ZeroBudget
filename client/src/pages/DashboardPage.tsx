@@ -19,6 +19,7 @@ import {
   withoutCategory,
   withoutItem,
   withReorderedExpenseCategories,
+  withReorderedItems,
   type MonthVM,
 } from '../budgetModel'
 import { toAmount, type Minor } from '../lib/money'
@@ -382,6 +383,29 @@ export function DashboardPage() {
     [month],
   )
 
+  // Reorder the lines within a category (CategoryAccordion computes the new order).
+  const reorderItems = useCallback(
+    async (categoryId: string, orderedItemIds: string[]) => {
+      if (!month) return
+
+      const snapshot = month
+      setError(null)
+      setMonth(withReorderedItems(month, categoryId, orderedItemIds)) // optimistic
+
+      try {
+        const { data } = await api.put<BudgetMonthDto>(
+          `/budget/categories/${categoryId}/items/order`,
+          { orderedItemIds },
+        )
+        setMonth(fromDto(data))
+      } catch {
+        setMonth(snapshot)
+        setError('Could not reorder the lines — reverted.')
+      }
+    },
+    [month],
+  )
+
   function submitNewCategory() {
     const trimmed = newCategoryName.trim()
     if (trimmed === '') return
@@ -569,6 +593,7 @@ export function DashboardPage() {
                     onRenameCategory={renameCategory}
                     onDeleteCategory={deleteCategory}
                     onMove={moveCategory}
+                    onReorderItems={reorderItems}
                   />
                 ))}
 
