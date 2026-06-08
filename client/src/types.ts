@@ -74,6 +74,24 @@ export interface TransactionDto {
   splits: TransactionSplitDto[]
 }
 
+export interface BudgetTrendPointDto {
+  year: number
+  month: number
+  key: string
+  /** Budgeted income (Σ income planned). */
+  income: number
+  /** Budgeted spending (Σ non-income planned). */
+  planned: number
+  /** Actual spending (Σ non-income actuals). */
+  spent: number
+}
+
+export interface BudgetTrendsDto {
+  points: BudgetTrendPointDto[]
+  totalIncome: number
+  totalSpent: number
+}
+
 export interface ImportStatementResult {
   totalEntries: number
   imported: number
