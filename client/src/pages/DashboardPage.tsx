@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
-import type { BudgetMonthDto, BudgetMonthSummaryDto, ImportStatementResult } from '../types'
+import type {
+  BudgetMonthDto,
+  BudgetMonthSummaryDto,
+  BudgetTemplateDto,
+  ImportStatementResult,
+} from '../types'
 import {
   billsSummary,
   fromDto,
@@ -53,6 +58,7 @@ export function DashboardPage() {
   const [newCategoryName, setNewCategoryName] = useState('')
   const [newCategoryIsFund, setNewCategoryIsFund] = useState(false)
   const [months, setMonths] = useState<BudgetMonthSummaryDto[]>([])
+  const [templates, setTemplates] = useState<BudgetTemplateDto[]>([])
 
   // Load the viewed month whenever it changes; a 404 means "no budget yet".
   useEffect(() => {
@@ -88,6 +94,14 @@ export function DashboardPage() {
 
   useEffect(() => refreshMonths(), [refreshMonths])
 
+  // The quick-start templates are a static catalogue — load them once.
+  useEffect(() => {
+    api
+      .get<BudgetTemplateDto[]>('/budget/templates')
+      .then(({ data }) => setTemplates(data))
+      .catch(() => {})
+  }, [])
+
   const hasPrevBudget = useMemo(
     () =>
       months.some(
@@ -116,6 +130,30 @@ export function DashboardPage() {
           year: view.year,
           month: view.month,
           copyFromPrevious,
+        })
+        setMonth(fromDto(data))
+        setNotFound(false)
+        refreshMonths()
+      } catch {
+        setError('Could not create that budget.')
+      } finally {
+        setCreating(false)
+      }
+    },
+    [view, refreshMonths],
+  )
+
+  // Create the viewed month from a quick-start template.
+  const createFromTemplate = useCallback(
+    async (templateKey: string) => {
+      setCreating(true)
+      setError(null)
+      try {
+        const { data } = await api.post<BudgetMonthDto>('/budget', {
+          year: view.year,
+          month: view.month,
+          copyFromPrevious: false,
+          templateKey,
         })
         setMonth(fromDto(data))
         setNotFound(false)
@@ -608,6 +646,33 @@ export function DashboardPage() {
                 Start a blank budget
               </button>
             </div>
+
+            {templates.length > 0 && (
+              <div className="mt-8 border-t border-slate-100 pt-6">
+                <p className="text-sm font-medium text-slate-500">Or start from a template</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  {templates.map((t) => {
+                    const lineCount = t.groups.reduce((n, g) => n + g.lines.length, 0)
+                    return (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => createFromTemplate(t.key)}
+                        disabled={creating}
+                        aria-label={`Start from the ${t.name} template`}
+                        className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-emerald-400 hover:bg-emerald-50/40 disabled:opacity-50"
+                      >
+                        <span className="font-semibold text-slate-800">{t.name}</span>
+                        <span className="text-xs text-slate-500">{t.description}</span>
+                        <span className="mt-1 text-xs text-slate-400">
+                          {t.groups.length} groups · {lineCount} lines
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

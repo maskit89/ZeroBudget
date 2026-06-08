@@ -17,6 +17,7 @@ using ZeroBudget.Application.Budgets.Commands.UpdateBudgetItem;
 using ZeroBudget.Application.Budgets.Dtos;
 using ZeroBudget.Application.Budgets.Queries.GetBudgetMonth;
 using ZeroBudget.Application.Budgets.Queries.GetBudgetMonths;
+using ZeroBudget.Application.Budgets.Queries.GetBudgetTemplates;
 using ZeroBudget.Domain.Enums;
 
 namespace ZeroBudget.Api.Controllers;
@@ -66,9 +67,18 @@ public class BudgetController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Lists the built-in quick-start budget templates.</summary>
+    [HttpGet("templates")]
+    [ProducesResponseType(typeof(IReadOnlyList<BudgetTemplateDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<BudgetTemplateDto>>> GetTemplates(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetBudgetTemplatesQuery(), ct);
+        return Ok(result);
+    }
+
     /// <summary>
-    /// Creates the user's budget for a month, optionally copying the previous
-    /// month's structure and planned amounts. Returns the new month.
+    /// Creates the user's budget for a month — from a quick-start template, by copying
+    /// the previous month, or blank. Returns the new month.
     /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
@@ -78,7 +88,7 @@ public class BudgetController : ControllerBase
         CancellationToken ct)
     {
         var result = await _mediator.Send(
-            new CreateBudgetMonthCommand(request.Year, request.Month, request.CopyFromPrevious), ct);
+            new CreateBudgetMonthCommand(request.Year, request.Month, request.CopyFromPrevious, request.TemplateKey), ct);
         return Ok(result);
     }
 
@@ -275,8 +285,8 @@ public class BudgetController : ControllerBase
     }
 }
 
-/// <summary>Request body for creating a month's budget.</summary>
-public record CreateBudgetMonthRequest(int Year, int Month, bool CopyFromPrevious = true);
+/// <summary>Request body for creating a month's budget (optionally from a template).</summary>
+public record CreateBudgetMonthRequest(int Year, int Month, bool CopyFromPrevious = true, string? TemplateKey = null);
 
 /// <summary>Request body for updating a budget line (the id comes from the route).</summary>
 public record UpdateBudgetItemRequest(decimal PlannedAmount, string? Name = null);
