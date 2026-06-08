@@ -99,6 +99,12 @@ export function ReportsPage() {
               <span className="rounded-md bg-slate-100 px-3 py-1.5 font-semibold text-slate-800">
                 Reports
               </span>
+              <Link
+                to="/rules"
+                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
+              >
+                Rules
+              </Link>
             </nav>
           </div>
           <button

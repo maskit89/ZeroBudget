@@ -252,6 +252,12 @@ export function TransactionsPage() {
               >
                 Reports
               </Link>
+              <Link
+                to="/rules"
+                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
+              >
+                Rules
+              </Link>
             </nav>
           </div>
           <button
