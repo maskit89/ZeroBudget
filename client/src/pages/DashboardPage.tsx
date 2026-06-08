@@ -6,6 +6,7 @@ import type { BudgetMonthDto, BudgetMonthSummaryDto, ImportStatementResult } fro
 import {
   fromDto,
   findItem,
+  isFund,
   isIncome,
   monthPlanned,
   remainingToBudget,
@@ -25,6 +26,7 @@ import {
 import { toAmount, type Minor } from '../lib/money'
 import { RemainingBanner } from '../components/RemainingBanner'
 import { CategoryAccordion } from '../components/CategoryAccordion'
+import { FundGroup } from '../components/FundGroup'
 import { IncomeGroup } from '../components/IncomeGroup'
 import { ImportStatementButton } from '../components/ImportStatementButton'
 
@@ -46,6 +48,7 @@ export function DashboardPage() {
   const [savingItemId, setSavingItemId] = useState<string | null>(null)
   const [importSummary, setImportSummary] = useState<ImportStatementResult | null>(null)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [newCategoryIsFund, setNewCategoryIsFund] = useState(false)
   const [months, setMonths] = useState<BudgetMonthSummaryDto[]>([])
 
   // Load the viewed month whenever it changes; a 404 means "no budget yet".
@@ -242,6 +245,7 @@ export function DashboardPage() {
           plannedMinor: 0,
           actualMinor: 0,
           actualIsTracked: false,
+          fundAvailableMinor: null,
         }),
       )
 
@@ -282,9 +286,9 @@ export function DashboardPage() {
     [month],
   )
 
-  // Add an expense category group. Temp group shown instantly, then reconciled.
+  // Add an expense or fund category group. Temp group shown instantly, then reconciled.
   const addCategory = useCallback(
-    async (name: string) => {
+    async (name: string, asFund: boolean) => {
       if (!month) return
 
       const snapshot = month
@@ -294,7 +298,7 @@ export function DashboardPage() {
         withNewCategory(month, {
           id: tempId,
           name,
-          kind: 'expense',
+          kind: asFund ? 'fund' : 'expense',
           displayOrder: Number.MAX_SAFE_INTEGER,
           items: [],
         }),
@@ -304,11 +308,12 @@ export function DashboardPage() {
         const { data } = await api.post<BudgetMonthDto>('/budget/categories', {
           budgetMonthId: month.id,
           name,
+          isFund: asFund,
         })
         setMonth(fromDto(data)) // reconcile temp group -> real server group
       } catch {
         setMonth(snapshot)
-        setError('Could not add that group — reverted.')
+        setError(`Could not add that ${asFund ? 'fund group' : 'group'} — reverted.`)
       }
     },
     [month],
@@ -356,7 +361,7 @@ export function DashboardPage() {
     async (categoryId: string, direction: -1 | 1) => {
       if (!month) return
 
-      const expense = month.categories.filter((c) => !isIncome(c))
+      const expense = month.categories.filter((c) => c.kind === 'expense')
       const idx = expense.findIndex((c) => c.id === categoryId)
       const swap = idx + direction
       if (idx < 0 || swap < 0 || swap >= expense.length) return
@@ -409,7 +414,7 @@ export function DashboardPage() {
   function submitNewCategory() {
     const trimmed = newCategoryName.trim()
     if (trimmed === '') return
-    addCategory(trimmed)
+    addCategory(trimmed, newCategoryIsFund)
     setNewCategoryName('')
   }
 
@@ -575,7 +580,7 @@ export function DashboardPage() {
                 />
               ))}
               {month.categories
-                .filter((c) => !isIncome(c))
+                .filter((c) => c.kind === 'expense')
                 .map((category, i, arr) => (
                   <CategoryAccordion
                     key={category.id}
@@ -597,12 +602,34 @@ export function DashboardPage() {
                   />
                 ))}
 
-              {/* Add a new expense category group (EveryDollar "Add Group"). */}
+              {/* Sinking funds render below expenses; their balances roll over. */}
+              {month.categories.filter(isFund).map((category) => (
+                <FundGroup
+                  key={category.id}
+                  category={category}
+                  currency={month.currency}
+                  savingItemId={savingItemId}
+                  onCommitItem={commitItem}
+                  onCommitActual={commitActual}
+                  onSetActualMode={setActualMode}
+                  onRenameItem={renameItem}
+                  onDeleteItem={deleteItem}
+                  onAddItem={addItem}
+                  onRenameCategory={renameCategory}
+                  onDeleteCategory={deleteCategory}
+                />
+              ))}
+
+              {/* Add a new expense or fund group (EveryDollar "Add Group"). */}
               <div className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white/60 px-4 py-3">
                 <input
                   type="text"
                   value={newCategoryName}
-                  placeholder="Add a category group (e.g. Subscriptions, Insurance)…"
+                  placeholder={
+                    newCategoryIsFund
+                      ? 'Add a fund group (e.g. Sinking Funds, Savings)…'
+                      : 'Add a category group (e.g. Subscriptions, Insurance)…'
+                  }
                   aria-label="New category group name"
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   onKeyDown={(e) => {
@@ -610,6 +637,15 @@ export function DashboardPage() {
                   }}
                   className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
+                <select
+                  value={newCategoryIsFund ? 'fund' : 'expense'}
+                  aria-label="New group kind"
+                  onChange={(e) => setNewCategoryIsFund(e.target.value === 'fund')}
+                  className="rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="expense">Expense</option>
+                  <option value="fund">Fund</option>
+                </select>
                 <button
                   type="button"
                   onClick={submitNewCategory}

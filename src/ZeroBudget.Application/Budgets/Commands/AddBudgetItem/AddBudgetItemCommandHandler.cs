@@ -4,6 +4,7 @@ using ZeroBudget.Application.Budgets.Dtos;
 using ZeroBudget.Application.Common.Exceptions;
 using ZeroBudget.Application.Common.Interfaces;
 using ZeroBudget.Domain.Entities;
+using ZeroBudget.Domain.Enums;
 
 namespace ZeroBudget.Application.Budgets.Commands.AddBudgetItem;
 
@@ -49,6 +50,9 @@ public class AddBudgetItemCommandHandler : IRequestHandler<AddBudgetItemCommand,
             Name = request.Name.Trim(),
             PlannedAmount = request.PlannedAmount,
             DisplayOrder = nextOrder,
+            // A line in a Fund group is a sinking fund — give it a stable id so its
+            // balance can roll over across months.
+            FundId = category.Kind == CategoryKind.Fund ? Guid.NewGuid() : null,
         });
 
         await _db.SaveChangesAsync(cancellationToken);

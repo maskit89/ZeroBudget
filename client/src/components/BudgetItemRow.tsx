@@ -20,6 +20,11 @@ interface Props {
   onMove?: (itemId: string, direction: -1 | 1) => void
   isFirst?: boolean
   isLast?: boolean
+  /**
+   * For a fund line: the rolled-over available balance. When set, the last column
+   * shows this (the fund's running balance) instead of the single-month remaining.
+   */
+  availableMinor?: Minor | null
 }
 
 /**
@@ -40,6 +45,7 @@ export function BudgetItemRow({
   onMove,
   isFirst = false,
   isLast = false,
+  availableMinor,
 }: Props) {
   const [name, setName] = useState(item.name)
   const [draft, setDraft] = useState(toEditString(item.plannedMinor))
@@ -83,6 +89,9 @@ export function BudgetItemRow({
   const overspent = remaining < 0
   // The spent cell is editable only when manual (no transactions drive it).
   const actualEditable = Boolean(onCommitActual) && !item.actualIsTracked
+  // A fund line shows its rolled-over available balance instead of the remaining.
+  const showAvailable = availableMinor !== undefined && availableMinor !== null
+  const fundOverdrawn = showAvailable && (availableMinor as Minor) < 0
 
   return (
     <div className="grid grid-cols-12 items-center gap-2 px-4 py-2.5 hover:bg-slate-50">
@@ -197,13 +206,24 @@ export function BudgetItemRow({
         )}
       </div>
 
-      <div
-        className={`col-span-2 text-right text-sm font-semibold tabular-nums ${
-          overspent ? 'text-rose-600' : 'text-slate-700'
-        }`}
-      >
-        {formatMoney(remaining, currency)}
-      </div>
+      {showAvailable ? (
+        <div
+          className={`col-span-2 text-right text-sm font-semibold tabular-nums ${
+            fundOverdrawn ? 'text-rose-600' : 'text-emerald-700'
+          }`}
+          title="Available in this fund (rolled over from previous months)"
+        >
+          {formatMoney(availableMinor as Minor, currency)}
+        </div>
+      ) : (
+        <div
+          className={`col-span-2 text-right text-sm font-semibold tabular-nums ${
+            overspent ? 'text-rose-600' : 'text-slate-700'
+          }`}
+        >
+          {formatMoney(remaining, currency)}
+        </div>
+      )}
 
       <div className="col-span-1 flex justify-end">
         {onDelete && (

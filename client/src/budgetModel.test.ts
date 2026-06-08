@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   fromDto,
   findItem,
+  isFund,
   itemRemaining,
   categoryPlanned,
   monthPlanned,
@@ -178,5 +179,31 @@ describe('budgetModel selectors', () => {
     expect(next.categories.find((c) => c.id === 'c1')).toBeUndefined()
     expect(monthPlanned(next)).toBe(fromAmount(200)) // only Food's 200 remains
     expect(remainingToBudget(next)).toBe(fromAmount(2800))
+  })
+
+  it('maps a fund group and counts its contribution as budgeted money', () => {
+    const d = dto()
+    d.categories.push({
+      id: 'f1',
+      name: 'Funds',
+      kind: 'Fund',
+      displayOrder: 0,
+      totalPlanned: 100,
+      totalActual: 0,
+      items: [
+        {
+          id: 'car', name: 'Car', displayOrder: 0, plannedAmount: 100, actualAmount: 30,
+          remaining: 70, isActualTracked: true, fundId: 'fund-car', fundAvailable: 170,
+        },
+      ],
+    })
+    const vm = fromDto(d)
+
+    const fund = vm.categories.find(isFund)!
+    expect(fund.kind).toBe('fund')
+    expect(fund.items[0].fundAvailableMinor).toBe(fromAmount(170)) // rolled-over balance
+    // The 100 contribution joins the 1300 of expenses in the planned pool.
+    expect(monthPlanned(vm)).toBe(fromAmount(1400))
+    expect(remainingToBudget(vm)).toBe(fromAmount(1600))
   })
 })

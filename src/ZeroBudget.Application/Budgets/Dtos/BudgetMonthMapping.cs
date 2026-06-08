@@ -22,9 +22,14 @@ public static class BudgetMonthMapping
         RemainingToBudget = month.RemainingToBudget,
         IsBalanced = month.IsBalanced,
         Categories = month.Categories
-            // Income groups always render first (like EveryDollar), then by the
-            // user's chosen display order within each kind.
-            .OrderBy(c => c.Kind == CategoryKind.Income ? 0 : 1)
+            // Income groups render first (like EveryDollar), then expense groups,
+            // then funds at the bottom; the user's display order applies within each kind.
+            .OrderBy(c => c.Kind switch
+            {
+                CategoryKind.Income => 0,
+                CategoryKind.Expense => 1,
+                _ => 2, // Fund
+            })
             .ThenBy(c => c.DisplayOrder)
             .Select(c => new BudgetCategoryDto
             {
@@ -44,7 +49,9 @@ public static class BudgetMonthMapping
                         PlannedAmount = i.PlannedAmount,
                         ActualAmount = i.ActualAmount,
                         Remaining = i.Remaining,
-                        IsActualTracked = i.IsActualTracked
+                        IsActualTracked = i.IsActualTracked,
+                        FundId = i.FundId,
+                        FundAvailable = i.FundAvailable
                     })
                     .ToList()
             })
