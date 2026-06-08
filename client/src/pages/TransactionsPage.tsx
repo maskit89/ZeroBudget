@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
 import type { BudgetMonthDto, TransactionDto } from '../types'
 import { TransactionType } from '../types'
-import { formatMoney, fromAmount, parseMinor, toAmount } from '../lib/money'
+import { formatMoney, fromAmount, parseMinor, sumMinor, toAmount } from '../lib/money'
 import { buildItemOptions, transactionTypeLabel } from '../lib/transactions'
 
 function today(): string {
@@ -37,6 +37,10 @@ export function TransactionsPage() {
   const [ePayee, setEPayee] = useState('')
   const [eAmount, setEAmount] = useState('')
   const [eType, setEType] = useState<number>(TransactionType.Expense)
+
+  // Split editor state.
+  const [splittingId, setSplittingId] = useState<string | null>(null)
+  const [splitRows, setSplitRows] = useState<{ budgetItemId: string; amount: string }[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -110,6 +114,7 @@ export function TransactionsPage() {
   }, [])
 
   function startEdit(t: TransactionDto) {
+    setSplittingId(null)
     setEditingId(t.id)
     setEDate(t.date)
     setEPayee(t.payee)
@@ -142,6 +147,76 @@ export function TransactionsPage() {
       }
     },
     [eDate, ePayee, eAmount, eType],
+  )
+
+  function startSplit(t: TransactionDto) {
+    setEditingId(null)
+    setSplittingId(t.id)
+    if (t.isSplit && t.splits.length > 0) {
+      setSplitRows(t.splits.map((s) => ({ budgetItemId: s.budgetItemId ?? '', amount: String(s.amount) })))
+    } else {
+      setSplitRows([
+        { budgetItemId: t.budgetItemId ?? '', amount: '' },
+        { budgetItemId: '', amount: '' },
+      ])
+    }
+  }
+
+  function cancelSplit() {
+    setSplittingId(null)
+    setSplitRows([])
+  }
+
+  const removeSplit = useCallback(
+    async (id: string) => {
+      await assign(id, null) // clearing the assignment drops the split server-side
+      cancelSplit()
+    },
+    [assign],
+  )
+
+  function updateSplitRow(index: number, patch: Partial<{ budgetItemId: string; amount: string }>) {
+    setSplitRows((rows) => rows.map((r, i) => (i === index ? { ...r, ...patch } : r)))
+  }
+
+  function addSplitRow() {
+    setSplitRows((rows) => [...rows, { budgetItemId: '', amount: '' }])
+  }
+
+  function removeSplitRow(index: number) {
+    setSplitRows((rows) => (rows.length > 2 ? rows.filter((_, i) => i !== index) : rows))
+  }
+
+  const saveSplit = useCallback(
+    async (t: TransactionDto) => {
+      const parsed = splitRows.map((r) => ({ budgetItemId: r.budgetItemId, minor: parseMinor(r.amount) }))
+      if (parsed.length < 2 || parsed.some((a) => !a.budgetItemId || a.minor === null || a.minor <= 0)) {
+        setError('Give every split line a category and an amount greater than zero.')
+        return
+      }
+      const allocatedMinor = sumMinor(parsed.map((a) => a.minor as number))
+      if (allocatedMinor !== fromAmount(t.amount)) {
+        setError('The split lines must add up to the transaction total.')
+        return
+      }
+      setSavingId(t.id)
+      setError(null)
+      try {
+        const { data } = await api.put<TransactionDto>(`/transactions/${t.id}/splits`, {
+          allocations: parsed.map((a) => ({
+            budgetItemId: a.budgetItemId,
+            amount: toAmount(a.minor as number),
+          })),
+        })
+        setTransactions((prev) => prev.map((x) => (x.id === t.id ? data : x)))
+        cancelSplit()
+      } catch {
+        setError('Could not save that split.')
+      } finally {
+        setSavingId(null)
+      }
+    },
+    [splitRows],
   )
 
   const optionGroups = buildItemOptions(month)
@@ -335,8 +410,14 @@ export function TransactionsPage() {
                   {visible.map((t) => {
                     const isIncome = transactionTypeLabel(t.type) === 'Income'
                     const editing = editingId === t.id
+                    const splitting = splittingId === t.id
+                    const splitOptions = buildItemOptions(month, t.type)
+                    const totalMinor = fromAmount(t.amount)
+                    const allocatedMinor = sumMinor(splitRows.map((r) => parseMinor(r.amount) ?? 0))
+                    const remainderMinor = totalMinor - allocatedMinor
                     return (
-                      <tr key={t.id} className="hover:bg-slate-50">
+                      <Fragment key={t.id}>
+                      <tr className="hover:bg-slate-50">
                         {editing ? (
                           <>
                             <td className="px-4 py-2">
@@ -413,24 +494,43 @@ export function TransactionsPage() {
                               {formatMoney(fromAmount(t.amount), t.currency)}
                             </td>
                             <td className="px-4 py-2.5">
-                              <select
-                                value={t.budgetItemId ?? ''}
-                                disabled={savingId === t.id}
-                                aria-label={`Assign ${t.payee || 'transaction'}`}
-                                onChange={(e) => assign(t.id, e.target.value || null)}
-                                className="w-56 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50"
-                              >
-                                <option value="">Unassigned</option>
-                                {optionGroups.map((g) => (
-                                  <optgroup key={g.category} label={g.category}>
-                                    {g.items.map((i) => (
-                                      <option key={i.id} value={i.id}>
-                                        {i.name}
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                ))}
-                              </select>
+                              {t.isSplit ? (
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="rounded bg-violet-100 px-1.5 py-0.5 text-xs font-semibold text-violet-700">
+                                    Split
+                                  </span>
+                                  <span className="text-xs text-slate-500">
+                                    {t.splits
+                                      .map(
+                                        (s) =>
+                                          `${s.budgetItemName ?? 'Unassigned'} ${formatMoney(
+                                            fromAmount(s.amount),
+                                            t.currency,
+                                          )}`,
+                                      )
+                                      .join(' · ')}
+                                  </span>
+                                </div>
+                              ) : (
+                                <select
+                                  value={t.budgetItemId ?? ''}
+                                  disabled={savingId === t.id}
+                                  aria-label={`Assign ${t.payee || 'transaction'}`}
+                                  onChange={(e) => assign(t.id, e.target.value || null)}
+                                  className="w-56 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50"
+                                >
+                                  <option value="">Unassigned</option>
+                                  {optionGroups.map((g) => (
+                                    <optgroup key={g.category} label={g.category}>
+                                      {g.items.map((i) => (
+                                        <option key={i.id} value={i.id}>
+                                          {i.name}
+                                        </option>
+                                      ))}
+                                    </optgroup>
+                                  ))}
+                                </select>
+                              )}
                             </td>
                             <td className="px-4 py-2.5 text-right">
                               <div className="flex justify-end gap-1">
@@ -442,6 +542,15 @@ export function TransactionsPage() {
                                   className="rounded-md px-2 py-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                                 >
                                   ✎
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => startSplit(t)}
+                                  aria-label={`Split transaction: ${t.payee || t.date}`}
+                                  title="Split across budget lines"
+                                  className="rounded-md px-2 py-1 text-slate-400 hover:bg-violet-50 hover:text-violet-600"
+                                >
+                                  ⑂
                                 </button>
                                 <button
                                   type="button"
@@ -458,6 +567,118 @@ export function TransactionsPage() {
                           </>
                         )}
                       </tr>
+                      {splitting && (
+                        <tr className="bg-violet-50/40">
+                          <td colSpan={5} className="px-4 py-4">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-semibold text-slate-700">
+                                  Split “{t.payee || t.date}” ({formatMoney(totalMinor, t.currency)})
+                                </h4>
+                                <span
+                                  aria-label="Remaining to allocate"
+                                  className={`text-xs font-semibold tabular-nums ${
+                                    remainderMinor === 0 ? 'text-emerald-600' : 'text-rose-600'
+                                  }`}
+                                >
+                                  {remainderMinor === 0
+                                    ? 'Fully allocated'
+                                    : `${formatMoney(remainderMinor, t.currency)} left`}
+                                </span>
+                              </div>
+
+                              {splitOptions.length === 0 && (
+                                <p className="text-xs text-rose-600">
+                                  Add some {isIncome ? 'income' : 'expense'} budget lines first.
+                                </p>
+                              )}
+
+                              {splitRows.map((row, index) => (
+                                <div key={index} className="flex flex-wrap items-center gap-2">
+                                  <select
+                                    value={row.budgetItemId}
+                                    aria-label={`Split line ${index + 1} category`}
+                                    onChange={(e) => updateSplitRow(index, { budgetItemId: e.target.value })}
+                                    className="w-56 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                                  >
+                                    <option value="">Choose a line…</option>
+                                    {splitOptions.map((g) => (
+                                      <optgroup key={g.category} label={g.category}>
+                                        {g.items.map((i) => (
+                                          <option key={i.id} value={i.id}>
+                                            {i.name}
+                                          </option>
+                                        ))}
+                                      </optgroup>
+                                    ))}
+                                  </select>
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={row.amount}
+                                    placeholder="0,00"
+                                    aria-label={`Split line ${index + 1} amount`}
+                                    onChange={(e) => updateSplitRow(index, { amount: e.target.value })}
+                                    className="w-28 rounded-md border border-slate-300 px-2 py-1 text-right text-sm tabular-nums focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                                  />
+                                  {splitRows.length > 2 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => removeSplitRow(index)}
+                                      aria-label={`Remove split line ${index + 1}`}
+                                      title="Remove line"
+                                      className="rounded-md px-2 py-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={addSplitRow}
+                                  aria-label="Add split line"
+                                  className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-white"
+                                >
+                                  + Add line
+                                </button>
+                                {t.isSplit && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeSplit(t.id)}
+                                    disabled={savingId === t.id}
+                                    aria-label="Remove split"
+                                    className="rounded-md px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                                  >
+                                    Remove split
+                                  </button>
+                                )}
+                                <div className="flex-1" />
+                                <button
+                                  type="button"
+                                  onClick={() => saveSplit(t)}
+                                  disabled={savingId === t.id || remainderMinor !== 0}
+                                  aria-label="Save split"
+                                  className="rounded-md bg-violet-600 px-3 py-1 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+                                >
+                                  Save split
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={cancelSplit}
+                                  aria-label="Cancel split"
+                                  className="rounded-md px-3 py-1 text-xs text-slate-500 hover:bg-slate-100"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     )
                   })}
                 </tbody>

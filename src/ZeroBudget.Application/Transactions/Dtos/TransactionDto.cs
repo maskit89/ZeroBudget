@@ -20,6 +20,20 @@ public class TransactionDto
 
     public Guid? BudgetItemId { get; set; }
     public string? BudgetItemName { get; set; }
+
+    /// <summary>True when the transaction is split across budget lines.</summary>
+    public bool IsSplit { get; set; }
+
+    /// <summary>The per-line slices when <see cref="IsSplit"/>; empty otherwise.</summary>
+    public IReadOnlyList<TransactionSplitDto> Splits { get; set; } = Array.Empty<TransactionSplitDto>();
+}
+
+public class TransactionSplitDto
+{
+    public Guid Id { get; set; }
+    public Guid? BudgetItemId { get; set; }
+    public string? BudgetItemName { get; set; }
+    public decimal Amount { get; set; }
 }
 
 public static class TransactionMapping
@@ -37,5 +51,15 @@ public static class TransactionMapping
         BankReference = t.BankReference,
         BudgetItemId = t.BudgetItemId,
         BudgetItemName = t.BudgetItem?.Name,
+        IsSplit = t.Splits.Count > 0,
+        Splits = t.Splits
+            .Select(s => new TransactionSplitDto
+            {
+                Id = s.Id,
+                BudgetItemId = s.BudgetItemId,
+                BudgetItemName = s.BudgetItem?.Name,
+                Amount = s.Amount,
+            })
+            .ToList(),
     };
 }

@@ -31,6 +31,12 @@ function budget(): BudgetMonthDto {
           { id: 'i-rent', name: 'Rent', displayOrder: 0, plannedAmount: 1000, actualAmount: 0, remaining: 1000, isActualTracked: false },
         ],
       },
+      {
+        id: 'c2', name: 'Food', kind: 'Expense', displayOrder: 1, totalPlanned: 0, totalActual: 0,
+        items: [
+          { id: 'i-food', name: 'Groceries', displayOrder: 0, plannedAmount: 0, actualAmount: 0, remaining: 0, isActualTracked: false },
+        ],
+      },
     ],
   }
 }
@@ -39,7 +45,7 @@ function tx(): TransactionDto {
   return {
     id: 't1', date: '2026-06-10', payee: 'Tesco', amount: 12.5, currency: 'EUR',
     exchangeRate: 1, baseAmount: 12.5, type: 0, bankReference: null,
-    budgetItemId: null, budgetItemName: null,
+    budgetItemId: null, budgetItemName: null, isSplit: false, splits: [],
   }
 }
 
@@ -142,6 +148,63 @@ describe('TransactionsPage manual sheet', () => {
       ),
     )
     expect(await screen.findByText('Aldi', {}, { timeout: 5000 })).toBeInTheDocument()
+  })
+
+  it('splits a transaction across two budget lines', { timeout: 15000 }, async () => {
+    mockLoad([{ ...tx(), amount: 100 }])
+    mockPut.mockResolvedValue({
+      data: {
+        ...tx(),
+        amount: 100,
+        isSplit: true,
+        splits: [
+          { id: 's1', budgetItemId: 'i-rent', budgetItemName: 'Rent', amount: 70 },
+          { id: 's2', budgetItemId: 'i-food', budgetItemName: 'Groceries', amount: 30 },
+        ],
+      },
+    })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await user.click(await screen.findByLabelText('Split transaction: Tesco', {}, { timeout: 5000 }))
+
+    // Save stays disabled until the lines add up to the total.
+    expect(screen.getByLabelText('Save split')).toBeDisabled()
+
+    await user.selectOptions(screen.getByLabelText('Split line 1 category'), 'i-rent')
+    await user.type(screen.getByLabelText('Split line 1 amount'), '70')
+    await user.selectOptions(screen.getByLabelText('Split line 2 category'), 'i-food')
+    await user.type(screen.getByLabelText('Split line 2 amount'), '30')
+
+    await waitFor(() => expect(screen.getByLabelText('Save split')).toBeEnabled())
+    await user.click(screen.getByLabelText('Save split'))
+
+    await waitFor(() =>
+      expect(mockPut).toHaveBeenCalledWith('/transactions/t1/splits', {
+        allocations: [
+          { budgetItemId: 'i-rent', amount: 70 },
+          { budgetItemId: 'i-food', amount: 30 },
+        ],
+      }),
+    )
+    expect(await screen.findByText('Split', {}, { timeout: 5000 })).toBeInTheDocument()
+  })
+
+  it('blocks a split that does not add up to the total', { timeout: 15000 }, async () => {
+    mockLoad([{ ...tx(), amount: 100 }])
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await user.click(await screen.findByLabelText('Split transaction: Tesco', {}, { timeout: 5000 }))
+    await user.selectOptions(screen.getByLabelText('Split line 1 category'), 'i-rent')
+    await user.type(screen.getByLabelText('Split line 1 amount'), '70')
+    await user.selectOptions(screen.getByLabelText('Split line 2 category'), 'i-food')
+    await user.type(screen.getByLabelText('Split line 2 amount'), '20') // 90 != 100
+
+    expect(screen.getByLabelText('Save split')).toBeDisabled()
+    expect(mockPut).not.toHaveBeenCalled()
   })
 
   it('filters transactions by payee search', { timeout: 15000 }, async () => {

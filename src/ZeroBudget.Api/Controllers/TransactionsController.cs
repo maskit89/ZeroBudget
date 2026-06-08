@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using ZeroBudget.Application.Transactions.Commands.AssignTransaction;
 using ZeroBudget.Application.Transactions.Commands.CreateTransaction;
 using ZeroBudget.Application.Transactions.Commands.DeleteTransaction;
+using ZeroBudget.Application.Transactions.Commands.SplitTransaction;
 using ZeroBudget.Application.Transactions.Commands.UpdateTransaction;
 using ZeroBudget.Application.Transactions.Dtos;
 using ZeroBudget.Application.Transactions.Queries.GetTransactions;
@@ -80,6 +81,24 @@ public class TransactionsController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Splits a transaction across two or more budget lines (replaces any prior split / whole assignment).</summary>
+    [HttpPut("{id:guid}/splits")]
+    [ProducesResponseType(typeof(TransactionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TransactionDto>> Split(
+        Guid id,
+        SplitTransactionRequest request,
+        CancellationToken ct)
+    {
+        var allocations = (request.Allocations ?? new List<SplitAllocationRequest>())
+            .Select(a => new SplitAllocationInput(a.BudgetItemId, a.Amount))
+            .ToList();
+        var result = await _mediator.Send(new SplitTransactionCommand(id, allocations), ct);
+        return Ok(result);
+    }
+
     /// <summary>Assigns a transaction to a budget line, or clears it when budgetItemId is null.</summary>
     [HttpPut("{id:guid}/assignment")]
     [ProducesResponseType(typeof(TransactionDto), StatusCodes.Status200OK)]
@@ -112,3 +131,9 @@ public record UpdateTransactionRequest(
     string Payee,
     decimal Amount,
     TransactionType Type);
+
+/// <summary>Request body for splitting a transaction across budget lines.</summary>
+public record SplitTransactionRequest(IReadOnlyList<SplitAllocationRequest> Allocations);
+
+/// <summary>One slice of a split: an amount attributed to a budget line.</summary>
+public record SplitAllocationRequest(Guid BudgetItemId, decimal Amount);

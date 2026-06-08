@@ -27,6 +27,8 @@ public class GetTransactionsQueryHandler
         var query = _db.Transactions
             .AsNoTracking()
             .Include(t => t.BudgetItem)
+            .Include(t => t.Splits)
+                .ThenInclude(s => s.BudgetItem)
             .Where(t => t.OwnerId == userId);
 
         if (request.Year is int year)
