@@ -17,6 +17,10 @@ export interface ItemVM {
   actualIsTracked: boolean
   /** For a fund line, the rolled-over available balance (minor units); null otherwise. */
   fundAvailableMinor: Minor | null
+  /** Day of the month (1–31) this bill is due; null when the line isn't a bill. */
+  dueDay: number | null
+  /** Whether this month's bill has been paid. */
+  isPaid: boolean
 }
 
 export interface CategoryVM {
@@ -57,6 +61,8 @@ export function fromDto(dto: BudgetMonthDto): MonthVM {
         actualMinor: fromAmount(i.actualAmount),
         actualIsTracked: i.isActualTracked,
         fundAvailableMinor: i.fundAvailable == null ? null : fromAmount(i.fundAvailable),
+        dueDay: i.dueDay ?? null,
+        isPaid: i.isPaid ?? false,
       })),
     })),
   }
@@ -95,6 +101,23 @@ export const remainingToBudget = (m: MonthVM): Minor => totalIncome(m) - monthPl
 
 export const isBalanced = (m: MonthVM): boolean => remainingToBudget(m) === 0
 
+export interface BillsSummary {
+  /** How many lines are bills (have a due day). */
+  total: number
+  /** How many of those are marked paid. */
+  paid: number
+  /** Planned total of the unpaid bills (minor units) — what's left to pay. */
+  unpaidMinor: Minor
+}
+
+/** Roll the month's bills up into a small progress summary. */
+export function billsSummary(m: MonthVM): BillsSummary {
+  const bills = m.categories.flatMap((c) => c.items).filter((i) => i.dueDay !== null)
+  const paid = bills.filter((i) => i.isPaid).length
+  const unpaidMinor = sumMinor(bills.filter((i) => !i.isPaid).map((i) => i.plannedMinor))
+  return { total: bills.length, paid, unpaidMinor }
+}
+
 /** Find a line anywhere in the tree (used to read its current state for edits). */
 export function findItem(m: MonthVM, itemId: string): ItemVM | undefined {
   for (const c of m.categories) {
@@ -126,6 +149,30 @@ export function withItemActual(m: MonthVM, itemId: string, actualMinor: Minor): 
     categories: m.categories.map((c) => ({
       ...c,
       items: c.items.map((i) => (i.id === itemId ? { ...i, actualMinor } : i)),
+    })),
+  }
+}
+
+/** Set (or clear, with null) a line's bill due day. Clearing also marks it unpaid. */
+export function withItemBill(m: MonthVM, itemId: string, dueDay: number | null): MonthVM {
+  return {
+    ...m,
+    categories: m.categories.map((c) => ({
+      ...c,
+      items: c.items.map((i) =>
+        i.id === itemId ? { ...i, dueDay, isPaid: dueDay === null ? false : i.isPaid } : i,
+      ),
+    })),
+  }
+}
+
+/** Set one bill line's paid status. */
+export function withItemPaid(m: MonthVM, itemId: string, isPaid: boolean): MonthVM {
+  return {
+    ...m,
+    categories: m.categories.map((c) => ({
+      ...c,
+      items: c.items.map((i) => (i.id === itemId ? { ...i, isPaid } : i)),
     })),
   }
 }

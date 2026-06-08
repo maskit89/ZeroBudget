@@ -36,6 +36,9 @@ public class BudgetItemConfiguration : IEntityTypeConfiguration<BudgetItem>
         builder.Ignore(i => i.IsActualTracked);
         builder.Ignore(i => i.FundAvailable);
 
+        // IsBill is derived from DueDay; the columns themselves map by convention.
+        builder.Ignore(i => i.IsBill);
+
         // Stable id linking a sinking fund's monthly instances; indexed for the
         // cross-month balance roll-up. Null for ordinary income/expense lines.
         builder.HasIndex(i => i.FundId);

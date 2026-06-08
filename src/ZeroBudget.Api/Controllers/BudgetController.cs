@@ -11,6 +11,8 @@ using ZeroBudget.Application.Budgets.Commands.ReorderBudgetCategories;
 using ZeroBudget.Application.Budgets.Commands.ReorderBudgetItems;
 using ZeroBudget.Application.Budgets.Commands.SetBudgetItemActual;
 using ZeroBudget.Application.Budgets.Commands.SetBudgetItemActualMode;
+using ZeroBudget.Application.Budgets.Commands.SetBudgetItemBill;
+using ZeroBudget.Application.Budgets.Commands.SetBudgetItemPaid;
 using ZeroBudget.Application.Budgets.Commands.UpdateBudgetItem;
 using ZeroBudget.Application.Budgets.Dtos;
 using ZeroBudget.Application.Budgets.Queries.GetBudgetMonth;
@@ -229,6 +231,38 @@ public class BudgetController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Marks a line as a bill due on a day of the month (1–31), or clears the bill
+    /// when dueDay is null. Returns the recomputed month.
+    /// </summary>
+    [HttpPut("items/{id:guid}/bill")]
+    [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BudgetMonthDto>> SetItemBill(
+        Guid id,
+        SetBudgetItemBillRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(new SetBudgetItemBillCommand(id, request.DueDay), ct);
+        return Ok(result);
+    }
+
+    /// <summary>Marks this month's bill line as paid/unpaid and returns the recomputed month.</summary>
+    [HttpPut("items/{id:guid}/paid")]
+    [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BudgetMonthDto>> SetItemPaid(
+        Guid id,
+        SetBudgetItemPaidRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(new SetBudgetItemPaidCommand(id, request.IsPaid), ct);
+        return Ok(result);
+    }
+
     /// <summary>Deletes a single budget line and returns the recomputed month.</summary>
     [HttpDelete("items/{id:guid}")]
     [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
@@ -255,6 +289,12 @@ public record SetBudgetItemActualRequest(decimal ActualAmount);
 
 /// <summary>Request body for switching a line's actual-entry mode (the id comes from the route).</summary>
 public record SetBudgetItemActualModeRequest(bool TrackByTransactions);
+
+/// <summary>Request body for setting/clearing a line's bill due day (null clears the bill).</summary>
+public record SetBudgetItemBillRequest(int? DueDay);
+
+/// <summary>Request body for marking a bill paid/unpaid (the id comes from the route).</summary>
+public record SetBudgetItemPaidRequest(bool IsPaid);
 
 /// <summary>Request body for creating a category group (a fund group when IsFund is true).</summary>
 public record AddBudgetCategoryRequest(Guid BudgetMonthId, string Name, bool IsFund = false);

@@ -66,6 +66,22 @@ public class BudgetItem : BaseEntity
     /// </summary>
     public decimal? FundAvailable { get; set; }
 
+    /// <summary>
+    /// The day of the month (1–31) this line is due, when it is tracked as a bill.
+    /// Null for lines that aren't bills. Recurs month to month (copied when a month
+    /// is created); the matching <see cref="IsPaid"/> resets each month.
+    /// </summary>
+    public int? DueDay { get; set; }
+
+    /// <summary>
+    /// Whether this month's instance of the bill has been paid. Only meaningful when
+    /// <see cref="DueDay"/> is set. Resets to false when a new month is created.
+    /// </summary>
+    public bool IsPaid { get; set; }
+
+    /// <summary>True when this line is tracked as a bill (it has a due day).</summary>
+    public bool IsBill => DueDay is not null;
+
     public int DisplayOrder { get; set; }
 
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();

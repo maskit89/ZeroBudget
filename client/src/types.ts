@@ -13,6 +13,10 @@ export interface BudgetItemDto {
   fundId: string | null
   /** For a fund line, the running available balance (rolled over from prior months); null otherwise. */
   fundAvailable: number | null
+  /** Day of the month (1–31) this bill is due; null when the line isn't a bill. */
+  dueDay: number | null
+  /** Whether this month's instance of the bill has been paid. */
+  isPaid: boolean
 }
 
 export interface BudgetCategoryDto {
