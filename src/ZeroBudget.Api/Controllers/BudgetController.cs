@@ -8,6 +8,7 @@ using ZeroBudget.Application.Budgets.Commands.DeleteBudgetCategory;
 using ZeroBudget.Application.Budgets.Commands.DeleteBudgetItem;
 using ZeroBudget.Application.Budgets.Commands.RenameBudgetCategory;
 using ZeroBudget.Application.Budgets.Commands.ReorderBudgetCategories;
+using ZeroBudget.Application.Budgets.Commands.ReorderBudgetItems;
 using ZeroBudget.Application.Budgets.Commands.SetBudgetItemActual;
 using ZeroBudget.Application.Budgets.Commands.SetBudgetItemActualMode;
 using ZeroBudget.Application.Budgets.Commands.UpdateBudgetItem;
@@ -154,6 +155,22 @@ public class BudgetController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Reorders the lines within a category and returns the recomputed month.</summary>
+    [HttpPut("categories/{categoryId:guid}/items/order")]
+    [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BudgetMonthDto>> ReorderItems(
+        Guid categoryId,
+        ReorderBudgetItemsRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(
+            new ReorderBudgetItemsCommand(categoryId, request.OrderedItemIds), ct);
+        return Ok(result);
+    }
+
     /// <summary>
     /// Adds a new line to a category (an income source, or a spending line) and
     /// returns the recomputed month. The category id comes from the route.
@@ -245,3 +262,6 @@ public record RenameBudgetCategoryRequest(string Name);
 
 /// <summary>Request body for reordering a month's category groups.</summary>
 public record ReorderBudgetCategoriesRequest(Guid BudgetMonthId, IReadOnlyList<Guid> OrderedCategoryIds);
+
+/// <summary>Request body for reordering the lines within a category (id from the route).</summary>
+public record ReorderBudgetItemsRequest(IReadOnlyList<Guid> OrderedItemIds);

@@ -16,6 +16,10 @@ interface Props {
   onCommitActual?: (itemId: string, actualMinor: Minor) => void
   /** When provided, a toggle switches the line between manual entry and transaction tracking. */
   onSetActualMode?: (itemId: string, trackByTransactions: boolean) => void
+  /** When provided, ▲▼ controls reorder the line within its category. */
+  onMove?: (itemId: string, direction: -1 | 1) => void
+  isFirst?: boolean
+  isLast?: boolean
 }
 
 /**
@@ -33,6 +37,9 @@ export function BudgetItemRow({
   onDelete,
   onCommitActual,
   onSetActualMode,
+  onMove,
+  isFirst = false,
+  isLast = false,
 }: Props) {
   const [name, setName] = useState(item.name)
   const [draft, setDraft] = useState(toEditString(item.plannedMinor))
@@ -79,7 +86,31 @@ export function BudgetItemRow({
 
   return (
     <div className="grid grid-cols-12 items-center gap-2 px-4 py-2.5 hover:bg-slate-50">
-      <div className="col-span-4 flex items-center gap-2">
+      <div className="col-span-4 flex items-center gap-1">
+        {onMove && (
+          <div className="flex shrink-0 flex-col leading-none">
+            <button
+              type="button"
+              onClick={() => onMove(item.id, -1)}
+              disabled={isFirst}
+              aria-label={`Move ${item.name} up`}
+              title="Move line up"
+              className="text-[10px] text-slate-300 hover:text-slate-600 disabled:opacity-30 disabled:hover:text-slate-300"
+            >
+              ▲
+            </button>
+            <button
+              type="button"
+              onClick={() => onMove(item.id, 1)}
+              disabled={isLast}
+              aria-label={`Move ${item.name} down`}
+              title="Move line down"
+              className="text-[10px] text-slate-300 hover:text-slate-600 disabled:opacity-30 disabled:hover:text-slate-300"
+            >
+              ▼
+            </button>
+          </div>
+        )}
         {onRename ? (
           <input
             type="text"

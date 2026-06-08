@@ -166,6 +166,21 @@ export function withCategoryName(m: MonthVM, categoryId: string, name: string): 
   }
 }
 
+/** Reorder the lines within one category to match the given id order. */
+export function withReorderedItems(m: MonthVM, categoryId: string, orderedItemIds: string[]): MonthVM {
+  return {
+    ...m,
+    categories: m.categories.map((c) => {
+      if (c.id !== categoryId) return c
+      const byId = new Map(c.items.map((i) => [i.id, i]))
+      const items = orderedItemIds
+        .map((id) => byId.get(id))
+        .filter((i): i is ItemVM => i !== undefined)
+      return { ...c, items }
+    }),
+  }
+}
+
 /** Reorder the expense groups to match the given id order (income stays first). */
 export function withReorderedExpenseCategories(m: MonthVM, orderedExpenseIds: string[]): MonthVM {
   const byId = new Map(m.categories.map((c) => [c.id, c]))
