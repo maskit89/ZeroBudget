@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using ZeroBudget.Application.Transactions.Commands.AssignTransaction;
 using ZeroBudget.Application.Transactions.Commands.CreateTransaction;
 using ZeroBudget.Application.Transactions.Commands.DeleteTransaction;
+using ZeroBudget.Application.Transactions.Commands.UpdateTransaction;
 using ZeroBudget.Application.Transactions.Dtos;
 using ZeroBudget.Application.Transactions.Queries.GetTransactions;
 using ZeroBudget.Domain.Enums;
@@ -52,6 +53,22 @@ public class TransactionsController : ControllerBase
         return CreatedAtAction(nameof(List), new { }, result);
     }
 
+    /// <summary>Edits a transaction's date, payee, amount and direction. Returns it.</summary>
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(TransactionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TransactionDto>> Update(
+        Guid id,
+        UpdateTransactionRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(
+            new UpdateTransactionCommand(id, request.Date, request.Payee, request.Amount, request.Type), ct);
+        return Ok(result);
+    }
+
     /// <summary>Deletes one of the user's transactions.</summary>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -88,3 +105,10 @@ public record CreateTransactionRequest(
     decimal Amount,
     TransactionType Type,
     Guid? BudgetItemId);
+
+/// <summary>Request body for editing a transaction (the id comes from the route).</summary>
+public record UpdateTransactionRequest(
+    DateOnly Date,
+    string Payee,
+    decimal Amount,
+    TransactionType Type);
