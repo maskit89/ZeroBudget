@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
@@ -26,6 +26,17 @@ export function TransactionsPage() {
   const [type, setType] = useState<number>(TransactionType.Expense)
   const [assignTo, setAssignTo] = useState('')
   const [adding, setAdding] = useState(false)
+
+  // Filters (client-side — the per-user list is small).
+  const [search, setSearch] = useState('')
+  const [unassignedOnly, setUnassignedOnly] = useState(false)
+
+  // Inline edit state.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [eDate, setEDate] = useState('')
+  const [ePayee, setEPayee] = useState('')
+  const [eAmount, setEAmount] = useState('')
+  const [eType, setEType] = useState<number>(TransactionType.Expense)
 
   useEffect(() => {
     let cancelled = false
@@ -98,7 +109,51 @@ export function TransactionsPage() {
     }
   }, [])
 
+  function startEdit(t: TransactionDto) {
+    setEditingId(t.id)
+    setEDate(t.date)
+    setEPayee(t.payee)
+    setEAmount(String(t.amount))
+    setEType(t.type)
+  }
+
+  const saveEdit = useCallback(
+    async (id: string) => {
+      const minor = parseMinor(eAmount)
+      if (minor === null || minor <= 0) {
+        setError('Enter a valid amount greater than zero.')
+        return
+      }
+      setSavingId(id)
+      setError(null)
+      try {
+        const { data } = await api.put<TransactionDto>(`/transactions/${id}`, {
+          date: eDate,
+          payee: ePayee,
+          amount: toAmount(minor),
+          type: eType,
+        })
+        setTransactions((prev) => prev.map((t) => (t.id === id ? data : t)))
+        setEditingId(null)
+      } catch {
+        setError('Could not save that change.')
+      } finally {
+        setSavingId(null)
+      }
+    },
+    [eDate, ePayee, eAmount, eType],
+  )
+
   const optionGroups = buildItemOptions(month)
+
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return transactions.filter(
+      (t) =>
+        (!unassignedOnly || t.budgetItemId === null) &&
+        (q === '' || (t.payee ?? '').toLowerCase().includes(q)),
+    )
+  }, [transactions, search, unassignedOnly])
 
   return (
     <div className="min-h-full bg-slate-50">
@@ -235,70 +290,180 @@ export function TransactionsPage() {
         )}
 
         {transactions.length > 0 && (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400">
-                  <th className="px-4 py-2 font-medium">Date</th>
-                  <th className="px-4 py-2 font-medium">Payee</th>
-                  <th className="px-4 py-2 text-right font-medium">Amount</th>
-                  <th className="px-4 py-2 font-medium">Assigned to</th>
-                  <th className="px-4 py-2" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {transactions.map((t) => {
-                  const isIncome = transactionTypeLabel(t.type) === 'Income'
-                  return (
-                    <tr key={t.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-2.5 tabular-nums text-slate-500">{t.date}</td>
-                      <td className="px-4 py-2.5 font-medium text-slate-700">{t.payee || '—'}</td>
-                      <td
-                        className={`px-4 py-2.5 text-right font-semibold tabular-nums ${
-                          isIncome ? 'text-emerald-600' : 'text-slate-700'
-                        }`}
-                      >
-                        {isIncome ? '+' : '−'}
-                        {formatMoney(fromAmount(t.amount), t.currency)}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <select
-                          value={t.budgetItemId ?? ''}
-                          disabled={savingId === t.id}
-                          aria-label={`Assign ${t.payee || 'transaction'}`}
-                          onChange={(e) => assign(t.id, e.target.value || null)}
-                          className="w-56 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50"
-                        >
-                          <option value="">Unassigned</option>
-                          {optionGroups.map((g) => (
-                            <optgroup key={g.category} label={g.category}>
-                              {g.items.map((i) => (
-                                <option key={i.id} value={i.id}>
-                                  {i.name}
-                                </option>
-                              ))}
-                            </optgroup>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-4 py-2.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => removeTransaction(t.id)}
-                          disabled={savingId === t.id}
-                          aria-label={`Delete transaction: ${t.payee || t.date}`}
-                          title="Delete transaction"
-                          className="rounded-md px-2 py-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
-                        >
-                          ✕
-                        </button>
+          <>
+            {/* Filter bar. */}
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="search"
+                value={search}
+                placeholder="Search payee…"
+                aria-label="Search transactions"
+                onChange={(e) => setSearch(e.target.value)}
+                className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={unassignedOnly}
+                  aria-label="Unassigned only"
+                  onChange={(e) => setUnassignedOnly(e.target.checked)}
+                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                Unassigned only
+              </label>
+            </div>
+
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400">
+                    <th className="px-4 py-2 font-medium">Date</th>
+                    <th className="px-4 py-2 font-medium">Payee</th>
+                    <th className="px-4 py-2 text-right font-medium">Amount</th>
+                    <th className="px-4 py-2 font-medium">Assigned to</th>
+                    <th className="px-4 py-2" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {visible.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
+                        No transactions match your filters.
                       </td>
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                  )}
+                  {visible.map((t) => {
+                    const isIncome = transactionTypeLabel(t.type) === 'Income'
+                    const editing = editingId === t.id
+                    return (
+                      <tr key={t.id} className="hover:bg-slate-50">
+                        {editing ? (
+                          <>
+                            <td className="px-4 py-2">
+                              <input
+                                type="date"
+                                value={eDate}
+                                aria-label="Edit date"
+                                onChange={(e) => setEDate(e.target.value)}
+                                className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+                              />
+                            </td>
+                            <td className="px-4 py-2">
+                              <input
+                                type="text"
+                                value={ePayee}
+                                aria-label="Edit payee"
+                                onChange={(e) => setEPayee(e.target.value)}
+                                className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+                              />
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={eAmount}
+                                aria-label="Edit amount"
+                                onChange={(e) => setEAmount(e.target.value)}
+                                className="w-24 rounded-md border border-slate-300 px-2 py-1 text-right text-sm tabular-nums"
+                              />
+                            </td>
+                            <td className="px-4 py-2">
+                              <select
+                                value={eType}
+                                aria-label="Edit type"
+                                onChange={(e) => setEType(Number(e.target.value))}
+                                className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+                              >
+                                <option value={TransactionType.Expense}>Expense</option>
+                                <option value={TransactionType.Income}>Income</option>
+                              </select>
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              <div className="flex justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => saveEdit(t.id)}
+                                  disabled={savingId === t.id}
+                                  aria-label="Save transaction"
+                                  className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingId(null)}
+                                  aria-label="Cancel edit"
+                                  className="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-100"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-4 py-2.5 tabular-nums text-slate-500">{t.date}</td>
+                            <td className="px-4 py-2.5 font-medium text-slate-700">{t.payee || '—'}</td>
+                            <td
+                              className={`px-4 py-2.5 text-right font-semibold tabular-nums ${
+                                isIncome ? 'text-emerald-600' : 'text-slate-700'
+                              }`}
+                            >
+                              {isIncome ? '+' : '−'}
+                              {formatMoney(fromAmount(t.amount), t.currency)}
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <select
+                                value={t.budgetItemId ?? ''}
+                                disabled={savingId === t.id}
+                                aria-label={`Assign ${t.payee || 'transaction'}`}
+                                onChange={(e) => assign(t.id, e.target.value || null)}
+                                className="w-56 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50"
+                              >
+                                <option value="">Unassigned</option>
+                                {optionGroups.map((g) => (
+                                  <optgroup key={g.category} label={g.category}>
+                                    {g.items.map((i) => (
+                                      <option key={i.id} value={i.id}>
+                                        {i.name}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              <div className="flex justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => startEdit(t)}
+                                  aria-label={`Edit transaction: ${t.payee || t.date}`}
+                                  title="Edit transaction"
+                                  className="rounded-md px-2 py-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                >
+                                  ✎
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeTransaction(t.id)}
+                                  disabled={savingId === t.id}
+                                  aria-label={`Delete transaction: ${t.payee || t.date}`}
+                                  title="Delete transaction"
+                                  className="rounded-md px-2 py-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </main>
     </div>

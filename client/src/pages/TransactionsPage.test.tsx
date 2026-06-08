@@ -118,4 +118,44 @@ describe('TransactionsPage manual sheet', () => {
     await waitFor(() => expect(mockDelete).toHaveBeenCalledWith('/transactions/t1'))
     await waitFor(() => expect(screen.queryByText('Tesco')).not.toBeInTheDocument())
   })
+
+  it('edits a transaction inline', { timeout: 15000 }, async () => {
+    mockLoad([tx()])
+    mockPut.mockResolvedValue({ data: { ...tx(), payee: 'Aldi', amount: 31.5 } })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await user.click(await screen.findByLabelText('Edit transaction: Tesco', {}, { timeout: 5000 }))
+    const payeeInput = screen.getByLabelText('Edit payee')
+    await user.clear(payeeInput)
+    await user.type(payeeInput, 'Aldi')
+    const amountInput = screen.getByLabelText('Edit amount')
+    await user.clear(amountInput)
+    await user.type(amountInput, '31,50')
+    await user.click(screen.getByLabelText('Save transaction'))
+
+    await waitFor(() =>
+      expect(mockPut).toHaveBeenCalledWith(
+        '/transactions/t1',
+        expect.objectContaining({ payee: 'Aldi', amount: 31.5 }),
+      ),
+    )
+    expect(await screen.findByText('Aldi', {}, { timeout: 5000 })).toBeInTheDocument()
+  })
+
+  it('filters transactions by payee search', { timeout: 15000 }, async () => {
+    mockLoad([tx(), { ...tx(), id: 't2', payee: 'Shell' }])
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await screen.findByText('Tesco', {}, { timeout: 5000 })
+    expect(screen.getByText('Shell')).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('Search transactions'), 'tes')
+
+    await waitFor(() => expect(screen.queryByText('Shell')).not.toBeInTheDocument())
+    expect(screen.getByText('Tesco')).toBeInTheDocument()
+  })
 })
