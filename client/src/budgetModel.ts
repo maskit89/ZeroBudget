@@ -5,7 +5,7 @@
 import type { BudgetMonthDto } from './types'
 import { fromAmount, sumMinor, type Minor } from './lib/money'
 
-export type CategoryKind = 'income' | 'expense'
+export type CategoryKind = 'income' | 'expense' | 'fund'
 
 export interface ItemVM {
   id: string
@@ -15,6 +15,8 @@ export interface ItemVM {
   actualMinor: Minor
   /** True when the spent amount is driven by transactions (read-only in the UI). */
   actualIsTracked: boolean
+  /** For a fund line, the rolled-over available balance (minor units); null otherwise. */
+  fundAvailableMinor: Minor | null
 }
 
 export interface CategoryVM {
@@ -45,7 +47,7 @@ export function fromDto(dto: BudgetMonthDto): MonthVM {
     categories: dto.categories.map((c) => ({
       id: c.id,
       name: c.name,
-      kind: c.kind === 'Income' ? 'income' : 'expense',
+      kind: c.kind === 'Income' ? 'income' : c.kind === 'Fund' ? 'fund' : 'expense',
       displayOrder: c.displayOrder,
       items: c.items.map((i) => ({
         id: i.id,
@@ -54,6 +56,7 @@ export function fromDto(dto: BudgetMonthDto): MonthVM {
         plannedMinor: fromAmount(i.plannedAmount),
         actualMinor: fromAmount(i.actualAmount),
         actualIsTracked: i.isActualTracked,
+        fundAvailableMinor: i.fundAvailable == null ? null : fromAmount(i.fundAvailable),
       })),
     })),
   }
@@ -65,6 +68,8 @@ export function fromDto(dto: BudgetMonthDto): MonthVM {
 // would return — the banner can never drift.
 
 export const isIncome = (c: CategoryVM): boolean => c.kind === 'income'
+
+export const isFund = (c: CategoryVM): boolean => c.kind === 'fund'
 
 export const itemRemaining = (i: ItemVM): Minor => i.plannedMinor - i.actualMinor
 
@@ -78,7 +83,11 @@ export const categoryActual = (c: CategoryVM): Minor =>
 export const totalIncome = (m: MonthVM): Minor =>
   sumMinor(m.categories.filter(isIncome).map(categoryPlanned))
 
-/** Income that has been given a job: the sum of the expense groups' planned lines. */
+/**
+ * Income that has been given a job: the sum of every non-income group's planned
+ * lines — expense spending AND fund contributions (funding a sinking fund is
+ * giving money a job too), so the budget only balances once funds are funded.
+ */
 export const monthPlanned = (m: MonthVM): Minor =>
   sumMinor(m.categories.filter((c) => !isIncome(c)).map(categoryPlanned))
 
@@ -181,14 +190,15 @@ export function withReorderedItems(m: MonthVM, categoryId: string, orderedItemId
   }
 }
 
-/** Reorder the expense groups to match the given id order (income stays first). */
+/** Reorder the expense groups to match the given id order (income first, funds last). */
 export function withReorderedExpenseCategories(m: MonthVM, orderedExpenseIds: string[]): MonthVM {
   const byId = new Map(m.categories.map((c) => [c.id, c]))
   const income = m.categories.filter(isIncome)
+  const funds = m.categories.filter(isFund)
   const expense = orderedExpenseIds
     .map((id) => byId.get(id))
     .filter((c): c is CategoryVM => c !== undefined)
-  return { ...m, categories: [...income, ...expense] }
+  return { ...m, categories: [...income, ...expense, ...funds] }
 }
 
 /** Remove a category group (and its lines). */

@@ -9,12 +9,16 @@ export interface BudgetItemDto {
   remaining: number
   /** True when actualAmount is transaction-driven (read-only); false when it's the manual value (editable). */
   isActualTracked: boolean
+  /** Sinking-fund identity for a fund line; null for ordinary lines. */
+  fundId: string | null
+  /** For a fund line, the running available balance (rolled over from prior months); null otherwise. */
+  fundAvailable: number | null
 }
 
 export interface BudgetCategoryDto {
   id: string
   name: string
-  kind: 'Income' | 'Expense'
+  kind: 'Income' | 'Expense' | 'Fund'
   displayOrder: number
   totalPlanned: number
   totalActual: number

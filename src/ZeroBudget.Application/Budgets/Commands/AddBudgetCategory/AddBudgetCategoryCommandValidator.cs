@@ -1,4 +1,5 @@
 using FluentValidation;
+using ZeroBudget.Domain.Enums;
 
 namespace ZeroBudget.Application.Budgets.Commands.AddBudgetCategory;
 
@@ -12,5 +13,10 @@ public class AddBudgetCategoryCommandValidator : AbstractValidator<AddBudgetCate
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("A category group needs a name.")
             .MaximumLength(120);
+
+        // Only expense and fund groups are user-created; the income group is seeded.
+        RuleFor(x => x.Kind)
+            .Must(k => k == CategoryKind.Expense || k == CategoryKind.Fund)
+            .WithMessage("A group can only be an expense or a fund group.");
     }
 }

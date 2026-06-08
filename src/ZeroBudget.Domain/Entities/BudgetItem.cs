@@ -49,6 +49,23 @@ public class BudgetItem : BaseEntity
     /// </summary>
     public bool IsActualTracked { get; set; }
 
+    /// <summary>
+    /// For a line in a <see cref="CategoryKind.Fund"/> group: a stable id shared by
+    /// every month's instance of the same sinking fund, so its balance can roll over.
+    /// Generated when the fund line is first created and preserved when a month is
+    /// copied. Null for ordinary income/expense lines.
+    /// </summary>
+    public Guid? FundId { get; set; }
+
+    /// <summary>
+    /// Transient (not persisted): for a fund line, the running available balance of
+    /// the fund as of this month — the sum of every contribution (planned) minus
+    /// every spend (actual) across all months up to and including this one. Null for
+    /// non-fund lines. Derived at read time (see
+    /// ZeroBudget.Application.Budgets.BudgetActuals).
+    /// </summary>
+    public decimal? FundAvailable { get; set; }
+
     public int DisplayOrder { get; set; }
 
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();

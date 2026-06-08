@@ -15,6 +15,11 @@ namespace ZeroBudget.Application.Budgets;
 ///   Manual  — the user's <see cref="BudgetItem.ManualActualAmount"/>.
 /// So an income line's "received" and an expense line's "spent" both work the
 /// same way. Computing at read time keeps a single, deterministic source of truth.
+///
+/// It also derives each fund line's rolling <see cref="BudgetItem.FundAvailable"/>
+/// balance — the sum of every contribution (planned) minus every spend (actual)
+/// for that <see cref="BudgetItem.FundId"/> across all months up to and including
+/// the viewed one — so a sinking fund's balance carries over month to month.
 /// </summary>
 public static class BudgetActuals
 {
@@ -84,6 +89,104 @@ public static class BudgetActuals
                 item.ActualAmount = item.ManualActualAmount;
                 item.IsActualTracked = false;
             }
+        }
+
+        await ApplyFundBalancesAsync(db, ownerId, month, cancellationToken);
+    }
+
+    /// <summary>
+    /// Sets <see cref="BudgetItem.FundAvailable"/> on each of the viewed month's fund
+    /// lines to the fund's running balance: every contribution (planned) minus every
+    /// spend (actual) for that <see cref="BudgetItem.FundId"/>, across all of the
+    /// user's months up to and including this one. Unspent fund money therefore rolls
+    /// over instead of resetting each month.
+    /// </summary>
+    private static async Task ApplyFundBalancesAsync(
+        IApplicationDbContext db,
+        string ownerId,
+        BudgetMonth month,
+        CancellationToken cancellationToken)
+    {
+        var fundItems = month.Categories
+            .Where(c => c.Kind == CategoryKind.Fund)
+            .SelectMany(c => c.Items)
+            .Where(i => i.FundId != null)
+            .ToList();
+        if (fundItems.Count == 0)
+        {
+            return;
+        }
+
+        var fundIds = fundItems.Select(i => i.FundId!.Value).Distinct().ToList();
+
+        // Every monthly instance of these funds up to and including the viewed month.
+        var lines = await (
+            from i in db.BudgetItems
+            join c in db.BudgetCategories on i.BudgetCategoryId equals c.Id
+            join m in db.BudgetMonths on c.BudgetMonthId equals m.Id
+            where m.OwnerId == ownerId
+                  && c.Kind == CategoryKind.Fund
+                  && i.FundId != null
+                  && fundIds.Contains(i.FundId.Value)
+                  && (m.Year < month.Year || (m.Year == month.Year && m.Month <= month.Month))
+            select new
+            {
+                FundId = i.FundId!.Value,
+                ItemId = i.Id,
+                i.PlannedAmount,
+                i.ActualEntryMode,
+                i.ManualActualAmount,
+            })
+            .ToListAsync(cancellationToken);
+
+        var lineItemIds = lines.Select(l => l.ItemId).ToList();
+
+        // Spending tracked by transactions, per fund line (expenses only).
+        var txByItem = (await db.Transactions
+            .Where(t => t.OwnerId == ownerId
+                        && t.Type == TransactionType.Expense
+                        && t.BudgetItemId != null
+                        && lineItemIds.Contains(t.BudgetItemId.Value))
+            .GroupBy(t => t.BudgetItemId!.Value)
+            .Select(g => new { ItemId = g.Key, Total = g.Sum(t => t.Amount * t.ExchangeRate) })
+            .ToListAsync(cancellationToken))
+            .ToDictionary(x => x.ItemId, x => x.Total);
+
+        var splitByItem = (await (
+            from s in db.TransactionSplits
+            join t in db.Transactions on s.TransactionId equals t.Id
+            where t.OwnerId == ownerId
+                  && t.Type == TransactionType.Expense
+                  && s.BudgetItemId != null
+                  && lineItemIds.Contains(s.BudgetItemId.Value)
+            select new { ItemId = s.BudgetItemId!.Value, Total = s.Amount * t.ExchangeRate })
+            .ToListAsync(cancellationToken))
+            .GroupBy(x => x.ItemId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Total));
+
+        // Net per fund: contributions (planned) minus spending (actual), all months ≤ now.
+        var balanceByFund = new Dictionary<Guid, decimal>();
+        foreach (var line in lines)
+        {
+            decimal spent;
+            if (line.ActualEntryMode == ActualEntryMode.Tracked)
+            {
+                var whole = txByItem.TryGetValue(line.ItemId, out var w) ? w : 0m;
+                var split = splitByItem.TryGetValue(line.ItemId, out var sp) ? sp : 0m;
+                spent = whole + split;
+            }
+            else
+            {
+                spent = line.ManualActualAmount;
+            }
+
+            balanceByFund.TryGetValue(line.FundId, out var running);
+            balanceByFund[line.FundId] = running + line.PlannedAmount - spent;
+        }
+
+        foreach (var item in fundItems)
+        {
+            item.FundAvailable = balanceByFund.TryGetValue(item.FundId!.Value, out var bal) ? bal : 0m;
         }
     }
 }

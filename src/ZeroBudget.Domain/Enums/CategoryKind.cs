@@ -8,9 +8,12 @@ namespace ZeroBudget.Domain.Enums;
 /// and every Euro of it must be assigned to an expense line until
 /// <see cref="Entities.BudgetMonth.RemainingToBudget"/> reaches 0.
 /// The numeric values mirror <see cref="TransactionType"/> for consistency.
+/// A <see cref="Fund"/> group holds sinking funds — expense-like lines whose
+/// balance rolls over month to month (see <see cref="Entities.BudgetItem.FundId"/>).
 /// </summary>
 public enum CategoryKind
 {
     Expense = 0,
-    Income = 1
+    Income = 1,
+    Fund = 2
 }

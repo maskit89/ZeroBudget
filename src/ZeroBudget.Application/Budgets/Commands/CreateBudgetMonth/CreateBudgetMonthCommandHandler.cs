@@ -75,6 +75,8 @@ public class CreateBudgetMonthCommandHandler : IRequestHandler<CreateBudgetMonth
                             DisplayOrder = i.DisplayOrder,
                             ActualEntryMode = i.ActualEntryMode,
                             ManualActualAmount = 0m,
+                            // Keep the fund's identity so its balance rolls over.
+                            FundId = i.FundId,
                         })
                         .ToList(),
                 })

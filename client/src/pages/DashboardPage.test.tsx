@@ -237,7 +237,11 @@ describe('DashboardPage optimistic editing', () => {
     await user.click(screen.getByRole('button', { name: 'Add category group' }))
 
     await waitFor(() =>
-      expect(mockPost).toHaveBeenCalledWith('/budget/categories', { budgetMonthId: 'm1', name: 'Subscriptions' }),
+      expect(mockPost).toHaveBeenCalledWith('/budget/categories', {
+        budgetMonthId: 'm1',
+        name: 'Subscriptions',
+        isFund: false,
+      }),
     )
     expect(await screen.findByDisplayValue('Subscriptions', {}, { timeout: 5000 })).toBeInTheDocument()
   })
@@ -324,6 +328,55 @@ describe('DashboardPage optimistic editing', () => {
     await waitFor(() =>
       expect(mockPut).toHaveBeenCalledWith('/budget/categories/c1/items/order', {
         orderedItemIds: ['i-util', 'i-rent'],
+      }),
+    )
+  })
+
+  it('renders a fund group with its rolled-over Available balance', { timeout: 15000 }, async () => {
+    const b = budget()
+    b.categories.push({
+      id: 'funds', name: 'Sinking Funds', kind: 'Fund', displayOrder: 0, totalPlanned: 100, totalActual: 0,
+      items: [
+        {
+          id: 'i-car', name: 'Car', displayOrder: 0, plannedAmount: 100, actualAmount: 30,
+          remaining: 70, isActualTracked: true, fundId: 'fund-car', fundAvailable: 170,
+        },
+      ],
+    })
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: b }),
+    )
+
+    renderPage()
+
+    expect(await screen.findByDisplayValue('Car', {}, { timeout: 5000 })).toBeInTheDocument()
+    // The fund's available balance (170,00 €) is shown, rolled over across months.
+    expect(screen.getByText('170,00 €')).toBeInTheDocument()
+  })
+
+  it('creates a fund group when the kind is set to Fund', { timeout: 15000 }, async () => {
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
+    )
+    const withFunds = budget()
+    withFunds.categories.push({
+      id: 'funds', name: 'Sinking Funds', kind: 'Fund', displayOrder: 0, totalPlanned: 0, totalActual: 0, items: [],
+    })
+    mockPost.mockResolvedValue({ data: withFunds })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    const input = await screen.findByLabelText('New category group name', {}, { timeout: 5000 })
+    await user.type(input, 'Sinking Funds')
+    await user.selectOptions(screen.getByLabelText('New group kind'), 'fund')
+    await user.click(screen.getByRole('button', { name: 'Add category group' }))
+
+    await waitFor(() =>
+      expect(mockPost).toHaveBeenCalledWith('/budget/categories', {
+        budgetMonthId: 'm1',
+        name: 'Sinking Funds',
+        isFund: true,
       }),
     )
   })

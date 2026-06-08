@@ -25,7 +25,7 @@ public class BudgetCategoryDto
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>"Income" or "Expense" — drives where the group renders (income at the top).</summary>
+    /// <summary>"Income", "Expense" or "Fund" — drives where/how the group renders.</summary>
     public string Kind { get; set; } = "Expense";
 
     public int DisplayOrder { get; set; }
@@ -48,4 +48,13 @@ public class BudgetItemDto
     /// UI); false when it reflects the user's manually-entered value (editable).
     /// </summary>
     public bool IsActualTracked { get; set; }
+
+    /// <summary>The sinking-fund identity for a fund line; null for ordinary lines.</summary>
+    public Guid? FundId { get; set; }
+
+    /// <summary>
+    /// For a fund line, the running available balance (rolled over from prior months);
+    /// null for non-fund lines.
+    /// </summary>
+    public decimal? FundAvailable { get; set; }
 }

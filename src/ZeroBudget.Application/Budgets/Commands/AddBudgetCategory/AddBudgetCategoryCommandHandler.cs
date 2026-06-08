@@ -39,18 +39,19 @@ public class AddBudgetCategoryCommandHandler : IRequestHandler<AddBudgetCategory
             throw new ForbiddenAccessException();
         }
 
-        // New groups are expenses and append after the existing expense groups.
-        var expenseOrders = month.Categories
-            .Where(c => c.Kind == CategoryKind.Expense)
+        // Append after the existing groups of the same kind (expense or fund), so
+        // each kind keeps its own contiguous display order.
+        var sameKindOrders = month.Categories
+            .Where(c => c.Kind == request.Kind)
             .Select(c => c.DisplayOrder)
             .ToList();
-        var nextOrder = expenseOrders.Count == 0 ? 0 : expenseOrders.Max() + 1;
+        var nextOrder = sameKindOrders.Count == 0 ? 0 : sameKindOrders.Max() + 1;
 
         _db.BudgetCategories.Add(new BudgetCategory
         {
             BudgetMonthId = month.Id,
             Name = request.Name.Trim(),
-            Kind = CategoryKind.Expense,
+            Kind = request.Kind,
             DisplayOrder = nextOrder,
         });
 

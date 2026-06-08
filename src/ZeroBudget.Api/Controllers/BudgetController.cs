@@ -15,6 +15,7 @@ using ZeroBudget.Application.Budgets.Commands.UpdateBudgetItem;
 using ZeroBudget.Application.Budgets.Dtos;
 using ZeroBudget.Application.Budgets.Queries.GetBudgetMonth;
 using ZeroBudget.Application.Budgets.Queries.GetBudgetMonths;
+using ZeroBudget.Domain.Enums;
 
 namespace ZeroBudget.Api.Controllers;
 
@@ -98,7 +99,7 @@ public class BudgetController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Creates a new expense category group and returns the recomputed month.</summary>
+    /// <summary>Creates a new expense or fund category group and returns the recomputed month.</summary>
     [HttpPost("categories")]
     [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -108,8 +109,9 @@ public class BudgetController : ControllerBase
         AddBudgetCategoryRequest request,
         CancellationToken ct)
     {
+        var kind = request.IsFund ? CategoryKind.Fund : CategoryKind.Expense;
         var result = await _mediator.Send(
-            new AddBudgetCategoryCommand(request.BudgetMonthId, request.Name), ct);
+            new AddBudgetCategoryCommand(request.BudgetMonthId, request.Name, kind), ct);
         return Ok(result);
     }
 
@@ -254,8 +256,8 @@ public record SetBudgetItemActualRequest(decimal ActualAmount);
 /// <summary>Request body for switching a line's actual-entry mode (the id comes from the route).</summary>
 public record SetBudgetItemActualModeRequest(bool TrackByTransactions);
 
-/// <summary>Request body for creating a category group.</summary>
-public record AddBudgetCategoryRequest(Guid BudgetMonthId, string Name);
+/// <summary>Request body for creating a category group (a fund group when IsFund is true).</summary>
+public record AddBudgetCategoryRequest(Guid BudgetMonthId, string Name, bool IsFund = false);
 
 /// <summary>Request body for renaming a category group (the id comes from the route).</summary>
 public record RenameBudgetCategoryRequest(string Name);

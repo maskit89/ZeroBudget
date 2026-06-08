@@ -32,8 +32,13 @@ public class BudgetItemConfiguration : IEntityTypeConfiguration<BudgetItem>
 
         builder.Ignore(i => i.Remaining);
 
-        // Transient presentation flag derived at read time, never persisted.
+        // Transient presentation values derived at read time, never persisted.
         builder.Ignore(i => i.IsActualTracked);
+        builder.Ignore(i => i.FundAvailable);
+
+        // Stable id linking a sinking fund's monthly instances; indexed for the
+        // cross-month balance roll-up. Null for ordinary income/expense lines.
+        builder.HasIndex(i => i.FundId);
 
         builder.HasMany(i => i.Transactions)
             .WithOne(t => t.BudgetItem)

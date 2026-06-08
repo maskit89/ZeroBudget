@@ -45,12 +45,14 @@ public class BudgetMonth : BaseEntity
         Categories.Where(c => c.Kind == CategoryKind.Income).Sum(c => c.TotalPlanned);
 
     /// <summary>
-    /// Sum of every planned amount across the <see cref="CategoryKind.Expense"/>
-    /// groups — i.e. how much income has been given a job. Income lines are
-    /// deliberately excluded so they are never counted as spending.
+    /// Sum of every planned amount across the non-income groups — i.e. how much
+    /// income has been given a job. This includes <see cref="CategoryKind.Expense"/>
+    /// spending and <see cref="CategoryKind.Fund"/> contributions (putting money into
+    /// a sinking fund is giving it a job too), so the budget only balances once funds
+    /// are funded. Income lines are excluded so they are never counted as spending.
     /// </summary>
     public decimal TotalPlanned =>
-        Categories.Where(c => c.Kind == CategoryKind.Expense).Sum(c => c.TotalPlanned);
+        Categories.Where(c => c.Kind != CategoryKind.Income).Sum(c => c.TotalPlanned);
 
     /// <summary>
     /// The core ZBB metric: income that has not yet been assigned to a line.
