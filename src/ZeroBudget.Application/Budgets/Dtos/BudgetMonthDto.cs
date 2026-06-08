@@ -57,4 +57,10 @@ public class BudgetItemDto
     /// null for non-fund lines.
     /// </summary>
     public decimal? FundAvailable { get; set; }
+
+    /// <summary>The day of the month (1–31) this bill is due; null when it isn't a bill.</summary>
+    public int? DueDay { get; set; }
+
+    /// <summary>Whether this month's instance of the bill has been paid.</summary>
+    public bool IsPaid { get; set; }
 }

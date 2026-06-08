@@ -51,7 +51,9 @@ public static class BudgetMonthMapping
                         Remaining = i.Remaining,
                         IsActualTracked = i.IsActualTracked,
                         FundId = i.FundId,
-                        FundAvailable = i.FundAvailable
+                        FundAvailable = i.FundAvailable,
+                        DueDay = i.DueDay,
+                        IsPaid = i.IsPaid
                     })
                     .ToList()
             })

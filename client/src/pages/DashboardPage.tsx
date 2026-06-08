@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
 import type { BudgetMonthDto, BudgetMonthSummaryDto, ImportStatementResult } from '../types'
 import {
+  billsSummary,
   fromDto,
   findItem,
   isFund,
@@ -13,7 +14,9 @@ import {
   totalIncome,
   withCategoryName,
   withItemActual,
+  withItemBill,
   withItemName,
+  withItemPaid,
   withItemPlanned,
   withNewCategory,
   withNewItem,
@@ -23,7 +26,7 @@ import {
   withReorderedItems,
   type MonthVM,
 } from '../budgetModel'
-import { toAmount, type Minor } from '../lib/money'
+import { formatMoney, toAmount, type Minor } from '../lib/money'
 import { RemainingBanner } from '../components/RemainingBanner'
 import { CategoryAccordion } from '../components/CategoryAccordion'
 import { FundGroup } from '../components/FundGroup'
@@ -200,6 +203,50 @@ export function DashboardPage() {
     [month],
   )
 
+  // Mark a line as a bill due on a day of the month (or clear it with null).
+  const setBill = useCallback(
+    async (itemId: string, dueDay: number | null) => {
+      if (!month) return
+
+      const snapshot = month
+      setError(null)
+      setSavingItemId(itemId)
+      setMonth(withItemBill(month, itemId, dueDay)) // optimistic
+
+      try {
+        await api.put(`/budget/items/${itemId}/bill`, { dueDay })
+      } catch {
+        setMonth(snapshot)
+        setError('Could not update that bill — reverted.')
+      } finally {
+        setSavingItemId(null)
+      }
+    },
+    [month],
+  )
+
+  // Toggle a bill line's paid status for this month.
+  const setPaid = useCallback(
+    async (itemId: string, isPaid: boolean) => {
+      if (!month) return
+
+      const snapshot = month
+      setError(null)
+      setSavingItemId(itemId)
+      setMonth(withItemPaid(month, itemId, isPaid)) // optimistic
+
+      try {
+        await api.put(`/budget/items/${itemId}/paid`, { isPaid })
+      } catch {
+        setMonth(snapshot)
+        setError('Could not update that bill — reverted.')
+      } finally {
+        setSavingItemId(null)
+      }
+    },
+    [month],
+  )
+
   // Rename a line. The update endpoint takes the planned amount too, so we send
   // the line's current planned value alongside the new name.
   const renameItem = useCallback(
@@ -246,6 +293,8 @@ export function DashboardPage() {
           actualMinor: 0,
           actualIsTracked: false,
           fundAvailableMinor: null,
+          dueDay: null,
+          isPaid: false,
         }),
       )
 
@@ -563,6 +612,30 @@ export function DashboardPage() {
               currency={month.currency}
             />
 
+            {(() => {
+              const bills = billsSummary(month)
+              if (bills.total === 0) return null
+              const allPaid = bills.paid === bills.total
+              return (
+                <div
+                  className={`flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm ${
+                    allPaid
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                      : 'border-amber-200 bg-amber-50 text-amber-800'
+                  }`}
+                >
+                  <span className="font-medium">
+                    📅 Bills: {bills.paid}/{bills.total} paid
+                  </span>
+                  <span className="tabular-nums">
+                    {allPaid
+                      ? 'All bills paid 🎉'
+                      : `${formatMoney(bills.unpaidMinor, month.currency)} left to pay`}
+                  </span>
+                </div>
+              )
+            })()}
+
             <div className="space-y-3">
               {/* Income groups always render first (EveryDollar style). */}
               {month.categories.filter(isIncome).map((category) => (
@@ -592,6 +665,8 @@ export function DashboardPage() {
                     onCommitItem={commitItem}
                     onCommitActual={commitActual}
                     onSetActualMode={setActualMode}
+                    onSetBill={setBill}
+                    onSetPaid={setPaid}
                     onRenameItem={renameItem}
                     onDeleteItem={deleteItem}
                     onAddItem={addItem}

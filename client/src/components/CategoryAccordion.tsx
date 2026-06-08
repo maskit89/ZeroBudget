@@ -15,6 +15,8 @@ interface Props {
   onCommitItem: (itemId: string, plannedMinor: Minor) => void
   onCommitActual: (itemId: string, actualMinor: Minor) => void
   onSetActualMode: (itemId: string, trackByTransactions: boolean) => void
+  onSetBill: (itemId: string, dueDay: number | null) => void
+  onSetPaid: (itemId: string, isPaid: boolean) => void
   onRenameItem: (itemId: string, name: string) => void
   onDeleteItem: (itemId: string) => void
   onAddItem: (categoryId: string, name: string) => void
@@ -39,6 +41,8 @@ export function CategoryAccordion({
   onCommitItem,
   onCommitActual,
   onSetActualMode,
+  onSetBill,
+  onSetPaid,
   onRenameItem,
   onDeleteItem,
   onAddItem,
@@ -193,6 +197,8 @@ export function CategoryAccordion({
                 onCommit={onCommitItem}
                 onCommitActual={onCommitActual}
                 onSetActualMode={onSetActualMode}
+                onSetBill={onSetBill}
+                onSetPaid={onSetPaid}
                 onRename={onRenameItem}
                 onDelete={onDeleteItem}
               />

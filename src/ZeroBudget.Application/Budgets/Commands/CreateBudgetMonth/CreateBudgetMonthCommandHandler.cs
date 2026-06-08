@@ -77,6 +77,8 @@ public class CreateBudgetMonthCommandHandler : IRequestHandler<CreateBudgetMonth
                             ManualActualAmount = 0m,
                             // Keep the fund's identity so its balance rolls over.
                             FundId = i.FundId,
+                            // Bills recur, so the due day carries; paid resets (new month).
+                            DueDay = i.DueDay,
                         })
                         .ToList(),
                 })

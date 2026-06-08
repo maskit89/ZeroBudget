@@ -9,9 +9,12 @@ import {
   totalIncome,
   remainingToBudget,
   isBalanced,
+  billsSummary,
   withItemPlanned,
   withItemActual,
+  withItemBill,
   withItemName,
+  withItemPaid,
   withNewItem,
   withoutItem,
   withNewCategory,
@@ -205,5 +208,33 @@ describe('budgetModel selectors', () => {
     // The 100 contribution joins the 1300 of expenses in the planned pool.
     expect(monthPlanned(vm)).toBe(fromAmount(1400))
     expect(remainingToBudget(vm)).toBe(fromAmount(1600))
+  })
+
+  it('withItemBill sets/clears a due day; clearing also marks it unpaid', () => {
+    const vm = fromDto(dto())
+    const billed = withItemBill(vm, 'i1', 15) // Rent due on the 15th
+    expect(findItem(billed, 'i1')!.dueDay).toBe(15)
+
+    const paid = withItemPaid(billed, 'i1', true)
+    expect(findItem(paid, 'i1')!.isPaid).toBe(true)
+
+    // Clearing the due day drops the bill and resets paid.
+    const cleared = withItemBill(paid, 'i1', null)
+    expect(findItem(cleared, 'i1')!.dueDay).toBeNull()
+    expect(findItem(cleared, 'i1')!.isPaid).toBe(false)
+    // immutability: original untouched
+    expect(findItem(vm, 'i1')!.dueDay).toBeNull()
+  })
+
+  it('billsSummary counts bills and totals what is unpaid', () => {
+    let vm = fromDto(dto())
+    vm = withItemBill(vm, 'i1', 1) // Rent 1100, due 1st
+    vm = withItemBill(vm, 'i2', 20) // Groceries 200, due 20th
+    vm = withItemPaid(vm, 'i1', true) // Rent paid
+
+    const s = billsSummary(vm)
+    expect(s.total).toBe(2)
+    expect(s.paid).toBe(1)
+    expect(s.unpaidMinor).toBe(fromAmount(200)) // only Groceries (unpaid) counts
   })
 })

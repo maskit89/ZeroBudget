@@ -380,6 +380,45 @@ describe('DashboardPage optimistic editing', () => {
       }),
     )
   })
+
+  it('marks an expense line as a bill with a due day', { timeout: 15000 }, async () => {
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
+    )
+    mockPut.mockResolvedValue({ data: budget() })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await user.click(await screen.findByLabelText('Add a due date to Rent', {}, { timeout: 5000 }))
+    await user.type(screen.getByLabelText('Due day for Rent'), '15')
+    await user.click(screen.getByLabelText('Save due day for Rent'))
+
+    await waitFor(() =>
+      expect(mockPut).toHaveBeenCalledWith('/budget/items/i-rent/bill', { dueDay: 15 }),
+    )
+  })
+
+  it('toggles a bill line as paid and shows the bills summary', { timeout: 15000 }, async () => {
+    const b = budget()
+    b.categories[1].items[0] = { ...b.categories[1].items[0], dueDay: 15, isPaid: false }
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: b }),
+    )
+    mockPut.mockResolvedValue({ data: b })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    // The unpaid bill shows in the summary.
+    expect(await screen.findByText(/Bills: 0\/1 paid/, {}, { timeout: 5000 })).toBeInTheDocument()
+
+    await user.click(screen.getByLabelText('Mark Rent paid'))
+
+    await waitFor(() =>
+      expect(mockPut).toHaveBeenCalledWith('/budget/items/i-rent/paid', { isPaid: true }),
+    )
+  })
 })
 
 describe('DashboardPage month navigation', () => {

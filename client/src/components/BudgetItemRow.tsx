@@ -16,6 +16,10 @@ interface Props {
   onCommitActual?: (itemId: string, actualMinor: Minor) => void
   /** When provided, a toggle switches the line between manual entry and transaction tracking. */
   onSetActualMode?: (itemId: string, trackByTransactions: boolean) => void
+  /** When provided, the line can be tracked as a bill with a due day (null clears it). */
+  onSetBill?: (itemId: string, dueDay: number | null) => void
+  /** When provided, a bill line shows a paid checkbox. */
+  onSetPaid?: (itemId: string, isPaid: boolean) => void
   /** When provided, ▲▼ controls reorder the line within its category. */
   onMove?: (itemId: string, direction: -1 | 1) => void
   isFirst?: boolean
@@ -42,6 +46,8 @@ export function BudgetItemRow({
   onDelete,
   onCommitActual,
   onSetActualMode,
+  onSetBill,
+  onSetPaid,
   onMove,
   isFirst = false,
   isLast = false,
@@ -50,11 +56,30 @@ export function BudgetItemRow({
   const [name, setName] = useState(item.name)
   const [draft, setDraft] = useState(toEditString(item.plannedMinor))
   const [actualDraft, setActualDraft] = useState(toEditString(item.actualMinor))
+  const [billEditing, setBillEditing] = useState(false)
+  const [billDraft, setBillDraft] = useState(item.dueDay?.toString() ?? '')
 
   // Re-sync when the underlying values change (optimistic update or rollback).
   useEffect(() => setName(item.name), [item.name])
   useEffect(() => setDraft(toEditString(item.plannedMinor)), [item.plannedMinor])
   useEffect(() => setActualDraft(toEditString(item.actualMinor)), [item.actualMinor])
+  useEffect(() => setBillDraft(item.dueDay?.toString() ?? ''), [item.dueDay])
+
+  function commitBill() {
+    if (!onSetBill) return
+    const n = Number(billDraft)
+    setBillEditing(false)
+    if (!Number.isInteger(n) || n < 1 || n > 31) {
+      setBillDraft(item.dueDay?.toString() ?? '') // revert invalid input
+      return
+    }
+    if (n !== item.dueDay) onSetBill(item.id, n)
+  }
+
+  function clearBill() {
+    setBillEditing(false)
+    onSetBill?.(item.id, null)
+  }
 
   function commitName() {
     if (!onRename) return
@@ -131,10 +156,10 @@ export function BudgetItemRow({
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
               if (e.key === 'Escape') setName(item.name)
             }}
-            className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-slate-700 hover:border-slate-200 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-slate-700 hover:border-slate-200 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
         ) : (
-          <span className="truncate px-2 text-sm font-medium text-slate-700">{item.name}</span>
+          <span className="min-w-0 flex-1 truncate px-2 text-sm font-medium text-slate-700">{item.name}</span>
         )}
         {saving && (
           <span
@@ -143,6 +168,84 @@ export function BudgetItemRow({
             aria-label="Saving"
           />
         )}
+
+        {onSetBill &&
+          (billEditing ? (
+            <span className="flex shrink-0 items-center gap-0.5">
+              <input
+                type="number"
+                min={1}
+                max={31}
+                value={billDraft}
+                aria-label={`Due day for ${item.name}`}
+                onChange={(e) => setBillDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitBill()
+                  if (e.key === 'Escape') {
+                    setBillEditing(false)
+                    setBillDraft(item.dueDay?.toString() ?? '')
+                  }
+                }}
+                className="w-12 rounded-md border border-slate-300 px-1 py-0.5 text-xs tabular-nums focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+              <button
+                type="button"
+                onClick={commitBill}
+                aria-label={`Save due day for ${item.name}`}
+                className="rounded px-1 text-emerald-600 hover:bg-emerald-50"
+              >
+                ✓
+              </button>
+              {item.dueDay !== null && (
+                <button
+                  type="button"
+                  onClick={clearBill}
+                  aria-label={`Remove bill from ${item.name}`}
+                  title="Remove bill"
+                  className="rounded px-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                >
+                  ✕
+                </button>
+              )}
+            </span>
+          ) : item.dueDay !== null ? (
+            <span className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setBillEditing(true)}
+                aria-label={`Edit due day for ${item.name}`}
+                title={`Bill due on day ${item.dueDay}`}
+                className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-amber-700 hover:bg-amber-200"
+              >
+                📅 {item.dueDay}
+              </button>
+              {onSetPaid && (
+                <label
+                  className="flex items-center gap-0.5 text-[11px]"
+                  title={item.isPaid ? 'Paid' : 'Mark as paid'}
+                >
+                  <input
+                    type="checkbox"
+                    checked={item.isPaid}
+                    aria-label={`Mark ${item.name} paid`}
+                    onChange={(e) => onSetPaid(item.id, e.target.checked)}
+                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className={item.isPaid ? 'text-emerald-600' : 'text-slate-400'}>Paid</span>
+                </label>
+              )}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setBillEditing(true)}
+              aria-label={`Add a due date to ${item.name}`}
+              title="Track as a bill"
+              className="shrink-0 rounded px-1 text-xs text-slate-300 hover:bg-slate-100 hover:text-slate-600"
+            >
+              📅
+            </button>
+          ))}
       </div>
 
       <div className="col-span-3 flex items-center justify-end">
