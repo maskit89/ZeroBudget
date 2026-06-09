@@ -46,6 +46,22 @@ public class CreateTransactionCommandHandler : IRequestHandler<CreateTransaction
             item.ActualEntryMode = ActualEntryMode.Tracked;
         }
 
+        Account? account = null;
+        if (request.AccountId is Guid accountId)
+        {
+            account = await _db.Accounts
+                .FirstOrDefaultAsync(a => a.Id == accountId, cancellationToken);
+
+            if (account is null)
+            {
+                throw new NotFoundException($"Account {accountId} was not found.");
+            }
+            if (account.OwnerId != userId)
+            {
+                throw new ForbiddenAccessException();
+            }
+        }
+
         // Manual entries are in the budget's base currency for that month (no FX).
         var month = await _db.BudgetMonths
             .AsNoTracking()
@@ -67,6 +83,8 @@ public class CreateTransactionCommandHandler : IRequestHandler<CreateTransaction
             Type = request.Type,
             BudgetItem = item,
             BudgetItemId = item?.Id,
+            Account = account,
+            AccountId = account?.Id,
         };
 
         _db.Transactions.Add(transaction);

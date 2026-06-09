@@ -4,6 +4,7 @@ import { useAuth } from './auth/AuthContext'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { TransactionsPage } from './pages/TransactionsPage'
+import { AccountsPage } from './pages/AccountsPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { RulesPage } from './pages/RulesPage'
 
@@ -34,6 +35,14 @@ export default function App() {
         element={
           <RequireAuth>
             <TransactionsPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/accounts"
+        element={
+          <RequireAuth>
+            <AccountsPage />
           </RequireAuth>
         }
       />

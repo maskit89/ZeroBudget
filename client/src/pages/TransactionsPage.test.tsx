@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import type { BudgetMonthDto, TransactionDto } from '../types'
+import type { AccountDto, BudgetMonthDto, TransactionDto } from '../types'
 
 const { mockGet, mockPut, mockPost, mockDelete } = vi.hoisted(() => ({
   mockGet: vi.fn(),
@@ -45,16 +45,24 @@ function tx(): TransactionDto {
   return {
     id: 't1', date: '2026-06-10', payee: 'Tesco', amount: 12.5, currency: 'EUR',
     exchangeRate: 1, baseAmount: 12.5, type: 0, bankReference: null,
-    budgetItemId: null, budgetItemName: null, isSplit: false, splits: [],
+    budgetItemId: null, budgetItemName: null, accountId: null, accountName: null,
+    isSplit: false, splits: [],
   }
 }
 
-function mockLoad(transactions: TransactionDto[]) {
-  mockGet.mockImplementation((url: string) =>
-    url === '/transactions'
-      ? Promise.resolve({ data: transactions })
-      : Promise.resolve({ data: budget() }),
-  )
+function accountsFixture(): AccountDto[] {
+  return [
+    { id: 'a1', name: 'Everyday', type: 0, currency: 'EUR', openingBalance: 100, currentBalance: 100, displayOrder: 0 },
+    { id: 'a2', name: 'Savings', type: 1, currency: 'EUR', openingBalance: 500, currentBalance: 500, displayOrder: 1 },
+  ]
+}
+
+function mockLoad(transactions: TransactionDto[], accounts: AccountDto[] = []) {
+  mockGet.mockImplementation((url: string) => {
+    if (url === '/transactions') return Promise.resolve({ data: transactions })
+    if (url === '/accounts') return Promise.resolve({ data: accounts })
+    return Promise.resolve({ data: budget() })
+  })
 }
 
 function renderPage() {
@@ -96,6 +104,35 @@ describe('TransactionsPage manual sheet', () => {
       ),
     )
     expect(await screen.findByText('Tesco', {}, { timeout: 5000 })).toBeInTheDocument()
+  })
+
+  it('tags a new transaction to an account', { timeout: 15000 }, async () => {
+    mockLoad([], accountsFixture())
+    mockPost.mockResolvedValue({
+      data: { ...tx(), accountId: 'a1', accountName: 'Everyday' },
+    })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await user.type(await screen.findByLabelText('Transaction payee', {}, { timeout: 5000 }), 'Tesco')
+    await user.type(screen.getByLabelText('Transaction amount'), '12,50')
+    // The account select appears once accounts have loaded.
+    await user.selectOptions(
+      await screen.findByLabelText('Transaction account', {}, { timeout: 5000 }),
+      'a1',
+    )
+    await user.click(screen.getByRole('button', { name: 'Add transaction' }))
+
+    await waitFor(() =>
+      expect(mockPost).toHaveBeenCalledWith(
+        '/transactions',
+        expect.objectContaining({ payee: 'Tesco', accountId: 'a1' }),
+      ),
+    )
+    // The posted account shows under the payee in the table (not the add-form option).
+    const table = within(await screen.findByRole('table', {}, { timeout: 5000 }))
+    expect(table.getByText('Everyday')).toBeInTheDocument()
   })
 
   it('rejects a non-positive amount without calling the API', { timeout: 15000 }, async () => {

@@ -126,6 +126,12 @@ export function ReportsPage() {
               >
                 Transactions
               </Link>
+              <Link
+                to="/accounts"
+                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
+              >
+                Accounts
+              </Link>
               <span className="rounded-md bg-slate-100 px-3 py-1.5 font-semibold text-slate-800">
                 Reports
               </span>

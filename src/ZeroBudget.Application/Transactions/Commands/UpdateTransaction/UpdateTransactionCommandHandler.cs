@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using ZeroBudget.Application.Common.Exceptions;
 using ZeroBudget.Application.Common.Interfaces;
 using ZeroBudget.Application.Transactions.Dtos;
+using ZeroBudget.Domain.Entities;
 
 namespace ZeroBudget.Application.Transactions.Commands.UpdateTransaction;
 
@@ -24,6 +25,7 @@ public class UpdateTransactionCommandHandler : IRequestHandler<UpdateTransaction
 
         var transaction = await _db.Transactions
             .Include(t => t.BudgetItem)
+            .Include(t => t.Account)
             .FirstOrDefaultAsync(t => t.Id == request.TransactionId, cancellationToken);
 
         if (transaction is null)
@@ -35,10 +37,28 @@ public class UpdateTransactionCommandHandler : IRequestHandler<UpdateTransaction
             throw new ForbiddenAccessException();
         }
 
+        Account? account = null;
+        if (request.AccountId is Guid accountId)
+        {
+            account = await _db.Accounts
+                .FirstOrDefaultAsync(a => a.Id == accountId, cancellationToken);
+
+            if (account is null)
+            {
+                throw new NotFoundException($"Account {accountId} was not found.");
+            }
+            if (account.OwnerId != userId)
+            {
+                throw new ForbiddenAccessException();
+            }
+        }
+
         transaction.Date = request.Date;
         transaction.Payee = request.Payee.Trim();
         transaction.Amount = request.Amount;
         transaction.Type = request.Type;
+        transaction.Account = account;
+        transaction.AccountId = account?.Id;
 
         await _db.SaveChangesAsync(cancellationToken);
 

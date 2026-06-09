@@ -21,6 +21,10 @@ public class TransactionDto
     public Guid? BudgetItemId { get; set; }
     public string? BudgetItemName { get; set; }
 
+    /// <summary>The account this money moved in/out of, if any.</summary>
+    public Guid? AccountId { get; set; }
+    public string? AccountName { get; set; }
+
     /// <summary>True when the transaction is split across budget lines.</summary>
     public bool IsSplit { get; set; }
 
@@ -51,6 +55,8 @@ public static class TransactionMapping
         BankReference = t.BankReference,
         BudgetItemId = t.BudgetItemId,
         BudgetItemName = t.BudgetItem?.Name,
+        AccountId = t.AccountId,
+        AccountName = t.Account?.Name,
         IsSplit = t.Splits.Count > 0,
         Splits = t.Splits
             .Select(s => new TransactionSplitDto

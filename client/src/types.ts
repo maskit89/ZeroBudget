@@ -70,8 +70,39 @@ export interface TransactionDto {
   bankReference: string | null
   budgetItemId: string | null
   budgetItemName: string | null
+  accountId: string | null
+  accountName: string | null
   isSplit: boolean
   splits: TransactionSplitDto[]
+}
+
+// Matches Domain.Enums.AccountType (serialized as a number).
+export const AccountType = {
+  Current: 0,
+  Savings: 1,
+  Cash: 2,
+  CreditCard: 3,
+  Other: 4,
+} as const
+
+export const ACCOUNT_TYPE_LABELS: Record<number, string> = {
+  0: 'Current',
+  1: 'Savings',
+  2: 'Cash',
+  3: 'Credit card',
+  4: 'Other',
+}
+
+export interface AccountDto {
+  id: string
+  name: string
+  /** Numeric AccountType. */
+  type: number
+  currency: string
+  openingBalance: number
+  /** Opening balance plus the net of the account's transactions. */
+  currentBalance: number
+  displayOrder: number
 }
 
 export interface BudgetTrendPointDto {
