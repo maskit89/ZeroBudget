@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
+import type { ItemVM, MonthVM } from './budgetModel'
 import {
+  billAlerts,
+  billStatus,
   fromDto,
   findItem,
   isFund,
@@ -236,5 +239,50 @@ describe('budgetModel selectors', () => {
     expect(s.total).toBe(2)
     expect(s.paid).toBe(1)
     expect(s.unpaidMinor).toBe(fromAmount(200)) // only Groceries (unpaid) counts
+  })
+})
+
+describe('bill reminders', () => {
+  const item = (dueDay: number | null, isPaid = false): ItemVM => ({
+    id: 'x', name: 'Rent', displayOrder: 0, plannedMinor: 0, actualMinor: 0,
+    actualIsTracked: false, fundAvailableMinor: null, dueDay, isPaid,
+  })
+  // Mid-June 2026 — the month under test is 2026-06.
+  const today = new Date(2026, 5, 15)
+
+  it('classifies a bill in the current month by how close its due day is', () => {
+    expect(billStatus(item(10), 2026, 6, today)).toBe('overdue') // 10th already passed
+    expect(billStatus(item(20), 2026, 6, today)).toBe('due-soon') // 5 days away
+    expect(billStatus(item(25), 2026, 6, today)).toBe('upcoming') // 10 days away
+  })
+
+  it('treats paid and non-bill lines specially', () => {
+    expect(billStatus(item(10, true), 2026, 6, today)).toBe('paid')
+    expect(billStatus(item(null), 2026, 6, today)).toBeNull()
+  })
+
+  it('only assesses urgency for the month you are living in', () => {
+    // Same overdue-looking day, but viewing a different month → just "upcoming".
+    expect(billStatus(item(10), 2026, 7, today)).toBe('upcoming') // future month
+    expect(billStatus(item(10), 2026, 5, today)).toBe('upcoming') // past month
+  })
+
+  it('clamps a due day past the end of a short month', () => {
+    const feb27 = new Date(2026, 1, 27)
+    // "Due on the 31st" of February clamps to the 28th → due tomorrow → due-soon.
+    expect(billStatus(item(31), 2026, 2, feb27)).toBe('due-soon')
+  })
+
+  it('billAlerts counts overdue and due-soon unpaid bills', () => {
+    const month: MonthVM = {
+      id: 'm', key: '2026-06', year: 2026, month: 6, currency: 'EUR',
+      categories: [
+        {
+          id: 'c', name: 'Housing', kind: 'expense', displayOrder: 0,
+          items: [item(8), item(10), item(20), item(25), item(5, true)],
+        },
+      ],
+    }
+    expect(billAlerts(month, today)).toEqual({ overdue: 2, dueSoon: 1 })
   })
 })

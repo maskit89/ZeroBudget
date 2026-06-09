@@ -419,6 +419,26 @@ describe('DashboardPage optimistic editing', () => {
       expect(mockPut).toHaveBeenCalledWith('/budget/items/i-rent/paid', { isPaid: true }),
     )
   })
+
+  it('flags an overdue bill in the summary and on its row', { timeout: 15000 }, async () => {
+    const b = budget() // month 2026-06
+    b.categories[1].items[0] = { ...b.categories[1].items[0], dueDay: 5, isPaid: false }
+    mockGet.mockImplementation((url: string) =>
+      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: b }),
+    )
+
+    // Render directly so we can pin "today" to the 20th — past Rent's due day (5th).
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <DashboardPage today={new Date(2026, 5, 20)} />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText(/1 overdue/, {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(screen.getByTitle(/Overdue/)).toBeInTheDocument()
+  })
 })
 
 describe('DashboardPage month navigation', () => {

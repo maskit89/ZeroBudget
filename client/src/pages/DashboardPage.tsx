@@ -9,6 +9,7 @@ import type {
   ImportStatementResult,
 } from '../types'
 import {
+  billAlerts,
   billsSummary,
   fromDto,
   findItem,
@@ -45,7 +46,7 @@ const MONTH_NAMES = [
 
 const now = new Date()
 
-export function DashboardPage() {
+export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
   const { email, logout } = useAuth()
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 })
   const [month, setMonth] = useState<MonthVM | null>(null)
@@ -693,16 +694,22 @@ export function DashboardPage() {
               const bills = billsSummary(month)
               if (bills.total === 0) return null
               const allPaid = bills.paid === bills.total
+              const alerts = billAlerts(month, today)
+              const tone = alerts.overdue > 0
+                ? 'border-rose-200 bg-rose-50 text-rose-800'
+                : allPaid
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  : 'border-amber-200 bg-amber-50 text-amber-800'
               return (
-                <div
-                  className={`flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm ${
-                    allPaid
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                      : 'border-amber-200 bg-amber-50 text-amber-800'
-                  }`}
-                >
+                <div className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-xl border px-4 py-2.5 text-sm ${tone}`}>
                   <span className="font-medium">
                     📅 Bills: {bills.paid}/{bills.total} paid
+                    {alerts.overdue > 0 && (
+                      <span className="ml-2 font-semibold">· {alerts.overdue} overdue</span>
+                    )}
+                    {alerts.overdue === 0 && alerts.dueSoon > 0 && (
+                      <span className="ml-2">· {alerts.dueSoon} due soon</span>
+                    )}
                   </span>
                   <span className="tabular-nums">
                     {allPaid
@@ -737,6 +744,9 @@ export function DashboardPage() {
                     category={category}
                     currency={month.currency}
                     savingItemId={savingItemId}
+                    monthYear={month.year}
+                    monthNumber={month.month}
+                    today={today}
                     isFirst={i === 0}
                     isLast={i === arr.length - 1}
                     onCommitItem={commitItem}

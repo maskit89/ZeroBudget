@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ItemVM } from '../budgetModel'
+import type { BillStatus, ItemVM } from '../budgetModel'
 import { itemRemaining } from '../budgetModel'
 import { currencySymbol, formatMoney, parseMinor, toEditString, type Minor } from '../lib/money'
 
@@ -20,6 +20,8 @@ interface Props {
   onSetBill?: (itemId: string, dueDay: number | null) => void
   /** When provided, a bill line shows a paid checkbox. */
   onSetPaid?: (itemId: string, isPaid: boolean) => void
+  /** Urgency of this line's bill relative to today (drives the due-date pill colour). */
+  billStatus?: BillStatus | null
   /** When provided, ▲▼ controls reorder the line within its category. */
   onMove?: (itemId: string, direction: -1 | 1) => void
   isFirst?: boolean
@@ -52,6 +54,7 @@ export function BudgetItemRow({
   isFirst = false,
   isLast = false,
   availableMinor,
+  billStatus,
 }: Props) {
   const [name, setName] = useState(item.name)
   const [draft, setDraft] = useState(toEditString(item.plannedMinor))
@@ -117,6 +120,18 @@ export function BudgetItemRow({
   // A fund line shows its rolled-over available balance instead of the remaining.
   const showAvailable = availableMinor !== undefined && availableMinor !== null
   const fundOverdrawn = showAvailable && (availableMinor as Minor) < 0
+  const overdue = billStatus === 'overdue'
+  const dueSoon = billStatus === 'due-soon'
+  const billPillClass = overdue
+    ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-300 hover:bg-rose-200'
+    : dueSoon
+      ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-300 hover:bg-amber-200'
+      : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+  const billTitle = overdue
+    ? `Overdue — was due on day ${item.dueDay}`
+    : dueSoon
+      ? `Due soon — day ${item.dueDay}`
+      : `Bill due on day ${item.dueDay}`
 
   return (
     <div className="grid grid-cols-12 items-center gap-2 px-4 py-2.5 hover:bg-slate-50">
@@ -214,10 +229,10 @@ export function BudgetItemRow({
                 type="button"
                 onClick={() => setBillEditing(true)}
                 aria-label={`Edit due day for ${item.name}`}
-                title={`Bill due on day ${item.dueDay}`}
-                className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-amber-700 hover:bg-amber-200"
+                title={billTitle}
+                className={`rounded px-1.5 py-0.5 text-[11px] font-medium tabular-nums ${billPillClass}`}
               >
-                📅 {item.dueDay}
+                {overdue ? '⚠' : '📅'} {item.dueDay}
               </button>
               {onSetPaid && (
                 <label

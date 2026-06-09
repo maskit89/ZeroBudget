@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { CategoryVM } from '../budgetModel'
-import { categoryPlanned } from '../budgetModel'
+import { billStatus, categoryPlanned } from '../budgetModel'
 import { formatMoney, type Minor } from '../lib/money'
 import { BudgetItemRow } from './BudgetItemRow'
 
@@ -8,6 +8,10 @@ interface Props {
   category: CategoryVM
   currency: string
   savingItemId: string | null
+  /** The viewed month + today, used to flag overdue / due-soon bills. */
+  monthYear: number
+  monthNumber: number
+  today: Date
   defaultOpen?: boolean
   isFirst?: boolean
   isLast?: boolean
@@ -34,6 +38,9 @@ export function CategoryAccordion({
   category,
   currency,
   savingItemId,
+  monthYear,
+  monthNumber,
+  today,
   defaultOpen = true,
   isFirst = false,
   isLast = false,
@@ -201,6 +208,7 @@ export function CategoryAccordion({
                 onSetPaid={onSetPaid}
                 onRename={onRenameItem}
                 onDelete={onDeleteItem}
+                billStatus={billStatus(item, monthYear, monthNumber, today)}
               />
             ))}
             {category.items.length === 0 && (
