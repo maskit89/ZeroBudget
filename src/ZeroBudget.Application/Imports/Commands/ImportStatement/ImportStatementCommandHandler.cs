@@ -33,6 +33,22 @@ public class ImportStatementCommandHandler : IRequestHandler<ImportStatementComm
         var userId = _currentUser.UserId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
+        // Validate the target account up front (when one was chosen) so we never
+        // stamp transactions onto an account that isn't the caller's.
+        if (request.AccountId is Guid accountId)
+        {
+            var account = await _db.Accounts
+                .FirstOrDefaultAsync(a => a.Id == accountId, cancellationToken);
+            if (account is null)
+            {
+                throw new NotFoundException($"Account {accountId} was not found.");
+            }
+            if (account.OwnerId != userId)
+            {
+                throw new ForbiddenAccessException();
+            }
+        }
+
         var statement = _parser.Parse(request.Content);
 
         // Pre-load this user's existing references so re-importing the same
@@ -66,6 +82,7 @@ public class ImportStatementCommandHandler : IRequestHandler<ImportStatementComm
                 Date = entry.BookingDate,
                 Payee = Truncate(entry.Payee, 200),
                 BankReference = entry.Reference,
+                AccountId = request.AccountId,
             };
             _db.Transactions.Add(transaction);
             created.Add(transaction);
