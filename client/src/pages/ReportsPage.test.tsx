@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import type { BudgetMonthDto, BudgetTrendsDto } from '../types'
+import type { AnnualSummaryDto, BudgetMonthDto, BudgetTrendsDto } from '../types'
 
 const { mockGet } = vi.hoisted(() => ({ mockGet: vi.fn() }))
 
@@ -35,6 +36,18 @@ function latestMonth(): BudgetMonthDto {
       { id: 'food', name: 'Food', kind: 'Expense', displayOrder: 1, totalPlanned: 800, totalActual: 1200, items: [] },
     ],
   }
+}
+
+function annual(year: number): AnnualSummaryDto {
+  const months = Array.from({ length: 12 }, (_, i) => ({
+    month: i + 1,
+    key: `${year}-${String(i + 1).padStart(2, '0')}`,
+    hasBudget: i + 1 === 6,
+    income: i + 1 === 6 ? 3000 : 0,
+    planned: i + 1 === 6 ? 2900 : 0,
+    spent: i + 1 === 6 ? 2700 : 0,
+  }))
+  return { year, months, totalIncome: 3000, totalPlanned: 2900, totalSpent: 2700 }
 }
 
 function renderPage() {
@@ -71,6 +84,29 @@ describe('ReportsPage', () => {
     expect(screen.getByLabelText('Spending for Housing')).toBeInTheDocument()
     // Income groups are excluded from the spending breakdown.
     expect(screen.queryByLabelText('Spending for Income')).not.toBeInTheDocument()
+  })
+
+  it('shows the annual overview and navigates between years', { timeout: 15000 }, async () => {
+    mockGet.mockImplementation((url?: string) => {
+      if (url?.startsWith('/reports/trends')) return Promise.resolve({ data: trends() })
+      if (url === '/budget/2026/6') return Promise.resolve({ data: latestMonth() })
+      if (url === '/reports/annual/2026') return Promise.resolve({ data: annual(2026) })
+      if (url === '/reports/annual/2025') return Promise.resolve({ data: annual(2025) })
+      return Promise.resolve({ data: {} })
+    })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    // Defaults to the latest budget's year (2026, from the trend).
+    expect(await screen.findByText('Annual overview', {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(screen.getByText('2026')).toBeInTheDocument()
+    expect(screen.getByText('Total')).toBeInTheDocument()
+
+    await user.click(screen.getByLabelText('Previous year'))
+
+    await waitFor(() => expect(mockGet).toHaveBeenCalledWith('/reports/annual/2025'))
+    expect(await screen.findByText('2025', {}, { timeout: 5000 })).toBeInTheDocument()
   })
 
   it('shows an empty state when there is no budget data', { timeout: 15000 }, async () => {

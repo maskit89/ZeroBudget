@@ -92,6 +92,23 @@ export interface BudgetTrendsDto {
   totalSpent: number
 }
 
+export interface AnnualMonthDto {
+  month: number
+  key: string
+  hasBudget: boolean
+  income: number
+  planned: number
+  spent: number
+}
+
+export interface AnnualSummaryDto {
+  year: number
+  months: AnnualMonthDto[]
+  totalIncome: number
+  totalPlanned: number
+  totalSpent: number
+}
+
 export interface BudgetTemplateGroupDto {
   name: string
   kind: 'Income' | 'Expense' | 'Fund'
