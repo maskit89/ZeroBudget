@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ZeroBudget.Application.Reports.Dtos;
+using ZeroBudget.Application.Reports.Queries.GetAnnualSummary;
 using ZeroBudget.Application.Reports.Queries.GetBudgetTrends;
 
 namespace ZeroBudget.Api.Controllers;
@@ -33,6 +34,15 @@ public class ReportsController : ControllerBase
         CancellationToken ct = default)
     {
         var result = await _mediator.Send(new GetBudgetTrendsQuery(months), ct);
+        return Ok(result);
+    }
+
+    /// <summary>A 12-month overview (income / planned / spent + totals) for one calendar year.</summary>
+    [HttpGet("annual/{year:int}")]
+    [ProducesResponseType(typeof(AnnualSummaryDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AnnualSummaryDto>> Annual(int year, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetAnnualSummaryQuery(year), ct);
         return Ok(result);
     }
 }

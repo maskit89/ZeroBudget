@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
-import type { BudgetMonthDto, BudgetTrendsDto } from '../types'
+import type { AnnualSummaryDto, BudgetMonthDto, BudgetTrendsDto } from '../types'
 import { formatMoney, fromAmount, type Minor } from '../lib/money'
 
 const SHORT_MONTHS = [
@@ -23,6 +23,8 @@ export function ReportsPage() {
   const { logout } = useAuth()
   const [trends, setTrends] = useState<BudgetTrendsDto | null>(null)
   const [latest, setLatest] = useState<BudgetMonthDto | null>(null)
+  const [annual, setAnnual] = useState<AnnualSummaryDto | null>(null)
+  const [annualYear, setAnnualYear] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -34,8 +36,10 @@ export function ReportsPage() {
       .then(async ({ data }) => {
         if (cancelled) return
         setTrends(data)
-        // The most recent point is the latest budget — load it for the breakdown.
+        // Default the annual view to the year of the most recent budget.
         const last = data.points.at(-1)
+        setAnnualYear((y) => y ?? last?.year ?? new Date().getFullYear())
+        // The most recent point is the latest budget — load it for the breakdown.
         if (last) {
           const { data: month } = await api.get<BudgetMonthDto>(`/budget/${last.year}/${last.month}`)
           if (!cancelled) setLatest(month)
@@ -47,6 +51,19 @@ export function ReportsPage() {
       cancelled = true
     }
   }, [])
+
+  // Load the annual overview whenever the chosen year changes.
+  useEffect(() => {
+    if (annualYear === null) return
+    let cancelled = false
+    api
+      .get<AnnualSummaryDto>(`/reports/annual/${annualYear}`)
+      .then(({ data }) => !cancelled && setAnnual(data))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [annualYear])
 
   const currency = latest?.baseCurrency ?? 'EUR'
 
@@ -188,6 +205,85 @@ export function ReportsPage() {
                 </span>
               </div>
             </section>
+
+            {/* Whole-year overview, with its own year navigator. */}
+            {annual?.months && annual.months.length > 0 && (
+              <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-700">Annual overview</h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAnnualYear((y) => (y ?? new Date().getFullYear()) - 1)}
+                      aria-label="Previous year"
+                      className="rounded-md border border-slate-300 px-2 py-0.5 text-slate-600 hover:bg-slate-50"
+                    >
+                      ◀
+                    </button>
+                    <span className="min-w-12 text-center text-sm font-semibold tabular-nums text-slate-800">
+                      {annual.year}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setAnnualYear((y) => (y ?? new Date().getFullYear()) + 1)}
+                      aria-label="Next year"
+                      className="rounded-md border border-slate-300 px-2 py-0.5 text-slate-600 hover:bg-slate-50"
+                    >
+                      ▶
+                    </button>
+                  </div>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-400">
+                      <th className="py-1.5 font-medium">Month</th>
+                      <th className="py-1.5 text-right font-medium">Income</th>
+                      <th className="py-1.5 text-right font-medium">Spent</th>
+                      <th className="py-1.5 text-right font-medium">Net</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {annual.months.map((m) => {
+                      const incomeMinor = fromAmount(m.income)
+                      const spentMinor = fromAmount(m.spent)
+                      const net = incomeMinor - spentMinor
+                      return (
+                        <tr key={m.month} className={m.hasBudget ? '' : 'text-slate-300'}>
+                          <td className="py-1.5">{SHORT_MONTHS[m.month - 1]}</td>
+                          <td className="py-1.5 text-right tabular-nums">
+                            {m.hasBudget ? formatMoney(incomeMinor, currency) : '—'}
+                          </td>
+                          <td className="py-1.5 text-right tabular-nums">
+                            {m.hasBudget ? formatMoney(spentMinor, currency) : '—'}
+                          </td>
+                          <td
+                            className={`py-1.5 text-right font-medium tabular-nums ${
+                              !m.hasBudget ? '' : net < 0 ? 'text-rose-600' : 'text-emerald-600'
+                            }`}
+                          >
+                            {m.hasBudget ? formatMoney(net, currency) : '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-slate-200 font-semibold text-slate-800">
+                      <td className="py-2">Total</td>
+                      <td className="py-2 text-right tabular-nums">
+                        {formatMoney(fromAmount(annual.totalIncome), currency)}
+                      </td>
+                      <td className="py-2 text-right tabular-nums">
+                        {formatMoney(fromAmount(annual.totalSpent), currency)}
+                      </td>
+                      <td className="py-2 text-right tabular-nums">
+                        {formatMoney(fromAmount(annual.totalIncome) - fromAmount(annual.totalSpent), currency)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </section>
+            )}
 
             {/* Spending by category for the latest month. */}
             <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
