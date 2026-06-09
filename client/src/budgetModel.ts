@@ -118,6 +118,55 @@ export function billsSummary(m: MonthVM): BillsSummary {
   return { total: bills.length, paid, unpaidMinor }
 }
 
+/** How urgent an unpaid bill is, relative to today (only assessed for the current month). */
+export type BillStatus = 'paid' | 'overdue' | 'due-soon' | 'upcoming'
+
+/** Bills due within this many days count as "due soon". */
+const DUE_SOON_DAYS = 7
+
+const dateOnly = (d: Date): Date => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+
+/**
+ * Classify a line's bill against `today`. Urgency (overdue / due-soon) is only
+ * meaningful for the month you're actually living in, so other months always read
+ * as "upcoming". Returns null when the line isn't a bill.
+ */
+export function billStatus(i: ItemVM, year: number, month: number, today: Date): BillStatus | null {
+  if (i.dueDay === null) return null
+  if (i.isPaid) return 'paid'
+
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() + 1 === month
+  if (!isCurrentMonth) return 'upcoming'
+
+  const lastDayOfMonth = new Date(year, month, 0).getDate()
+  const day = Math.min(i.dueDay, lastDayOfMonth) // clamp e.g. "31" in a 30-day month
+  const due = new Date(year, month - 1, day)
+  const diffDays = Math.round((due.getTime() - dateOnly(today).getTime()) / 86_400_000)
+
+  if (diffDays < 0) return 'overdue'
+  if (diffDays <= DUE_SOON_DAYS) return 'due-soon'
+  return 'upcoming'
+}
+
+export interface BillAlerts {
+  overdue: number
+  dueSoon: number
+}
+
+/** Count the month's overdue / due-soon unpaid bills (relative to today). */
+export function billAlerts(m: MonthVM, today: Date): BillAlerts {
+  let overdue = 0
+  let dueSoon = 0
+  for (const c of m.categories) {
+    for (const i of c.items) {
+      const status = billStatus(i, m.year, m.month, today)
+      if (status === 'overdue') overdue += 1
+      else if (status === 'due-soon') dueSoon += 1
+    }
+  }
+  return { overdue, dueSoon }
+}
+
 /** Find a line anywhere in the tree (used to read its current state for edits). */
 export function findItem(m: MonthVM, itemId: string): ItemVM | undefined {
   for (const c of m.categories) {
