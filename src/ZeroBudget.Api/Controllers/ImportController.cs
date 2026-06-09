@@ -27,7 +27,10 @@ public class ImportController : ControllerBase
     [ProducesResponseType(typeof(ImportStatementResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<ActionResult<ImportStatementResult>> ImportCamt053(IFormFile file, CancellationToken ct)
+    public async Task<ActionResult<ImportStatementResult>> ImportCamt053(
+        IFormFile file,
+        [FromForm] Guid? accountId,
+        CancellationToken ct)
     {
         if (file is null || file.Length == 0)
         {
@@ -37,7 +40,7 @@ public class ImportController : ControllerBase
         using var reader = new StreamReader(file.OpenReadStream());
         var content = await reader.ReadToEndAsync(ct);
 
-        var result = await _mediator.Send(new ImportStatementCommand(content), ct);
+        var result = await _mediator.Send(new ImportStatementCommand(content, accountId), ct);
         return Ok(result);
     }
 }

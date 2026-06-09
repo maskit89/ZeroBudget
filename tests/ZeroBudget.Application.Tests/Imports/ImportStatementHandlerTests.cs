@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using ZeroBudget.Application.Common.Exceptions;
 using ZeroBudget.Application.Common.Interfaces;
 using ZeroBudget.Application.Imports.Commands.ImportStatement;
 using ZeroBudget.Application.Tests.TestDoubles;
+using ZeroBudget.Domain.Entities;
 using ZeroBudget.Domain.Enums;
+using ZeroBudget.Domain.ValueObjects;
 using ZeroBudget.Infrastructure.Persistence;
 using ZeroBudget.Infrastructure.Statements;
 
@@ -72,6 +75,45 @@ public class ImportStatementHandlerTests
         Assert.Equal(0, second.Imported);
         Assert.Equal(3, second.SkippedDuplicates);
         Assert.Equal(3, await db.Transactions.CountAsync()); // still only 3 — no duplicates
+    }
+
+    private static Account SeedAccount(ApplicationDbContext db, string ownerId)
+    {
+        var account = new Account
+        {
+            OwnerId = ownerId,
+            Name = "Everyday",
+            Type = AccountType.Current,
+            Currency = CurrencyCode.Eur,
+        };
+        db.Accounts.Add(account);
+        db.SaveChanges();
+        return account;
+    }
+
+    [Fact]
+    public async Task Handle_StampsImportedTransactions_WithTheChosenAccount()
+    {
+        await using var db = NewContext();
+        var account = SeedAccount(db, "user-1");
+
+        await NewHandler(db, "user-1").Handle(
+            new ImportStatementCommand(Camt053Samples.ThreeEntries, account.Id), CancellationToken.None);
+
+        Assert.Equal(3, await db.Transactions.CountAsync(t => t.AccountId == account.Id));
+    }
+
+    [Fact]
+    public async Task Handle_RejectsAnAccountOwnedByAnotherUser()
+    {
+        await using var db = NewContext();
+        var foreign = SeedAccount(db, "user-2");
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
+            NewHandler(db, "user-1").Handle(
+                new ImportStatementCommand(Camt053Samples.ThreeEntries, foreign.Id), CancellationToken.None));
+
+        Assert.Equal(0, await db.Transactions.CountAsync()); // nothing imported
     }
 
     [Fact]
