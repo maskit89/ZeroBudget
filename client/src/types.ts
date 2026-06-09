@@ -80,6 +80,8 @@ export interface BudgetTrendPointDto {
   key: string
   /** Budgeted income (Σ income planned). */
   income: number
+  /** Actually-received income (Σ income actuals). */
+  incomeReceived: number
   /** Budgeted spending (Σ non-income planned). */
   planned: number
   /** Actual spending (Σ non-income actuals). */
@@ -89,6 +91,7 @@ export interface BudgetTrendPointDto {
 export interface BudgetTrendsDto {
   points: BudgetTrendPointDto[]
   totalIncome: number
+  totalIncomeReceived: number
   totalSpent: number
 }
 

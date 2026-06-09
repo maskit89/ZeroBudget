@@ -86,6 +86,29 @@ public class BudgetTrendsTests
     }
 
     [Fact]
+    public async Task Trends_RollUpReceivedIncome_SeparatelyFromBudgetedIncome()
+    {
+        await using var db = NewContext();
+        var june = SeedMonth(db, "user-1", 2026, 6, spent: 0m);
+        var salary = june.Categories.Single(c => c.Kind == CategoryKind.Income).Items.Single();
+        salary.ActualEntryMode = ActualEntryMode.Tracked;
+        db.Transactions.Add(new Transaction
+        {
+            OwnerId = "user-1", BudgetItemId = salary.Id, Amount = 950m, Type = TransactionType.Income,
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new GetBudgetTrendsQueryHandler(db, new CurrentUserStub("user-1"));
+        var dto = await handler.Handle(new GetBudgetTrendsQuery(6), CancellationToken.None);
+
+        var point = dto.Points.Single();
+        point.Income.Should().Be(1000m);          // budgeted
+        point.IncomeReceived.Should().Be(950m);   // actually received
+        dto.TotalIncome.Should().Be(1000m);
+        dto.TotalIncomeReceived.Should().Be(950m);
+    }
+
+    [Fact]
     public async Task Trends_RollsUpTrackedTransactionSpending()
     {
         await using var db = NewContext();

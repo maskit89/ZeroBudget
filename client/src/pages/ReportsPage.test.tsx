@@ -18,10 +18,11 @@ import { AuthProvider } from '../auth/AuthContext'
 function trends(): BudgetTrendsDto {
   return {
     points: [
-      { year: 2026, month: 5, key: '2026-05', income: 3000, planned: 2800, spent: 2500 },
-      { year: 2026, month: 6, key: '2026-06', income: 3000, planned: 2900, spent: 2700 },
+      { year: 2026, month: 5, key: '2026-05', income: 3000, incomeReceived: 2900, planned: 2800, spent: 2500 },
+      { year: 2026, month: 6, key: '2026-06', income: 3000, incomeReceived: 2950, planned: 2900, spent: 2700 },
     ],
     totalIncome: 6000,
+    totalIncomeReceived: 5850,
     totalSpent: 5200,
   }
 }
@@ -34,6 +35,17 @@ function latestMonth(): BudgetMonthDto {
       { id: 'inc', name: 'Income', kind: 'Income', displayOrder: 0, totalPlanned: 3000, totalActual: 3000, items: [] },
       { id: 'house', name: 'Housing', kind: 'Expense', displayOrder: 0, totalPlanned: 1500, totalActual: 1500, items: [] },
       { id: 'food', name: 'Food', kind: 'Expense', displayOrder: 1, totalPlanned: 800, totalActual: 1200, items: [] },
+    ],
+  }
+}
+
+function mayMonth(): BudgetMonthDto {
+  return {
+    id: 'm5', key: '2026-05', year: 2026, month: 5, baseCurrency: 'EUR',
+    totalIncome: 3000, totalPlanned: 2800, remainingToBudget: 200, isBalanced: false,
+    categories: [
+      { id: 'inc5', name: 'Income', kind: 'Income', displayOrder: 0, totalPlanned: 3000, totalActual: 2900, items: [] },
+      { id: 'trans', name: 'Transport', kind: 'Expense', displayOrder: 0, totalPlanned: 600, totalActual: 900, items: [] },
     ],
   }
 }
@@ -72,11 +84,13 @@ describe('ReportsPage', () => {
 
     renderPage()
 
-    // Per-month trend (the section heading is unique; the labels confirm both months).
+    // Per-month trend (the section heading is unique; the labelled rows confirm both months).
     expect(await screen.findByText('Income vs spending', {}, { timeout: 5000 })).toBeInTheDocument()
-    expect(screen.getByText('May 2026')).toBeInTheDocument() // unique to the trend
-    expect(screen.getAllByText('Jun 2026').length).toBeGreaterThan(0) // trend + breakdown subtitle
-    // The window summary card.
+    expect(screen.getByLabelText('Trend for May 2026')).toBeInTheDocument()
+    expect(screen.getByLabelText('Trend for Jun 2026')).toBeInTheDocument()
+    // The window summary cards + legend, including budgeted vs received income.
+    expect(screen.getAllByText('Income (budgeted)').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Income (received)').length).toBeGreaterThan(0)
     expect(screen.getByText('Net')).toBeInTheDocument()
 
     // Category breakdown loads from the latest month (Food spent more than Housing here).
@@ -84,6 +98,27 @@ describe('ReportsPage', () => {
     expect(screen.getByLabelText('Spending for Housing')).toBeInTheDocument()
     // Income groups are excluded from the spending breakdown.
     expect(screen.queryByLabelText('Spending for Income')).not.toBeInTheDocument()
+  })
+
+  it('lets you pick which month to break spending down by', { timeout: 15000 }, async () => {
+    mockGet.mockImplementation((url?: string) => {
+      if (url?.startsWith('/reports/trends')) return Promise.resolve({ data: trends() })
+      if (url === '/budget/2026/6') return Promise.resolve({ data: latestMonth() })
+      if (url === '/budget/2026/5') return Promise.resolve({ data: mayMonth() })
+      return Promise.resolve({ data: {} })
+    })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    // Defaults to the latest month (June → Food).
+    expect(await screen.findByLabelText('Spending for Food', {}, { timeout: 5000 })).toBeInTheDocument()
+
+    // Switching to May reloads that month's breakdown (Transport).
+    await user.selectOptions(screen.getByLabelText('Breakdown month'), '2026-05')
+    await waitFor(() => expect(mockGet).toHaveBeenCalledWith('/budget/2026/5'))
+    expect(await screen.findByLabelText('Spending for Transport', {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Spending for Food')).not.toBeInTheDocument()
   })
 
   it('shows the annual overview and navigates between years', { timeout: 15000 }, async () => {

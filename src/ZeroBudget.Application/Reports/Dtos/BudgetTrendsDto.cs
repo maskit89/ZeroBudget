@@ -12,6 +12,9 @@ public class BudgetTrendsDto
     /// <summary>Σ budgeted income across the window.</summary>
     public decimal TotalIncome { get; set; }
 
+    /// <summary>Σ actually-received income across the window.</summary>
+    public decimal TotalIncomeReceived { get; set; }
+
     /// <summary>Σ actual spending across the window.</summary>
     public decimal TotalSpent { get; set; }
 }
@@ -26,6 +29,9 @@ public class BudgetTrendPointDto
 
     /// <summary>Budgeted income for the month (Σ income-group planned lines).</summary>
     public decimal Income { get; set; }
+
+    /// <summary>Actually-received income for the month (Σ income-group actuals).</summary>
+    public decimal IncomeReceived { get; set; }
 
     /// <summary>Budgeted spending for the month (Σ non-income planned lines).</summary>
     public decimal Planned { get; set; }

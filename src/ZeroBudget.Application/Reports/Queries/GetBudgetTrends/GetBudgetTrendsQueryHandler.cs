@@ -53,14 +53,22 @@ public class GetBudgetTrendsQueryHandler : IRequestHandler<GetBudgetTrendsQuery,
                 .Where(c => c.Kind != CategoryKind.Income)
                 .Sum(c => c.TotalActual);
 
+            // Income lines roll up their assigned income transactions just like
+            // expense lines roll up spending, so this is the user's actually-received
+            // income for the month (vs the budgeted Income above).
+            var incomeReceived = month.Categories
+                .Where(c => c.Kind == CategoryKind.Income)
+                .Sum(c => c.TotalActual);
+
             points.Add(new BudgetTrendPointDto
             {
                 Year = month.Year,
                 Month = month.Month,
                 Key = month.Key,
-                Income = month.TotalIncome,   // budgeted income
-                Planned = month.TotalPlanned, // budgeted spending
-                Spent = spent,                // actual spending
+                Income = month.TotalIncome,       // budgeted income
+                IncomeReceived = incomeReceived,  // actually-received income
+                Planned = month.TotalPlanned,     // budgeted spending
+                Spent = spent,                    // actual spending
             });
         }
 
@@ -68,6 +76,7 @@ public class GetBudgetTrendsQueryHandler : IRequestHandler<GetBudgetTrendsQuery,
         {
             Points = points,
             TotalIncome = points.Sum(p => p.Income),
+            TotalIncomeReceived = points.Sum(p => p.IncomeReceived),
             TotalSpent = points.Sum(p => p.Spent),
         };
     }
