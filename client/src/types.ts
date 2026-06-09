@@ -125,6 +125,11 @@ export interface BudgetTemplateDto {
   groups: BudgetTemplateGroupDto[]
 }
 
+export interface BudgetLineOptionDto {
+  categoryName: string
+  itemNames: string[]
+}
+
 export interface CategorizationRuleDto {
   id: string
   /** The normalized payee that was learned. */

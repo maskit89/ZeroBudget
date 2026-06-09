@@ -62,6 +62,44 @@ describe('RulesPage', () => {
     expect(await screen.findByText('Cleaning', {}, { timeout: 5000 })).toBeInTheDocument()
   })
 
+  it('suggests your real category and line names while editing', { timeout: 15000 }, async () => {
+    mockGet.mockImplementation((url?: string) => {
+      if (url === '/rules') return Promise.resolve({ data: [rule()] })
+      if (url === '/budget/line-options') {
+        return Promise.resolve({
+          data: [
+            { categoryName: 'Household', itemNames: ['Cleaning', 'Repairs'] },
+            { categoryName: 'Food', itemNames: ['Groceries'] },
+          ],
+        })
+      }
+      return Promise.resolve({ data: [] })
+    })
+    const user = userEvent.setup()
+
+    const { container } = renderPage()
+
+    await user.click(await screen.findByLabelText('Edit rule for tesco', {}, { timeout: 5000 }))
+
+    // The category input is backed by a datalist of the user's real categories.
+    const category = screen.getByLabelText('Category for tesco')
+    const categoryListId = category.getAttribute('list')
+    expect(categoryListId).toBeTruthy()
+    await waitFor(() =>
+      expect(container.querySelector(`#${categoryListId} option[value="Household"]`)).toBeTruthy(),
+    )
+
+    // Choosing a known category narrows the line suggestions to that category's lines.
+    await user.clear(category)
+    await user.type(category, 'Household')
+    const line = screen.getByLabelText('Line for tesco')
+    const itemListId = line.getAttribute('list')
+    await waitFor(() =>
+      expect(container.querySelector(`#${itemListId} option[value="Cleaning"]`)).toBeTruthy(),
+    )
+    expect(container.querySelector(`#${itemListId} option[value="Groceries"]`)).toBeFalsy()
+  })
+
   it('deletes a rule', { timeout: 15000 }, async () => {
     mockGet.mockResolvedValue({ data: [rule()] })
     mockDelete.mockResolvedValue({ data: null })

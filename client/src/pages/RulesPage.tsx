@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
-import type { CategorizationRuleDto } from '../types'
+import type { BudgetLineOptionDto, CategorizationRuleDto } from '../types'
 
 export function RulesPage() {
   const { logout } = useAuth()
   const [rules, setRules] = useState<CategorizationRuleDto[]>([])
+  const [options, setOptions] = useState<BudgetLineOptionDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
@@ -27,6 +28,32 @@ export function RulesPage() {
       cancelled = true
     }
   }, [])
+
+  // The user's real category/line names, to suggest valid rule targets.
+  useEffect(() => {
+    let cancelled = false
+    api
+      .get<BudgetLineOptionDto[]>('/budget/line-options')
+      .then(({ data }) => !cancelled && setOptions(data))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Every distinct line name across all categories — the fallback item suggestions
+  // before a known category is chosen.
+  const allItemNames = useMemo(
+    () => Array.from(new Set(options.flatMap((o) => o.itemNames ?? []))).sort((a, b) => a.localeCompare(b)),
+    [options],
+  )
+
+  // When the typed category matches a known one, suggest just its lines; otherwise
+  // offer every line name.
+  const itemSuggestions = useMemo(() => {
+    const match = options.find((o) => o.categoryName.toLowerCase() === eCategory.trim().toLowerCase())
+    return match ? (match.itemNames ?? []) : allItemNames
+  }, [options, eCategory, allItemNames])
 
   function startEdit(r: CategorizationRuleDto) {
     setEditingId(r.id)
@@ -155,6 +182,7 @@ export function RulesPage() {
                               type="text"
                               value={eCategory}
                               aria-label={`Category for ${r.payee}`}
+                              list="rule-category-options"
                               onChange={(e) => setECategory(e.target.value)}
                               className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
                             />
@@ -164,6 +192,7 @@ export function RulesPage() {
                               type="text"
                               value={eItem}
                               aria-label={`Line for ${r.payee}`}
+                              list="rule-item-options"
                               onChange={(e) => setEItem(e.target.value)}
                               className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
                             />
@@ -226,6 +255,18 @@ export function RulesPage() {
             </table>
           </div>
         )}
+
+        {/* Suggestions for the inline rule editor, drawn from the user's real budgets. */}
+        <datalist id="rule-category-options">
+          {options.map((o) => (
+            <option key={o.categoryName} value={o.categoryName} />
+          ))}
+        </datalist>
+        <datalist id="rule-item-options">
+          {itemSuggestions.map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
       </main>
     </div>
   )
