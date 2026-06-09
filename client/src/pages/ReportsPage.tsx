@@ -22,7 +22,8 @@ interface CategorySpend {
 export function ReportsPage() {
   const { logout } = useAuth()
   const [trends, setTrends] = useState<BudgetTrendsDto | null>(null)
-  const [latest, setLatest] = useState<BudgetMonthDto | null>(null)
+  const [breakdownMonth, setBreakdownMonth] = useState<BudgetMonthDto | null>(null)
+  const [breakdownKey, setBreakdownKey] = useState<string | null>(null)
   const [annual, setAnnual] = useState<AnnualSummaryDto | null>(null)
   const [annualYear, setAnnualYear] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
@@ -33,17 +34,14 @@ export function ReportsPage() {
     setLoading(true)
     api
       .get<BudgetTrendsDto>('/reports/trends?months=6')
-      .then(async ({ data }) => {
+      .then(({ data }) => {
         if (cancelled) return
         setTrends(data)
-        // Default the annual view to the year of the most recent budget.
         const last = data.points.at(-1)
+        // Default the annual view to the year of the most recent budget, and the
+        // category breakdown to the most recent month.
         setAnnualYear((y) => y ?? last?.year ?? new Date().getFullYear())
-        // The most recent point is the latest budget — load it for the breakdown.
-        if (last) {
-          const { data: month } = await api.get<BudgetMonthDto>(`/budget/${last.year}/${last.month}`)
-          if (!cancelled) setLatest(month)
-        }
+        setBreakdownKey((k) => k ?? last?.key ?? null)
       })
       .catch(() => !cancelled && setError('Could not load your reports.'))
       .finally(() => !cancelled && setLoading(false))
@@ -51,6 +49,20 @@ export function ReportsPage() {
       cancelled = true
     }
   }, [])
+
+  // Load the chosen month's full budget for the category breakdown.
+  useEffect(() => {
+    if (!breakdownKey) return
+    const [year, month] = breakdownKey.split('-').map(Number)
+    let cancelled = false
+    api
+      .get<BudgetMonthDto>(`/budget/${year}/${month}`)
+      .then(({ data }) => !cancelled && setBreakdownMonth(data))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [breakdownKey])
 
   // Load the annual overview whenever the chosen year changes.
   useEffect(() => {
@@ -65,32 +77,33 @@ export function ReportsPage() {
     }
   }, [annualYear])
 
-  const currency = latest?.baseCurrency ?? 'EUR'
+  const currency = breakdownMonth?.baseCurrency ?? 'EUR'
 
   // Scale the income-vs-spending bars to the largest value in the window.
   const trendMaxMinor = useMemo(() => {
     if (!trends) return 0
     return trends.points.reduce(
-      (max, p) => Math.max(max, fromAmount(p.income), fromAmount(p.spent)),
+      (max, p) => Math.max(max, fromAmount(p.income), fromAmount(p.incomeReceived), fromAmount(p.spent)),
       0,
     )
   }, [trends])
 
-  // Spending by category for the latest month (non-income groups, biggest first).
+  // Spending by category for the chosen month (non-income groups, biggest first).
   const categorySpend = useMemo<CategorySpend[]>(() => {
-    if (!latest) return []
-    return latest.categories
+    if (!breakdownMonth) return []
+    return breakdownMonth.categories
       .filter((c) => c.kind !== 'Income')
       .map((c) => ({ id: c.id, name: c.name, kind: c.kind, spentMinor: fromAmount(c.totalActual) }))
       .filter((c) => c.spentMinor > 0)
       .sort((a, b) => b.spentMinor - a.spentMinor)
-  }, [latest])
+  }, [breakdownMonth])
 
   const categoryTotalMinor = categorySpend.reduce((s, c) => s + c.spentMinor, 0)
   const categoryMaxMinor = categorySpend.reduce((m, c) => Math.max(m, c.spentMinor), 0)
 
   const hasData = trends !== null && trends.points.length > 0
   const totalIncomeMinor = trends ? fromAmount(trends.totalIncome) : 0
+  const totalReceivedMinor = trends ? fromAmount(trends.totalIncomeReceived) : 0
   const totalSpentMinor = trends ? fromAmount(trends.totalSpent) : 0
   const netMinor = totalIncomeMinor - totalSpentMinor
 
@@ -158,8 +171,9 @@ export function ReportsPage() {
         {!loading && hasData && trends && (
           <>
             {/* Window summary. */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <SummaryCard label="Income (budgeted)" minor={totalIncomeMinor} currency={currency} tone="income" />
+              <SummaryCard label="Income (received)" minor={totalReceivedMinor} currency={currency} tone="income" />
               <SummaryCard label="Spent" minor={totalSpentMinor} currency={currency} tone="spent" />
               <SummaryCard label="Net" minor={netMinor} currency={currency} tone="net" />
             </div>
@@ -170,6 +184,7 @@ export function ReportsPage() {
               <div className="space-y-4">
                 {trends.points.map((p) => {
                   const incomeMinor = fromAmount(p.income)
+                  const receivedMinor = fromAmount(p.incomeReceived)
                   const spentMinor = fromAmount(p.spent)
                   const overspent = spentMinor > incomeMinor
                   return (
@@ -183,8 +198,14 @@ export function ReportsPage() {
                       </div>
                       <Bar
                         widthPct={pct(incomeMinor, trendMaxMinor)}
-                        className="bg-emerald-500"
-                        label={`Income ${formatMoney(incomeMinor, currency)}`}
+                        className="bg-emerald-300"
+                        label={`Income budgeted ${formatMoney(incomeMinor, currency)}`}
+                      />
+                      <div className="h-1" />
+                      <Bar
+                        widthPct={pct(receivedMinor, trendMaxMinor)}
+                        className="bg-emerald-600"
+                        label={`Income received ${formatMoney(receivedMinor, currency)}`}
                       />
                       <div className="h-1" />
                       <Bar
@@ -196,9 +217,12 @@ export function ReportsPage() {
                   )
                 })}
               </div>
-              <div className="mt-4 flex gap-4 text-xs text-slate-500">
+              <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-500">
                 <span className="flex items-center gap-1">
-                  <span className="h-2 w-3 rounded-sm bg-emerald-500" /> Income (budgeted)
+                  <span className="h-2 w-3 rounded-sm bg-emerald-300" /> Income (budgeted)
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="h-2 w-3 rounded-sm bg-emerald-600" /> Income (received)
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="h-2 w-3 rounded-sm bg-slate-400" /> Spent
@@ -285,12 +309,23 @@ export function ReportsPage() {
               </section>
             )}
 
-            {/* Spending by category for the latest month. */}
+            {/* Spending by category for the chosen month. */}
             <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="mb-1 text-sm font-semibold text-slate-700">Spending by category</h3>
-              {latest && (
-                <p className="mb-4 text-xs text-slate-400">{monthLabel(latest.year, latest.month)}</p>
-              )}
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-slate-700">Spending by category</h3>
+                <select
+                  aria-label="Breakdown month"
+                  value={breakdownKey ?? ''}
+                  onChange={(e) => setBreakdownKey(e.target.value)}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  {[...trends.points].reverse().map((p) => (
+                    <option key={p.key} value={p.key}>
+                      {monthLabel(p.year, p.month)}
+                    </option>
+                  ))}
+                </select>
+              </div>
               {categorySpend.length === 0 ? (
                 <p className="text-sm text-slate-400">No spending recorded for this month yet.</p>
               ) : (
