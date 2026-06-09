@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
-import type { BudgetMonthDto, TransactionDto } from '../types'
+import type { AccountDto, BudgetMonthDto, TransactionDto } from '../types'
 import { TransactionType } from '../types'
 import { formatMoney, fromAmount, parseMinor, sumMinor, toAmount } from '../lib/money'
 import { buildItemOptions, transactionTypeLabel } from '../lib/transactions'
@@ -15,6 +15,7 @@ export function TransactionsPage() {
   const { logout } = useAuth()
   const [transactions, setTransactions] = useState<TransactionDto[]>([])
   const [month, setMonth] = useState<BudgetMonthDto | null>(null)
+  const [accounts, setAccounts] = useState<AccountDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
@@ -25,6 +26,7 @@ export function TransactionsPage() {
   const [amount, setAmount] = useState('')
   const [type, setType] = useState<number>(TransactionType.Expense)
   const [assignTo, setAssignTo] = useState('')
+  const [account, setAccount] = useState('')
   const [adding, setAdding] = useState(false)
 
   // Filters (client-side — the per-user list is small).
@@ -37,6 +39,7 @@ export function TransactionsPage() {
   const [ePayee, setEPayee] = useState('')
   const [eAmount, setEAmount] = useState('')
   const [eType, setEType] = useState<number>(TransactionType.Expense)
+  const [eAccount, setEAccount] = useState('')
 
   // Split editor state.
   const [splittingId, setSplittingId] = useState<string | null>(null)
@@ -48,11 +51,13 @@ export function TransactionsPage() {
     Promise.all([
       api.get<TransactionDto[]>('/transactions'),
       api.get<BudgetMonthDto>('/budget/current').catch(() => null),
+      api.get<AccountDto[]>('/accounts').catch(() => null),
     ])
-      .then(([tx, budget]) => {
+      .then(([tx, budget, acc]) => {
         if (cancelled) return
         setTransactions(tx.data)
         setMonth(budget?.data ?? null)
+        setAccounts(Array.isArray(acc?.data) ? acc.data : [])
       })
       .catch(() => !cancelled && setError('Could not load transactions.'))
       .finally(() => !cancelled && setLoading(false))
@@ -89,6 +94,7 @@ export function TransactionsPage() {
         amount: toAmount(minor),
         type,
         budgetItemId: assignTo || null,
+        accountId: account || null,
       })
       setTransactions((prev) => [data, ...prev])
       setPayee('')
@@ -98,7 +104,7 @@ export function TransactionsPage() {
     } finally {
       setAdding(false)
     }
-  }, [date, payee, amount, type, assignTo])
+  }, [date, payee, amount, type, assignTo, account])
 
   const removeTransaction = useCallback(async (id: string) => {
     setSavingId(id)
@@ -120,6 +126,7 @@ export function TransactionsPage() {
     setEPayee(t.payee)
     setEAmount(String(t.amount))
     setEType(t.type)
+    setEAccount(t.accountId ?? '')
   }
 
   const saveEdit = useCallback(
@@ -137,6 +144,7 @@ export function TransactionsPage() {
           payee: ePayee,
           amount: toAmount(minor),
           type: eType,
+          accountId: eAccount || null,
         })
         setTransactions((prev) => prev.map((t) => (t.id === id ? data : t)))
         setEditingId(null)
@@ -146,7 +154,7 @@ export function TransactionsPage() {
         setSavingId(null)
       }
     },
-    [eDate, ePayee, eAmount, eType],
+    [eDate, ePayee, eAmount, eType, eAccount],
   )
 
   function startSplit(t: TransactionDto) {
@@ -246,6 +254,12 @@ export function TransactionsPage() {
               <span className="rounded-md bg-slate-100 px-3 py-1.5 font-semibold text-slate-800">
                 Transactions
               </span>
+              <Link
+                to="/accounts"
+                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
+              >
+                Accounts
+              </Link>
               <Link
                 to="/reports"
                 className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
@@ -356,6 +370,24 @@ export function TransactionsPage() {
                 ))}
               </select>
             </label>
+            {accounts.length > 0 && (
+              <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+                Account
+                <select
+                  value={account}
+                  aria-label="Transaction account"
+                  onChange={(e) => setAccount(e.target.value)}
+                  className="w-40 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="">No account</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <button
               type="button"
               onClick={addTransaction}
@@ -442,13 +474,30 @@ export function TransactionsPage() {
                               />
                             </td>
                             <td className="px-4 py-2">
-                              <input
-                                type="text"
-                                value={ePayee}
-                                aria-label="Edit payee"
-                                onChange={(e) => setEPayee(e.target.value)}
-                                className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
-                              />
+                              <div className="flex flex-col gap-1">
+                                <input
+                                  type="text"
+                                  value={ePayee}
+                                  aria-label="Edit payee"
+                                  onChange={(e) => setEPayee(e.target.value)}
+                                  className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+                                />
+                                {accounts.length > 0 && (
+                                  <select
+                                    value={eAccount}
+                                    aria-label="Edit account"
+                                    onChange={(e) => setEAccount(e.target.value)}
+                                    className="w-full rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600"
+                                  >
+                                    <option value="">No account</option>
+                                    {accounts.map((a) => (
+                                      <option key={a.id} value={a.id}>
+                                        {a.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 py-2 text-right">
                               <input
@@ -496,7 +545,14 @@ export function TransactionsPage() {
                         ) : (
                           <>
                             <td className="px-4 py-2.5 tabular-nums text-slate-500">{t.date}</td>
-                            <td className="px-4 py-2.5 font-medium text-slate-700">{t.payee || '—'}</td>
+                            <td className="px-4 py-2.5 font-medium text-slate-700">
+                              {t.payee || '—'}
+                              {t.accountName && (
+                                <span className="block text-xs font-normal text-slate-400">
+                                  {t.accountName}
+                                </span>
+                              )}
+                            </td>
                             <td
                               className={`px-4 py-2.5 text-right font-semibold tabular-nums ${
                                 isIncome ? 'text-emerald-600' : 'text-slate-700'

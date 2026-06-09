@@ -17,6 +17,13 @@ public class Transaction : BaseEntity
     public Guid? BudgetItemId { get; set; }
     public BudgetItem? BudgetItem { get; set; }
 
+    /// <summary>
+    /// The real-world account this money moved in or out of (optional). Drives the
+    /// account's derived balance; independent of the budget-line attribution above.
+    /// </summary>
+    public Guid? AccountId { get; set; }
+    public Account? Account { get; set; }
+
     /// <summary>Amount in the transaction's own <see cref="Currency"/>. Positive magnitude; direction is on <see cref="Type"/>.</summary>
     public decimal Amount { get; set; }
 

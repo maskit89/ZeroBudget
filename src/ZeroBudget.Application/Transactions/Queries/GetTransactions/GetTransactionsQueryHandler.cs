@@ -27,6 +27,7 @@ public class GetTransactionsQueryHandler
         var query = _db.Transactions
             .AsNoTracking()
             .Include(t => t.BudgetItem)
+            .Include(t => t.Account)
             .Include(t => t.Splits)
                 .ThenInclude(s => s.BudgetItem)
             .Where(t => t.OwnerId == userId);

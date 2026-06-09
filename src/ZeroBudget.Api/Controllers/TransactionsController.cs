@@ -49,7 +49,8 @@ public class TransactionsController : ControllerBase
     {
         var result = await _mediator.Send(
             new CreateTransactionCommand(
-                request.Date, request.Payee, request.Amount, request.Type, request.BudgetItemId),
+                request.Date, request.Payee, request.Amount, request.Type,
+                request.BudgetItemId, request.AccountId),
             ct);
         return CreatedAtAction(nameof(List), new { }, result);
     }
@@ -66,7 +67,9 @@ public class TransactionsController : ControllerBase
         CancellationToken ct)
     {
         var result = await _mediator.Send(
-            new UpdateTransactionCommand(id, request.Date, request.Payee, request.Amount, request.Type), ct);
+            new UpdateTransactionCommand(
+                id, request.Date, request.Payee, request.Amount, request.Type, request.AccountId),
+            ct);
         return Ok(result);
     }
 
@@ -123,14 +126,16 @@ public record CreateTransactionRequest(
     string Payee,
     decimal Amount,
     TransactionType Type,
-    Guid? BudgetItemId);
+    Guid? BudgetItemId,
+    Guid? AccountId = null);
 
 /// <summary>Request body for editing a transaction (the id comes from the route).</summary>
 public record UpdateTransactionRequest(
     DateOnly Date,
     string Payee,
     decimal Amount,
-    TransactionType Type);
+    TransactionType Type,
+    Guid? AccountId = null);
 
 /// <summary>Request body for splitting a transaction across budget lines.</summary>
 public record SplitTransactionRequest(IReadOnlyList<SplitAllocationRequest> Allocations);
