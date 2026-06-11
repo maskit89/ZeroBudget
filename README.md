@@ -3,6 +3,10 @@
 A **Zero-Based Budgeting** (ZBB) web application for the European market. Every
 Euro of income is given a job until **"Remaining to Budget" reaches €0.00**.
 
+> 📖 **New to the app?** The **[User Guide](docs/USER_GUIDE.md)** explains every
+> page and feature of the portal — budgets, funds, bills, paychecks, transactions,
+> accounts, statement import, rules, reports and feature flags.
+
 - **Backend:** ASP.NET Core Web API (clean architecture) + EF Core + SQL Server
 - **Auth:** ASP.NET Core Identity issuing JWTs
 - **Patterns:** CQRS via MediatR, FluentValidation pipeline
