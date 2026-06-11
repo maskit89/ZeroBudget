@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
+import { AppNav } from '../components/AppNav'
+import { useFeatures } from '../features/FeatureContext'
 import type {
   BudgetMonthDto,
   BudgetMonthSummaryDto,
@@ -48,6 +49,7 @@ const now = new Date()
 
 export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
   const { email, logout } = useAuth()
+  const features = useFeatures()
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 })
   const [month, setMonth] = useState<MonthVM | null>(null)
   const [loading, setLoading] = useState(true)
@@ -515,54 +517,22 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
               <span className="text-2xl">💶</span>
               <h1 className="text-lg font-bold text-slate-800">ZeroBudget</h1>
             </div>
-            <nav className="flex gap-1 text-sm">
-              <span className="rounded-md bg-slate-100 px-3 py-1.5 font-semibold text-slate-800">
-                Budget
-              </span>
-              <Link
-                to="/paychecks"
-                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
-              >
-                Paychecks
-              </Link>
-              <Link
-                to="/transactions"
-                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
-              >
-                Transactions
-              </Link>
-              <Link
-                to="/accounts"
-                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
-              >
-                Accounts
-              </Link>
-              <Link
-                to="/reports"
-                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
-              >
-                Reports
-              </Link>
-              <Link
-                to="/rules"
-                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
-              >
-                Rules
-              </Link>
-            </nav>
+            <AppNav active="budget" />
           </div>
           <div className="flex items-center gap-4">
             <span className="hidden text-sm text-slate-500 sm:inline">{email}</span>
-            <ImportStatementButton
-              onImported={(r) => {
-                setError(null)
-                setImportSummary(r)
-              }}
-              onError={(msg) => {
-                setImportSummary(null)
-                setError(msg)
-              }}
-            />
+            {features.camtImport && (
+              <ImportStatementButton
+                onImported={(r) => {
+                  setError(null)
+                  setImportSummary(r)
+                }}
+                onError={(msg) => {
+                  setImportSummary(null)
+                  setError(msg)
+                }}
+              />
+            )}
             <button
               onClick={logout}
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"

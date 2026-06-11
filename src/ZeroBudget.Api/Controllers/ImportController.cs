@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ZeroBudget.Application.Imports.Commands.ImportStatement;
+using ZeroBudget.Api.Features;
 
 namespace ZeroBudget.Api.Controllers;
 
@@ -11,6 +12,7 @@ namespace ZeroBudget.Api.Controllers;
 /// </summary>
 [ApiController]
 [Authorize]
+[FeatureGate(nameof(FeatureFlags.CamtImport))]
 [Route("api/[controller]")]
 public class ImportController : ControllerBase
 {

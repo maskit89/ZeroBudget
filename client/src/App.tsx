@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import type { JSX } from 'react'
 import { useAuth } from './auth/AuthContext'
+import { useFeatures } from './features/FeatureContext'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { TransactionsPage } from './pages/TransactionsPage'
@@ -16,6 +17,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 
 export default function App() {
   const { isAuthenticated } = useAuth()
+  const features = useFeatures()
 
   return (
     <Routes>
@@ -47,22 +49,26 @@ export default function App() {
           </RequireAuth>
         }
       />
-      <Route
-        path="/accounts"
-        element={
-          <RequireAuth>
-            <AccountsPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/reports"
-        element={
-          <RequireAuth>
-            <ReportsPage />
-          </RequireAuth>
-        }
-      />
+      {features.accounts && (
+        <Route
+          path="/accounts"
+          element={
+            <RequireAuth>
+              <AccountsPage />
+            </RequireAuth>
+          }
+        />
+      )}
+      {features.reports && (
+        <Route
+          path="/reports"
+          element={
+            <RequireAuth>
+              <ReportsPage />
+            </RequireAuth>
+          }
+        />
+      )}
       <Route
         path="/rules"
         element={
