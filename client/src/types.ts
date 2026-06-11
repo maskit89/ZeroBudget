@@ -188,6 +188,14 @@ export interface CategorizationRuleDto {
   itemName: string
 }
 
+/** Toggles for the beyond-EveryDollar features (from GET /api/features). */
+export interface FeatureFlags {
+  accounts: boolean
+  multiCurrency: boolean
+  camtImport: boolean
+  reports: boolean
+}
+
 export interface ImportStatementResult {
   totalEntries: number
   imported: number

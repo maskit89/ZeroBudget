@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { AppNav } from '../components/AppNav'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
 import type { AnnualSummaryDto, BudgetMonthDto, BudgetTrendsDto } from '../types'
@@ -116,38 +116,7 @@ export function ReportsPage() {
               <span className="text-2xl">💶</span>
               <h1 className="text-lg font-bold text-slate-800">ZeroBudget</h1>
             </div>
-            <nav className="flex gap-1 text-sm">
-              <Link to="/" className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100">
-                Budget
-              </Link>
-              <Link
-                to="/paychecks"
-                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
-              >
-                Paychecks
-              </Link>
-              <Link
-                to="/transactions"
-                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
-              >
-                Transactions
-              </Link>
-              <Link
-                to="/accounts"
-                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
-              >
-                Accounts
-              </Link>
-              <span className="rounded-md bg-slate-100 px-3 py-1.5 font-semibold text-slate-800">
-                Reports
-              </span>
-              <Link
-                to="/rules"
-                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
-              >
-                Rules
-              </Link>
-            </nav>
+            <AppNav active="reports" />
           </div>
           <button
             onClick={logout}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { AppNav } from '../components/AppNav'
+import { useFeatures } from '../features/FeatureContext'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
 import type { AccountDto } from '../types'
@@ -23,6 +24,7 @@ function parseSignedAmount(input: string): number | null {
 
 export function AccountsPage() {
   const { logout } = useAuth()
+  const features = useFeatures()
   const [accounts, setAccounts] = useState<AccountDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -155,36 +157,7 @@ export function AccountsPage() {
               <span className="text-2xl">💶</span>
               <h1 className="text-lg font-bold text-slate-800">ZeroBudget</h1>
             </div>
-            <nav className="flex gap-1 text-sm">
-              <Link to="/" className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100">
-                Budget
-              </Link>
-              <Link
-                to="/paychecks"
-                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
-              >
-                Paychecks
-              </Link>
-              <Link
-                to="/transactions"
-                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
-              >
-                Transactions
-              </Link>
-              <span className="rounded-md bg-slate-100 px-3 py-1.5 font-semibold text-slate-800">Accounts</span>
-              <Link
-                to="/reports"
-                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
-              >
-                Reports
-              </Link>
-              <Link
-                to="/rules"
-                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
-              >
-                Rules
-              </Link>
-            </nav>
+            <AppNav active="accounts" />
           </div>
           <button
             onClick={logout}
@@ -240,17 +213,19 @@ export function AccountsPage() {
                 ))}
               </select>
             </label>
-            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
-              Currency
-              <input
-                type="text"
-                value={currency}
-                aria-label="Account currency"
-                maxLength={3}
-                onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-                className="w-20 rounded-md border border-slate-300 px-2 py-1.5 text-sm uppercase focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-            </label>
+            {features.multiCurrency && (
+              <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+                Currency
+                <input
+                  type="text"
+                  value={currency}
+                  aria-label="Account currency"
+                  maxLength={3}
+                  onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+                  className="w-20 rounded-md border border-slate-300 px-2 py-1.5 text-sm uppercase focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </label>
+            )}
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
               Opening balance
               <input

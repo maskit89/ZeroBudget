@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using ZeroBudget.Application.Reports.Dtos;
 using ZeroBudget.Application.Reports.Queries.GetAnnualSummary;
 using ZeroBudget.Application.Reports.Queries.GetBudgetTrends;
+using ZeroBudget.Api.Features;
 
 namespace ZeroBudget.Api.Controllers;
 
@@ -13,6 +14,7 @@ namespace ZeroBudget.Api.Controllers;
 /// </summary>
 [ApiController]
 [Authorize]
+[FeatureGate(nameof(FeatureFlags.Reports))]
 [Route("api/[controller]")]
 public class ReportsController : ControllerBase
 {

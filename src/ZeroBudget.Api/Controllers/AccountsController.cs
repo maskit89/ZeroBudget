@@ -6,6 +6,7 @@ using ZeroBudget.Application.Accounts.Commands.DeleteAccount;
 using ZeroBudget.Application.Accounts.Commands.UpdateAccount;
 using ZeroBudget.Application.Accounts.Dtos;
 using ZeroBudget.Application.Accounts.Queries.GetAccounts;
+using ZeroBudget.Api.Features;
 using ZeroBudget.Domain.Enums;
 
 namespace ZeroBudget.Api.Controllers;
@@ -16,6 +17,7 @@ namespace ZeroBudget.Api.Controllers;
 /// </summary>
 [ApiController]
 [Authorize]
+[FeatureGate(nameof(FeatureFlags.Accounts))]
 [Route("api/[controller]")]
 public class AccountsController : ControllerBase
 {

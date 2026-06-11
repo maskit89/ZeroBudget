@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using ZeroBudget.Api.Features;
 using ZeroBudget.Api.Middleware;
 using ZeroBudget.Api.Services;
 using ZeroBudget.Application;
@@ -23,6 +24,9 @@ builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
+
+// Feature toggles for the beyond-EveryDollar features (all default ON).
+builder.Services.Configure<FeatureFlags>(builder.Configuration.GetSection(FeatureFlags.SectionName));
 
 // CORS for the Vite dev server (configurable via Cors:AllowedOrigins).
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
