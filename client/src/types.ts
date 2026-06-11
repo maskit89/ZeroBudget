@@ -143,6 +143,25 @@ export interface AnnualSummaryDto {
   totalSpent: number
 }
 
+export interface PaycheckAllocationDto {
+  id: string
+  budgetItemId: string | null
+  budgetItemName: string | null
+  amount: number
+}
+
+export interface PaycheckDto {
+  id: string
+  name: string
+  /** ISO date (yyyy-mm-dd). */
+  date: string
+  plannedAmount: number
+  allocatedAmount: number
+  remaining: number
+  displayOrder: number
+  allocations: PaycheckAllocationDto[]
+}
+
 export interface BudgetTemplateGroupDto {
   name: string
   kind: 'Income' | 'Expense' | 'Fund'

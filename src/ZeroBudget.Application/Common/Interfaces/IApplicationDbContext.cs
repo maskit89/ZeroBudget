@@ -17,6 +17,8 @@ public interface IApplicationDbContext
     DbSet<TransactionSplit> TransactionSplits { get; }
     DbSet<CategorizationRule> CategorizationRules { get; }
     DbSet<Account> Accounts { get; }
+    DbSet<Paycheck> Paychecks { get; }
+    DbSet<PaycheckAllocation> PaycheckAllocations { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

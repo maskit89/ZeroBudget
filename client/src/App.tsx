@@ -4,6 +4,7 @@ import { useAuth } from './auth/AuthContext'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { TransactionsPage } from './pages/TransactionsPage'
+import { PaychecksPage } from './pages/PaychecksPage'
 import { AccountsPage } from './pages/AccountsPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { RulesPage } from './pages/RulesPage'
@@ -27,6 +28,14 @@ export default function App() {
         element={
           <RequireAuth>
             <DashboardPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/paychecks"
+        element={
+          <RequireAuth>
+            <PaychecksPage />
           </RequireAuth>
         }
       />

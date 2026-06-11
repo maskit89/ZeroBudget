@@ -27,6 +27,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<TransactionSplit> TransactionSplits => Set<TransactionSplit>();
     public DbSet<CategorizationRule> CategorizationRules => Set<CategorizationRule>();
     public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<Paycheck> Paychecks => Set<Paycheck>();
+    public DbSet<PaycheckAllocation> PaycheckAllocations => Set<PaycheckAllocation>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
