@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AppNav } from '../components/AppNav'
+import { AppShell } from '../components/AppShell'
 import { api } from '../lib/api'
-import { useAuth } from '../auth/AuthContext'
 import type { BudgetMonthDto, PaycheckDto } from '../types'
 import { formatMoney, fromAmount, parseMinor, sumMinor, toAmount } from '../lib/money'
 
@@ -17,7 +16,6 @@ function today(): string {
 type AllocRow = { budgetItemId: string; amount: string }
 
 export function PaychecksPage() {
-  const { logout } = useAuth()
   const [month, setMonth] = useState<BudgetMonthDto | null>(null)
   const [paychecks, setPaychecks] = useState<PaycheckDto[]>([])
   const [loading, setLoading] = useState(true)
@@ -196,26 +194,7 @@ export function PaychecksPage() {
   const monthLabel = month ? `${SHORT_MONTHS[month.month - 1]} ${month.year}` : ''
 
   return (
-    <div className="min-h-full bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">💶</span>
-              <h1 className="text-lg font-bold text-slate-800">ZeroBudget</h1>
-            </div>
-            <AppNav active="paychecks" />
-          </div>
-          <button
-            onClick={logout}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl space-y-4 px-6 py-8">
+    <AppShell active="paychecks">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">
             Paycheck planning{month && <span className="text-slate-400"> · {monthLabel}</span>}
@@ -522,7 +501,6 @@ export function PaychecksPage() {
             </div>
           </>
         )}
-      </main>
-    </div>
+    </AppShell>
   )
 }
