@@ -42,6 +42,17 @@ public class DeleteBudgetItemCommandHandler : IRequestHandler<DeleteBudgetItemCo
 
         var monthId = item.BudgetCategory.BudgetMonthId;
 
+        // Remove any paycheck allocations that funded this line first. Their FK uses
+        // NoAction (to avoid a multiple-cascade-path on SQL Server), so the delete
+        // would otherwise be blocked.
+        var allocations = await _db.PaycheckAllocations
+            .Where(a => a.BudgetItemId == item.Id)
+            .ToListAsync(cancellationToken);
+        if (allocations.Count > 0)
+        {
+            _db.PaycheckAllocations.RemoveRange(allocations);
+        }
+
         _db.BudgetItems.Remove(item);
         await _db.SaveChangesAsync(cancellationToken);
 

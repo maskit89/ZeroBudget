@@ -111,6 +111,12 @@ export function RulesPage() {
                 Budget
               </Link>
               <Link
+                to="/paychecks"
+                className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
+              >
+                Paychecks
+              </Link>
+              <Link
                 to="/transactions"
                 className="rounded-md px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100"
               >
