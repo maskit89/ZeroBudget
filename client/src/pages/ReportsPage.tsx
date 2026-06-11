@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AppNav } from '../components/AppNav'
+import { AppShell } from '../components/AppShell'
 import { api } from '../lib/api'
-import { useAuth } from '../auth/AuthContext'
 import type { AnnualSummaryDto, BudgetMonthDto, BudgetTrendsDto } from '../types'
 import { formatMoney, fromAmount, type Minor } from '../lib/money'
 
@@ -20,7 +19,6 @@ interface CategorySpend {
 }
 
 export function ReportsPage() {
-  const { logout } = useAuth()
   const [trends, setTrends] = useState<BudgetTrendsDto | null>(null)
   const [breakdownMonth, setBreakdownMonth] = useState<BudgetMonthDto | null>(null)
   const [breakdownKey, setBreakdownKey] = useState<string | null>(null)
@@ -108,26 +106,7 @@ export function ReportsPage() {
   const netMinor = totalIncomeMinor - totalSpentMinor
 
   return (
-    <div className="min-h-full bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">💶</span>
-              <h1 className="text-lg font-bold text-slate-800">ZeroBudget</h1>
-            </div>
-            <AppNav active="reports" />
-          </div>
-          <button
-            onClick={logout}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-4xl space-y-6 px-6 py-8">
+    <AppShell active="reports" maxWidth="4xl">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Reports</h2>
           <p className="text-sm text-slate-500">
@@ -337,8 +316,7 @@ export function ReportsPage() {
             </section>
           </>
         )}
-      </main>
-    </div>
+    </AppShell>
   )
 }
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
-import { AppNav } from '../components/AppNav'
+import { AppShell } from '../components/AppShell'
 import { useFeatures } from '../features/FeatureContext'
 import type {
   BudgetMonthDto,
@@ -48,7 +48,7 @@ const MONTH_NAMES = [
 const now = new Date()
 
 export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
-  const { email, logout } = useAuth()
+  const { email } = useAuth()
   const features = useFeatures()
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 })
   const [month, setMonth] = useState<MonthVM | null>(null)
@@ -509,41 +509,27 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
   }
 
   return (
-    <div className="min-h-full bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">💶</span>
-              <h1 className="text-lg font-bold text-slate-800">ZeroBudget</h1>
-            </div>
-            <AppNav active="budget" />
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="hidden text-sm text-slate-500 sm:inline">{email}</span>
-            {features.camtImport && (
-              <ImportStatementButton
-                onImported={(r) => {
-                  setError(null)
-                  setImportSummary(r)
-                }}
-                onError={(msg) => {
-                  setImportSummary(null)
-                  setError(msg)
-                }}
-              />
-            )}
-            <button
-              onClick={logout}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-4xl space-y-6 px-6 py-8">
+    <AppShell
+      active="budget"
+      maxWidth="4xl"
+      right={
+        <>
+          <span className="hidden text-sm text-slate-500 sm:inline">{email}</span>
+          {features.camtImport && (
+            <ImportStatementButton
+              onImported={(r) => {
+                setError(null)
+                setImportSummary(r)
+              }}
+              onError={(msg) => {
+                setImportSummary(null)
+                setError(msg)
+              }}
+            />
+          )}
+        </>
+      }
+    >
         {/* Month navigator — always visible so you can move between / create months. */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -802,7 +788,6 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
             </div>
           </>
         )}
-      </main>
-    </div>
+    </AppShell>
   )
 }
