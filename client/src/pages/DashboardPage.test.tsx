@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { BudgetMonthDto, BudgetTemplateDto } from '../types'
@@ -84,14 +84,15 @@ describe('DashboardPage optimistic editing', () => {
       url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
     )
     mockPut.mockResolvedValue({ data: {} })
-    const user = userEvent.setup()
 
     renderPage()
 
     const input = (await screen.findByLabelText('Planned amount for Rent', {}, { timeout: 5000 })) as HTMLInputElement
-    await user.clear(input)
-    await user.type(input, '3000') // assign the remaining €1.900 to Rent
-    await user.tab() // blur -> commit
+    // Set the value atomically (fireEvent.change) rather than typing key-by-key:
+    // userEvent.type into a controlled input can drop characters under CPU load,
+    // which made this assertion flaky on CI. Blur commits the value.
+    fireEvent.change(input, { target: { value: '3000' } }) // assign the remaining €1.900 to Rent
+    fireEvent.blur(input)
 
     // Banner flips to the balanced state and the API was called with the amount.
     expect(await screen.findByText(/Every Euro has a job/, {}, { timeout: 5000 })).toBeInTheDocument()
