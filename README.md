@@ -3,6 +3,10 @@
 A **Zero-Based Budgeting** (ZBB) web application for the European market. Every
 Euro of income is given a job until **"Remaining to Budget" reaches €0.00**.
 
+> 📖 **New to the app?** The **[User Guide](docs/USER_GUIDE.md)** explains every
+> page and feature of the portal — budgets, funds, bills, paychecks, transactions,
+> accounts, statement import, rules, reports and feature flags.
+
 - **Backend:** ASP.NET Core Web API (clean architecture) + EF Core + SQL Server
 - **Auth:** ASP.NET Core Identity issuing JWTs
 - **Patterns:** CQRS via MediatR, FluentValidation pipeline
@@ -31,6 +35,10 @@ ZeroBudget/
 └─ client/                       # Vite + React + TS + Tailwind dashboard
 ```
 
+The `Application` project is organised by feature — `Budgets`, `Transactions`,
+`Accounts`, `Paychecks`, `Imports`, `Reports`, `Rules` — each holding its commands,
+queries, DTOs and the read-time calculators (`BudgetActuals`, `AccountBalances`).
+
 ### Dependency rule (clean architecture)
 
 ```
@@ -40,23 +48,62 @@ Domain  ←  Application  ←  Infrastructure
 ```
 
 `Domain` depends on nothing. `Application` depends only on `Domain` and defines
-abstractions (`IApplicationDbContext`, `ICurrentUser`, `IJwtTokenGenerator`) that
-`Infrastructure` / `Api` implement (Dependency Inversion).
+abstractions (`IApplicationDbContext`, `ICurrentUser`, `IJwtTokenGenerator`,
+`IStatementParser`, `IExchangeRateProvider`) that `Infrastructure` / `Api`
+implement (Dependency Inversion).
 
 ---
 
 ## Core domain logic
 
-The whole point of ZBB lives in `BudgetMonth` and is pure, testable C#:
+The whole point of ZBB lives in `BudgetMonth` and is pure, testable C#. A month is
+a tree of `BudgetCategory` groups (each tagged with a `CategoryKind` — `Income`,
+`Expense` or `Fund`) holding `BudgetItem` lines:
 
 ```csharp
-public decimal TotalPlanned       => Categories.Sum(c => c.TotalPlanned);
-public decimal RemainingToBudget  => TotalIncome - TotalPlanned;
-public bool    IsBalanced         => RemainingToBudget == 0m;
+// Income is the pool to allocate — the sum of the Income-group lines.
+public decimal TotalIncome =>
+    Categories.Where(c => c.Kind == CategoryKind.Income).Sum(c => c.TotalPlanned);
+
+// Everything that has been given a job: every NON-income group, i.e. expense
+// spending plus sinking-fund contributions (funding a fund is a job too).
+public decimal TotalPlanned =>
+    Categories.Where(c => c.Kind != CategoryKind.Income).Sum(c => c.TotalPlanned);
+
+public decimal RemainingToBudget => TotalIncome - TotalPlanned;
+public bool    IsBalanced        => RemainingToBudget == 0m;
 ```
 
 `RemainingToBudget` is computed server-side, shipped in the DTO, and returned again
-on every edit so the banner updates dynamically.
+on every edit so the banner updates dynamically. It handles zero/absent income
+gracefully (it simply returns the negated total planned, never dividing).
+
+A line's **`ActualAmount`** is likewise never authored directly — it is derived at
+read time (see `ZeroBudget.Application.Budgets.BudgetActuals`): the sum of the line's
+assigned transactions when it is in `Tracked` mode, otherwise the user's typed
+`ManualActualAmount`. New lines default to `Manual` so people who don't log
+individual transactions can still record actuals.
+
+---
+
+## Building a month
+
+- `GET /api/budget/{year}/{month}` (and `GET /api/budget/current`) returns the
+  recomputed month tree; `GET /api/budget/months` lists which months exist (for the
+  navigator).
+- `POST /api/budget` creates a month **from a quick-start template, by copying the
+  previous month, or blank** (`CreateBudgetMonthRequest { Year, Month,
+  CopyFromPrevious, TemplateKey }`; precedence is template → copy → blank).
+- `GET /api/budget/templates` lists the built-in starters (`Essentials`, `Student`,
+  `Family`) defined in `Application/Budgets/Templates`; new accounts are seeded with a
+  default month on registration.
+- Category groups and lines have full CRUD plus drag-reorder:
+  `POST /api/budget/categories` (pass `IsFund: true` for a sinking-fund group),
+  `PUT /api/budget/categories/{id}` (rename), `DELETE /api/budget/categories/{id}`,
+  `PUT /api/budget/categories/order`, `POST /api/budget/categories/{categoryId}/items`,
+  `PUT /api/budget/items/{id}`, `DELETE /api/budget/items/{id}`, and
+  `PUT /api/budget/categories/{categoryId}/items/order`.
+- The single `Income` group is rendered first and can't be deleted.
 
 ---
 
@@ -79,35 +126,150 @@ on every edit so the banner updates dynamically.
 
 ---
 
+## Sinking funds
+
+A `CategoryKind.Fund` group holds **sinking funds** — expense-like lines whose
+balance rolls over month to month (e.g. "Car repairs", "Christmas").
+
+- Each fund line carries a stable **`FundId`** shared by every month's instance of
+  the same fund, generated when the line is first created and preserved when a month
+  is copied.
+- The running balance is **derived at read time**: `BudgetActuals` sets each fund
+  line's transient `FundAvailable` to `Σ(planned − spent)` for that `FundId` across
+  every month up to and including the one being viewed.
+- Fund contributions count as planned money (they're a non-income group), so the
+  budget only balances once the funds are funded.
+
+---
+
+## Bills & reminders
+
+Any expense line can be tracked as a **bill**:
+
+- `PUT /api/budget/items/{id}/bill` sets or clears a `DueDay` (1–31); a line with a
+  due day is a bill (`BudgetItem.IsBill`). `PUT /api/budget/items/{id}/paid` toggles
+  this month's `IsPaid`.
+- The `DueDay` recurs (it's copied when a month is created); `IsPaid` resets each
+  month.
+- The client derives **due-soon / overdue** reminders from the due day and paid
+  state for the current month (clamped to the month length).
+
+---
+
+## Paycheck planning
+
+When income arrives in several instalments, **paycheck planning** lets the user
+decide which paycheck funds which lines. A `Paycheck` belongs to a `BudgetMonth`; its
+`PlannedAmount` is spread across lines via `PaycheckAllocation`s. `AllocatedAmount`
+(Σ allocations) and `Remaining` (planned − allocated) are derived. It's a planning
+layer over the budget and doesn't change the zero-based totals.
+
+- `GET /api/paychecks?year=&month=` lists a month's paychecks with their allocations.
+- `POST /api/paychecks`, `PUT /api/paychecks/{id}`, `DELETE /api/paychecks/{id}`
+  manage the paychecks themselves.
+- `PUT /api/paychecks/{id}/allocations` replaces the spread wholesale (rejecting
+  income-line and cross-month targets). Every handler is owner-scoped.
+
+---
+
+## Accounts & balances
+
+`Account` is a "where my money is" view alongside the budget (a current account,
+savings pot, cash, or credit card — `AccountType`).
+
+- An account's balance is **never stored**: `AccountBalances` derives it at read time
+  as `OpeningBalance + Σ(income) − Σ(expense)` of the transactions assigned to it, in
+  the account's own currency, so the transaction register stays the single source of
+  truth. (The opening balance can be negative — e.g. a credit card's debt.)
+- `GET /api/accounts` returns the accounts with their current balances;
+  `POST /api/accounts`, `PUT /api/accounts/{id}` and `DELETE /api/accounts/{id}`
+  manage them (currency is immutable once set; deleting an account unlinks its
+  transactions rather than removing them). Every handler is owner-scoped.
+- A transaction's `AccountId` is independent of its budget-line attribution — a
+  transaction can move an account balance, fill a budget line, both, or neither.
+
+---
+
 ## Bank statement import (ISO 20022 / CAMT.053)
 
 Upload a CAMT.053 XML statement and its entries become `Transaction`s.
 
-- `POST /api/import/camt053` (multipart `file`, `[Authorize]`d) → import summary
-  (`imported`, `skippedDuplicates`, `credits`, `debits`, `iban`).
+- `POST /api/import/camt053` (multipart `file`, optional `accountId`, `[Authorize]`d)
+  → import summary (`TotalEntries`, `Imported`, `SkippedDuplicates`, `Credits`,
+  `Debits`, `Iban`, `AutoCategorized`).
 - `Camt053StatementParser` (Infrastructure, behind the `IStatementParser`
   abstraction) reads `<Ntry>` elements **by local name**, so it handles every
   `camt.053.001.xx` namespace version. `CdtDbtInd` maps to income/expense, the
   entry keeps its own `Ccy`, and the payee comes from the creditor/debtor name.
 - Re-importing is **idempotent**: entries are de-duplicated per user on their
   bank reference (`AcctSvcrRef`, falling back to `EndToEndId`).
+- Passing an `accountId` **imports the statement into that account** (owner-validated
+  up front), stamping every imported transaction with it so the account balance moves.
 
 ---
 
-## Transactions & actual spending
+## Transactions, splits & actual spending
 
 - `GET /api/transactions` lists the user's transactions (filterable by month /
   unassigned); the **Transactions** page assigns each to a budget line.
+  `POST /api/transactions` adds a manual one and `PUT`/`DELETE /api/transactions/{id}`
+  edit and remove it (each carrying an optional `AccountId`).
 - `PUT /api/transactions/{id}/assignment` sets/clears a line (ownership checked
   on both the transaction and the target line).
-- A line's **`ActualAmount` is derived at read time** from the expense
-  transactions assigned to it (summed in base currency via `Amount ×
-  ExchangeRate`) — no denormalized total to keep in sync. This is what fills the
-  dashboard's "Actual" / "Remaining" columns.
+- `PUT /api/transactions/{id}/splits` **splits a transaction across two or more
+  lines** (`TransactionSplit`). A transaction is whole-assigned **xor** split (its
+  `BudgetItemId` is cleared and the slices carry the attribution, summing exactly to
+  the total) **xor** unassigned, so it never double-counts.
+- A line's **`ActualAmount` is derived at read time** from the expense transactions
+  (and split slices) assigned to it, summed in base currency via `Amount ×
+  ExchangeRate` — no denormalized total to keep in sync. This fills the dashboard's
+  "Actual" / "Remaining" columns; assigning or splitting a transaction flips its
+  target line(s) to `Tracked` mode.
 - **Auto-categorization:** assigning a transaction **learns** a `payee → line`
   rule (`CategorizationRule`, keyed on a normalized payee). On the next import,
   matching entries are auto-assigned to the line of the same name **in that
   entry's month** — the import summary reports how many were auto-categorized.
+
+---
+
+## Categorization rules
+
+The learned `payee → line` rules are manageable directly:
+
+- `GET /api/rules` lists the user's rules; `DELETE /api/rules/{id}` forgets one;
+  `PUT /api/rules/{id}` re-points a rule at a different line **by category/line name**
+  (the `PayeeKey` is immutable), so it applies across every month.
+- `GET /api/budget/line-options` returns the distinct category names and per-category
+  line names across all the user's budgets, backing the Rules page's name pickers.
+
+---
+
+## Reports & trends
+
+`ReportsController` exposes read-only, owner-scoped analytics:
+
+- `GET /api/reports/trends?months=N` rolls up the most recent N budgets into an
+  income / income-received / planned / spent series (spent reuses `BudgetActuals`).
+- `GET /api/reports/annual/{year}` returns a 12-month overview (income / planned /
+  spent + totals) for one calendar year.
+
+The Reports page renders these as plain CSS bar charts (no charting library).
+
+---
+
+## Feature flags
+
+Four capabilities that go **beyond the EveryDollar core** sit behind flags
+(`src/ZeroBudget.Api/Features/FeatureFlags.cs`), all **default ON**:
+`Accounts`, `MultiCurrency`, `CamtImport`, `Reports`. Turning one OFF (via the
+`Features` config section) gives a "pure EveryDollar" mode.
+
+- `GET /api/features` exposes the current flags. It's **anonymous** (non-sensitive),
+  so the SPA reads it before deciding which nav links, routes and controls to show.
+- `[FeatureGate(nameof(...))]` is an action filter that **404s** a disabled feature's
+  endpoints (applied to `AccountsController`, `ReportsController` and
+  `ImportController`), so a flagged-off feature can't be reached even though the UI
+  already hides it.
 
 ---
 
@@ -139,9 +301,16 @@ dotnet ef database update \
   --startup-project src/ZeroBudget.Api
 ```
 
-The initial migration `InitialCreate` creates the Identity tables plus
+The first migration `InitialCreate` creates the Identity tables plus
 `BudgetMonths`, `BudgetCategories`, `BudgetItems`, `Transactions` — all currency
-columns as `decimal(18,4)`, with a unique `(OwnerId, Year, Month)` index.
+columns as `decimal(18,4)`, with a unique `(OwnerId, Year, Month)` index. Later
+migrations grew the model as features landed: multi-currency, transaction bank
+references, categorization rules, income-as-a-category-group, manual actuals and the
+actual-entry mode, transaction splits, fund ids, bill tracking, accounts (with
+`Transaction.AccountId` on delete set null), and paychecks. The current `DbContext`
+exposes `BudgetMonths`, `BudgetCategories`, `BudgetItems`, `Transactions`,
+`TransactionSplits`, `CategorizationRules`, `Accounts`, `Paychecks` and
+`PaycheckAllocations`.
 
 ---
 
@@ -166,19 +335,26 @@ dotnet test                 # backend: xUnit (+ FluentAssertions, NSubstitute)
 cd client && npm run test   # frontend: Vitest + React Testing Library
 ```
 
-**Backend** (xUnit): `RemainingToBudgetTests` cover positive / zero / negative /
-over-budget cases, **including zero income** and four-decimal precision;
-`UpdateBudgetItemHandlerTests` prove the pool recomputes and that a user **cannot
-mutate another user's** line; `Money`/`CurrencyCode` value-object tests; CAMT.053
-parser and import-handler tests (idempotency, per-user scoping). NSubstitute is
-used to isolate handlers from collaborators.
+**Backend** — **193 xUnit tests**. `RemainingToBudgetTests` cover positive / zero /
+negative / over-budget cases, **including zero income** and four-decimal precision;
+`Money`/`CurrencyCode` value-object tests guard the cross-currency rules. Handler
+suites prove the budgeting behaviour and that a user **cannot mutate another user's**
+data — `UpdateBudgetItemHandlerTests`, the category/line CRUD and reorder tests,
+`CreateBudgetMonthTests` (template / copy / blank), `FundsTests`, `BillTrackingTests`,
+`PaychecksTests`, `AccountsTests`, `BudgetActualsTests`, `SplitTransactionTests`,
+`ManualActualTests`, `RulesManagementTests`, `BudgetTrendsTests` /
+`AnnualSummaryTests`, and the CAMT.053 parser, import, FX-resolution and
+auto-categorization tests (idempotency, per-user scoping). NSubstitute and EF
+InMemory isolate handlers from collaborators.
 
 > FluentAssertions is pinned to **7.2.0** — the last Apache-2.0 release (8.x is
 > commercially licensed).
 
-**Frontend** (Vitest + RTL): `money`/`budgetModel` precision + selector tests, and
-a `DashboardPage` test asserting **optimistic update + rollback** on a failed save.
-Both suites run in CI on every push and PR.
+**Frontend** — **90 Vitest tests** across the pages and shared libs:
+`money` / `budgetModel` / `transactions` precision + selector tests, a `DashboardPage`
+test asserting **optimistic update + rollback** on a failed save, and page tests for
+Transactions, Accounts, Paychecks, Rules and Reports plus the shared `AppNav` and
+`ImportStatementButton`. Both suites run in CI on every push and PR.
 
 ---
 
