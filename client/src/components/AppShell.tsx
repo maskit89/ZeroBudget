@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { AppNav, type NavKey } from './AppNav'
 
@@ -13,7 +14,7 @@ export function AppShell({
   maxWidth = '5xl',
   children,
 }: {
-  active: NavKey
+  active?: NavKey
   right?: ReactNode
   maxWidth?: '4xl' | '5xl'
   children: ReactNode
@@ -34,6 +35,14 @@ export function AppShell({
           </div>
           <div className="flex items-center gap-3">
             {right}
+            <Link
+              to="/help"
+              aria-label="Help & guide"
+              title="Help & guide"
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 text-sm font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+            >
+              ?
+            </Link>
             <button
               onClick={logout}
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"

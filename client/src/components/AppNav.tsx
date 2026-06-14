@@ -8,7 +8,7 @@ export type NavKey = 'budget' | 'paychecks' | 'transactions' | 'accounts' | 'rep
  * highlighted label; the rest are links. Accounts and Reports are hidden when their
  * feature flag is off.
  */
-export function AppNav({ active }: { active: NavKey }) {
+export function AppNav({ active }: { active?: NavKey }) {
   const features = useFeatures()
 
   const items: { key: NavKey; to: string; label: string; show: boolean }[] = [
