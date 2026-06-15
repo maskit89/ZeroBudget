@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using ZeroBudget.Application.Common.Exceptions;
 using ZeroBudget.Application.Common.Interfaces;
 using ZeroBudget.Application.Transactions.Dtos;
+using ZeroBudget.Application.Transactions;
 using ZeroBudget.Domain.Entities;
 using ZeroBudget.Domain.Enums;
 using ZeroBudget.Domain.ValueObjects;
@@ -88,7 +89,24 @@ public class CreateTransactionCommandHandler : IRequestHandler<CreateTransaction
         };
 
         _db.Transactions.Add(transaction);
+
+        // No line was chosen explicitly? Fall back to the budget line of the most
+        // recent earlier transaction with the same description (a quiet, zero-config
+        // default — no user-managed rules).
+        if (item is null)
+        {
+            await AutoCategorizer.ApplyAsync(_db, userId, new[] { transaction }, cancellationToken);
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
+
+        // If the fallback filled in a line, hydrate its navigation so the returned
+        // DTO carries the line name (AutoCategorizer only sets the foreign key).
+        if (transaction.BudgetItem is null && transaction.BudgetItemId is Guid filledItemId)
+        {
+            transaction.BudgetItem = await _db.BudgetItems
+                .FirstOrDefaultAsync(i => i.Id == filledItemId, cancellationToken);
+        }
 
         return transaction.ToDto();
     }

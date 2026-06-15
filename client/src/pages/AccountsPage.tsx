@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/AppShell'
-import { useFeatures } from '../features/FeatureContext'
 import { api } from '../lib/api'
 import type { AccountDto } from '../types'
 import { ACCOUNT_TYPE_LABELS, AccountType } from '../types'
 import { formatMoney, fromAmount, parseMinor, toAmount, toEditString } from '../lib/money'
+
+// ZeroBudget runs as a single-currency app today (the multi-currency engine is kept
+// dormant in the backend for future expansion). All money is shown in euros.
+const CURRENCY = 'EUR'
 
 const TYPE_OPTIONS = Object.entries(ACCOUNT_TYPE_LABELS).map(([value, label]) => ({
   value: Number(value),
@@ -22,7 +25,6 @@ function parseSignedAmount(input: string): number | null {
 }
 
 export function AccountsPage() {
-  const features = useFeatures()
   const [accounts, setAccounts] = useState<AccountDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -31,7 +33,6 @@ export function AccountsPage() {
   // Add-account form.
   const [name, setName] = useState('')
   const [type, setType] = useState<number>(AccountType.Current)
-  const [currency, setCurrency] = useState('EUR')
   const [opening, setOpening] = useState('')
   const [adding, setAdding] = useState(false)
 
@@ -64,17 +65,13 @@ export function AccountsPage() {
       setError('Enter a valid opening balance.')
       return
     }
-    if (!/^[A-Za-z]{3}$/.test(currency.trim())) {
-      setError('Currency must be a 3-letter code, e.g. EUR.')
-      return
-    }
     setAdding(true)
     setError(null)
     try {
       const { data } = await api.post<AccountDto>('/accounts', {
         name: name.trim(),
         type,
-        currency: currency.trim().toUpperCase(),
+        currency: CURRENCY,
         openingBalance,
       })
       setAccounts((prev) => [...prev, data])
@@ -85,7 +82,7 @@ export function AccountsPage() {
     } finally {
       setAdding(false)
     }
-  }, [name, type, currency, opening])
+  }, [name, type, opening])
 
   function startEdit(a: AccountDto) {
     setEditingId(a.id)
@@ -137,14 +134,11 @@ export function AccountsPage() {
     }
   }, [])
 
-  // Net balance per currency (you can't add euros to pounds).
-  const totalsByCurrency = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const a of accounts) {
-      map.set(a.currency, (map.get(a.currency) ?? 0) + fromAmount(a.currentBalance))
-    }
-    return [...map.entries()].sort((x, y) => x[0].localeCompare(y[0]))
-  }, [accounts])
+  // Net balance across all accounts (single-currency).
+  const netMinor = useMemo(
+    () => accounts.reduce((sum, a) => sum + fromAmount(a.currentBalance), 0),
+    [accounts],
+  )
 
   return (
     <AppShell active="accounts">
@@ -192,19 +186,6 @@ export function AccountsPage() {
                 ))}
               </select>
             </label>
-            {features.multiCurrency && (
-              <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
-                Currency
-                <input
-                  type="text"
-                  value={currency}
-                  aria-label="Account currency"
-                  maxLength={3}
-                  onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-                  className="w-20 rounded-md border border-slate-300 px-2 py-1.5 text-sm uppercase focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-              </label>
-            )}
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
               Opening balance
               <input
@@ -293,9 +274,7 @@ export function AccountsPage() {
                               className="w-28 rounded-md border border-slate-300 px-2 py-1 text-right text-sm tabular-nums"
                             />
                           </td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-slate-400">
-                            {a.currency}
-                          </td>
+                          <td className="px-4 py-2.5" />
                           <td className="px-4 py-2 text-right">
                             <div className="flex justify-end gap-1">
                               <button
@@ -323,14 +302,14 @@ export function AccountsPage() {
                           <td className="px-4 py-2.5 font-medium text-slate-700">{a.name}</td>
                           <td className="px-4 py-2.5 text-slate-500">{ACCOUNT_TYPE_LABELS[a.type] ?? 'Other'}</td>
                           <td className="px-4 py-2.5 text-right tabular-nums text-slate-400">
-                            {formatMoney(fromAmount(a.openingBalance), a.currency)}
+                            {formatMoney(fromAmount(a.openingBalance), CURRENCY)}
                           </td>
                           <td
                             className={`px-4 py-2.5 text-right font-semibold tabular-nums ${
                               balanceMinor < 0 ? 'text-rose-600' : 'text-slate-800'
                             }`}
                           >
-                            {formatMoney(balanceMinor, a.currency)}
+                            {formatMoney(balanceMinor, CURRENCY)}
                           </td>
                           <td className="px-4 py-2.5 text-right">
                             <div className="flex justify-end gap-1">
@@ -362,21 +341,19 @@ export function AccountsPage() {
                 })}
               </tbody>
               <tfoot>
-                {totalsByCurrency.map(([cur, totalMinor]) => (
-                  <tr key={cur} className="border-t-2 border-slate-200 font-semibold text-slate-800">
-                    <td className="px-4 py-2" colSpan={3}>
-                      Net ({cur})
-                    </td>
-                    <td
-                      className={`px-4 py-2 text-right tabular-nums ${
-                        totalMinor < 0 ? 'text-rose-600' : 'text-slate-800'
-                      }`}
-                    >
-                      {formatMoney(totalMinor, cur)}
-                    </td>
-                    <td />
-                  </tr>
-                ))}
+                <tr className="border-t-2 border-slate-200 font-semibold text-slate-800">
+                  <td className="px-4 py-2" colSpan={3}>
+                    Net
+                  </td>
+                  <td
+                    className={`px-4 py-2 text-right tabular-nums ${
+                      netMinor < 0 ? 'text-rose-600' : 'text-slate-800'
+                    }`}
+                  >
+                    {formatMoney(netMinor, CURRENCY)}
+                  </td>
+                  <td />
+                </tr>
               </tfoot>
             </table>
           </div>

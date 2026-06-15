@@ -45,7 +45,7 @@ describe('AccountsPage', () => {
     mockDelete.mockReset()
   })
 
-  it('lists accounts with balances and a per-currency net', { timeout: 15000 }, async () => {
+  it('lists accounts with balances and a net total', { timeout: 15000 }, async () => {
     mockGet.mockResolvedValue({ data: accounts() })
 
     renderPage()
@@ -55,8 +55,8 @@ describe('AccountsPage', () => {
     expect(table.getByText('Visa')).toBeInTheDocument()
     // The credit card's type label shows in its row (the add-form select also lists it).
     expect(table.getByText('Credit card')).toBeInTheDocument()
-    // Net across the two EUR accounts: 250 + (−75) = 175.
-    expect(screen.getByText('Net (EUR)')).toBeInTheDocument()
+    // Net across the two accounts: 250 + (−75) = 175.
+    expect(screen.getByText('Net')).toBeInTheDocument()
     expect(table.getByText(/175,00/)).toBeInTheDocument()
   })
 

@@ -5,10 +5,8 @@ import { useFeatures } from './features/FeatureContext'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { TransactionsPage } from './pages/TransactionsPage'
-import { PaychecksPage } from './pages/PaychecksPage'
 import { AccountsPage } from './pages/AccountsPage'
 import { ReportsPage } from './pages/ReportsPage'
-import { RulesPage } from './pages/RulesPage'
 import { HelpPage } from './pages/HelpPage'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -31,14 +29,6 @@ export default function App() {
         element={
           <RequireAuth>
             <DashboardPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/paychecks"
-        element={
-          <RequireAuth>
-            <PaychecksPage />
           </RequireAuth>
         }
       />
@@ -70,14 +60,6 @@ export default function App() {
           }
         />
       )}
-      <Route
-        path="/rules"
-        element={
-          <RequireAuth>
-            <RulesPage />
-          </RequireAuth>
-        }
-      />
       <Route
         path="/help"
         element={

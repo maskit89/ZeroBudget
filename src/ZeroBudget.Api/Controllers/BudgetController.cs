@@ -15,7 +15,6 @@ using ZeroBudget.Application.Budgets.Commands.SetBudgetItemBill;
 using ZeroBudget.Application.Budgets.Commands.SetBudgetItemPaid;
 using ZeroBudget.Application.Budgets.Commands.UpdateBudgetItem;
 using ZeroBudget.Application.Budgets.Dtos;
-using ZeroBudget.Application.Budgets.Queries.GetBudgetLineOptions;
 using ZeroBudget.Application.Budgets.Queries.GetBudgetMonth;
 using ZeroBudget.Application.Budgets.Queries.GetBudgetMonths;
 using ZeroBudget.Application.Budgets.Queries.GetBudgetTemplates;
@@ -65,18 +64,6 @@ public class BudgetController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<BudgetMonthSummaryDto>>> GetMonths(CancellationToken ct)
     {
         var result = await _mediator.Send(new GetBudgetMonthsQuery(), ct);
-        return Ok(result);
-    }
-
-    /// <summary>
-    /// Lists the distinct category/line names across the user's budgets, grouped by
-    /// category — used to suggest valid targets when editing a categorization rule.
-    /// </summary>
-    [HttpGet("line-options")]
-    [ProducesResponseType(typeof(IReadOnlyList<BudgetLineOptionDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<BudgetLineOptionDto>>> GetLineOptions(CancellationToken ct)
-    {
-        var result = await _mediator.Send(new GetBudgetLineOptionsQuery(), ct);
         return Ok(result);
     }
 

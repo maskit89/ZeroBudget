@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useFeatures } from '../features/FeatureContext'
 
-export type NavKey = 'budget' | 'paychecks' | 'transactions' | 'accounts' | 'reports' | 'rules'
+export type NavKey = 'budget' | 'transactions' | 'accounts' | 'reports'
 
 /**
  * The primary navigation, shared by every page. The active item renders as a
@@ -13,11 +13,9 @@ export function AppNav({ active }: { active?: NavKey }) {
 
   const items: { key: NavKey; to: string; label: string; show: boolean }[] = [
     { key: 'budget', to: '/', label: 'Budget', show: true },
-    { key: 'paychecks', to: '/paychecks', label: 'Paychecks', show: true },
     { key: 'transactions', to: '/transactions', label: 'Transactions', show: true },
     { key: 'accounts', to: '/accounts', label: 'Accounts', show: features.accounts },
     { key: 'reports', to: '/reports', label: 'Reports', show: features.reports },
-    { key: 'rules', to: '/rules', label: 'Rules', show: true },
   ]
 
   return (

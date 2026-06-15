@@ -68,9 +68,6 @@ public class AssignTransactionCommandHandler : IRequestHandler<AssignTransaction
             // Putting a transaction on a line means the user is tracking it by
             // transactions — switch it out of manual entry so the roll-up shows.
             item.ActualEntryMode = ActualEntryMode.Tracked;
-
-            // Learn the payee -> line mapping so future imports auto-categorize.
-            await LearnRuleAsync(userId, transaction.Payee, item, cancellationToken);
         }
         else
         {
@@ -81,34 +78,5 @@ public class AssignTransactionCommandHandler : IRequestHandler<AssignTransaction
         await _db.SaveChangesAsync(cancellationToken);
 
         return transaction.ToDto();
-    }
-
-    /// <summary>Upsert the "payee → line" rule for this user (no-op for a blank payee).</summary>
-    private async Task LearnRuleAsync(string ownerId, string payee, BudgetItem item, CancellationToken ct)
-    {
-        var payeeKey = CategorizationRule.NormalizeKey(payee);
-        if (payeeKey.Length == 0)
-        {
-            return;
-        }
-
-        var existing = await _db.CategorizationRules
-            .FirstOrDefaultAsync(r => r.OwnerId == ownerId && r.PayeeKey == payeeKey, ct);
-
-        if (existing is null)
-        {
-            _db.CategorizationRules.Add(new CategorizationRule
-            {
-                OwnerId = ownerId,
-                PayeeKey = payeeKey,
-                CategoryName = item.BudgetCategory.Name,
-                ItemName = item.Name,
-            });
-        }
-        else
-        {
-            existing.CategoryName = item.BudgetCategory.Name;
-            existing.ItemName = item.Name;
-        }
     }
 }

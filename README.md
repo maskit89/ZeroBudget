@@ -4,15 +4,17 @@ A **Zero-Based Budgeting** (ZBB) web application for the European market. Every
 Euro of income is given a job until **"Remaining to Budget" reaches €0.00**.
 
 > 📖 **New to the app?** The **[User Guide](docs/USER_GUIDE.md)** explains every
-> page and feature of the portal — budgets, funds, bills, paychecks, transactions,
-> accounts, statement import, rules, reports and feature flags.
+> page and feature of the portal — budgets, funds, bills, transactions, accounts,
+> reports and feature flags.
 
 - **Backend:** ASP.NET Core Web API (clean architecture) + EF Core + SQL Server
 - **Auth:** ASP.NET Core Identity issuing JWTs
 - **Patterns:** CQRS via MediatR, FluentValidation pipeline
 - **Frontend:** React + TypeScript (Vite) + TailwindCSS v4
-- **Currency:** multi-currency — each budget has a `BaseCurrency` (default EUR);
-  all amounts are `decimal(18,4)`; transactions carry their own currency + FX rate
+- **Currency:** single-currency today (EUR). The multi-currency engine — per-budget
+  `BaseCurrency`, per-transaction currency + FX rate, all amounts `decimal(18,4)` —
+  is **retained in the backend (dormant)** for future expansion; no currency UI is
+  exposed.
 
 > Targets **.NET 10** (the SDK installed on this machine). The original brief
 > asked for .NET 8; only the `TargetFramework` string differs — the architecture,
@@ -36,8 +38,9 @@ ZeroBudget/
 ```
 
 The `Application` project is organised by feature — `Budgets`, `Transactions`,
-`Accounts`, `Paychecks`, `Imports`, `Reports`, `Rules` — each holding its commands,
-queries, DTOs and the read-time calculators (`BudgetActuals`, `AccountBalances`).
+`Accounts`, `Imports`, `Reports` — each holding its commands, queries, DTOs and the
+read-time calculators (`BudgetActuals`, `AccountBalances`). (`Imports` is retained but
+dormant — see [Bank statement import](#bank-statement-import-iso-20022--camt053).)
 
 ### Dependency rule (clean architecture)
 
@@ -109,6 +112,10 @@ individual transactions can still record actuals.
 
 ## Multi-currency model
 
+> **Dormant today.** The app runs as a single-currency (EUR) product — no currency
+> UI is exposed. The engine below is kept intact and tested in the backend so a
+> future OpenBanking / multi-market rollout can switch it back on without rework.
+
 - A `BudgetMonth` has a **`BaseCurrency`** (`CurrencyCode` value object, ISO 4217,
   default `EUR`). Every planned/actual amount in the tree is in that currency, so
   totals stay summable and `RemainingToBudget` is unambiguous.
@@ -156,22 +163,6 @@ Any expense line can be tracked as a **bill**:
 
 ---
 
-## Paycheck planning
-
-When income arrives in several instalments, **paycheck planning** lets the user
-decide which paycheck funds which lines. A `Paycheck` belongs to a `BudgetMonth`; its
-`PlannedAmount` is spread across lines via `PaycheckAllocation`s. `AllocatedAmount`
-(Σ allocations) and `Remaining` (planned − allocated) are derived. It's a planning
-layer over the budget and doesn't change the zero-based totals.
-
-- `GET /api/paychecks?year=&month=` lists a month's paychecks with their allocations.
-- `POST /api/paychecks`, `PUT /api/paychecks/{id}`, `DELETE /api/paychecks/{id}`
-  manage the paychecks themselves.
-- `PUT /api/paychecks/{id}/allocations` replaces the spread wholesale (rejecting
-  income-line and cross-month targets). Every handler is owner-scoped.
-
----
-
 ## Accounts & balances
 
 `Account` is a "where my money is" view alongside the budget (a current account,
@@ -192,7 +183,12 @@ savings pot, cash, or credit card — `AccountType`).
 
 ## Bank statement import (ISO 20022 / CAMT.053)
 
-Upload a CAMT.053 XML statement and its entries become `Transaction`s.
+> **Backend-only / dormant.** There is no statement-upload UI today. The parser and
+> endpoint below are retained, fully tested, and gated by the `CamtImport` flag so an
+> upcoming OpenBanking integration can feed them programmatically. End users add
+> transactions by hand on the Transactions page.
+
+A CAMT.053 XML statement's entries become `Transaction`s.
 
 - `POST /api/import/camt053` (multipart `file`, optional `accountId`, `[Authorize]`d)
   → import summary (`TotalEntries`, `Imported`, `SkippedDuplicates`, `Credits`,
@@ -225,22 +221,12 @@ Upload a CAMT.053 XML statement and its entries become `Transaction`s.
   ExchangeRate` — no denormalized total to keep in sync. This fills the dashboard's
   "Actual" / "Remaining" columns; assigning or splitting a transaction flips its
   target line(s) to `Tracked` mode.
-- **Auto-categorization:** assigning a transaction **learns** a `payee → line`
-  rule (`CategorizationRule`, keyed on a normalized payee). On the next import,
-  matching entries are auto-assigned to the line of the same name **in that
-  entry's month** — the import summary reports how many were auto-categorized.
-
----
-
-## Categorization rules
-
-The learned `payee → line` rules are manageable directly:
-
-- `GET /api/rules` lists the user's rules; `DELETE /api/rules/{id}` forgets one;
-  `PUT /api/rules/{id}` re-points a rule at a different line **by category/line name**
-  (the `PayeeKey` is immutable), so it applies across every month.
-- `GET /api/budget/line-options` returns the distinct category names and per-category
-  line names across all the user's budgets, backing the Rules page's name pickers.
+- **Auto-categorization (zero-config):** there are no user-managed rules. When a
+  transaction is logged without a line, `AutoCategorizer` quietly assigns it to the
+  budget line of the user's **most recent earlier transaction with the same
+  description** (payee, matched case- and whitespace-insensitively), flipping that
+  line to `Tracked`. It runs on manual creation and on the (dormant) import path; the
+  import summary still reports how many were auto-categorized.
 
 ---
 
@@ -259,10 +245,13 @@ The Reports page renders these as plain CSS bar charts (no charting library).
 
 ## Feature flags
 
-Four capabilities that go **beyond the EveryDollar core** sit behind flags
-(`src/ZeroBudget.Api/Features/FeatureFlags.cs`), all **default ON**:
-`Accounts`, `MultiCurrency`, `CamtImport`, `Reports`. Turning one OFF (via the
-`Features` config section) gives a "pure EveryDollar" mode.
+Four capabilities sit behind flags (`src/ZeroBudget.Api/Features/FeatureFlags.cs`),
+all **default ON**: `Accounts`, `MultiCurrency`, `CamtImport`, `Reports`.
+`Accounts` and `Reports` toggle a whole page (nav link + routes + endpoints).
+`MultiCurrency` and `CamtImport` now gate **dormant, backend-only** capabilities
+(the single-currency UI and the removal of the import button mean they have no
+user-facing surface today) — they remain so those features can be switched back on
+later without rework. Turning the page flags OFF gives a "pure EveryDollar" mode.
 
 - `GET /api/features` exposes the current flags. It's **anonymous** (non-sensitive),
   so the SPA reads it before deciding which nav links, routes and controls to show.
@@ -305,12 +294,13 @@ The first migration `InitialCreate` creates the Identity tables plus
 `BudgetMonths`, `BudgetCategories`, `BudgetItems`, `Transactions` — all currency
 columns as `decimal(18,4)`, with a unique `(OwnerId, Year, Month)` index. Later
 migrations grew the model as features landed: multi-currency, transaction bank
-references, categorization rules, income-as-a-category-group, manual actuals and the
-actual-entry mode, transaction splits, fund ids, bill tracking, accounts (with
-`Transaction.AccountId` on delete set null), and paychecks. The current `DbContext`
-exposes `BudgetMonths`, `BudgetCategories`, `BudgetItems`, `Transactions`,
-`TransactionSplits`, `CategorizationRules`, `Accounts`, `Paychecks` and
-`PaycheckAllocations`.
+references, income-as-a-category-group, manual actuals and the actual-entry mode,
+transaction splits, fund ids, bill tracking, and accounts (with `Transaction.AccountId`
+on delete set null). When the paychecks and rules features were retired,
+`SimplifyRemovePaychecksAndRules` dropped the `Paychecks`, `PaycheckAllocations` and
+`CategorizationRules` tables (the multi-currency schema was deliberately preserved).
+The current `DbContext` exposes `BudgetMonths`, `BudgetCategories`, `BudgetItems`,
+`Transactions`, `TransactionSplits` and `Accounts`.
 
 ---
 
@@ -335,26 +325,27 @@ dotnet test                 # backend: xUnit (+ FluentAssertions, NSubstitute)
 cd client && npm run test   # frontend: Vitest + React Testing Library
 ```
 
-**Backend** — **193 xUnit tests**. `RemainingToBudgetTests` cover positive / zero /
+**Backend** — **172 xUnit tests**. `RemainingToBudgetTests` cover positive / zero /
 negative / over-budget cases, **including zero income** and four-decimal precision;
-`Money`/`CurrencyCode` value-object tests guard the cross-currency rules. Handler
-suites prove the budgeting behaviour and that a user **cannot mutate another user's**
-data — `UpdateBudgetItemHandlerTests`, the category/line CRUD and reorder tests,
-`CreateBudgetMonthTests` (template / copy / blank), `FundsTests`, `BillTrackingTests`,
-`PaychecksTests`, `AccountsTests`, `BudgetActualsTests`, `SplitTransactionTests`,
-`ManualActualTests`, `RulesManagementTests`, `BudgetTrendsTests` /
-`AnnualSummaryTests`, and the CAMT.053 parser, import, FX-resolution and
-auto-categorization tests (idempotency, per-user scoping). NSubstitute and EF
-InMemory isolate handlers from collaborators.
+`Money`/`CurrencyCode` value-object tests guard the (dormant) cross-currency rules.
+Handler suites prove the budgeting behaviour and that a user **cannot mutate another
+user's** data — `UpdateBudgetItemHandlerTests`, the category/line CRUD and reorder
+tests, `CreateBudgetMonthTests` (template / copy / blank), `FundsTests`,
+`BillTrackingTests`, `AccountsTests`, `BudgetActualsTests`, `SplitTransactionTests`,
+`ManualActualTests`, `BudgetTrendsTests` / `AnnualSummaryTests`, and the CAMT.053
+parser, import and FX-resolution tests (kept alive even though both are dormant).
+`AutoCategorizationTests` cover the description-based fallback (inherits the most-recent
+same-description line, never across owners, applied on manual create and import).
+NSubstitute and EF InMemory isolate handlers from collaborators.
 
 > FluentAssertions is pinned to **7.2.0** — the last Apache-2.0 release (8.x is
 > commercially licensed).
 
-**Frontend** — **90 Vitest tests** across the pages and shared libs:
+**Frontend** — **81 Vitest tests** across the pages and shared libs:
 `money` / `budgetModel` / `transactions` precision + selector tests, a `DashboardPage`
 test asserting **optimistic update + rollback** on a failed save, and page tests for
-Transactions, Accounts, Paychecks, Rules and Reports plus the shared `AppNav` and
-`ImportStatementButton`. Both suites run in CI on every push and PR.
+Transactions, Accounts and Reports plus the shared `AppNav` (four nav items) and the
+Help page. Both suites run in CI on every push and PR.
 
 ---
 
