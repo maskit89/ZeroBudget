@@ -88,11 +88,22 @@ describe('DashboardPage optimistic editing', () => {
     renderPage()
 
     const input = (await screen.findByLabelText('Planned amount for Rent', {}, { timeout: 5000 })) as HTMLInputElement
-    // Set the value atomically (fireEvent.change) rather than typing key-by-key:
-    // userEvent.type into a controlled input can drop characters under CPU load,
-    // which made this assertion flaky on CI. Blur commits the value.
-    fireEvent.change(input, { target: { value: '3000' } }) // assign the remaining €1.900 to Rent
-    fireEvent.blur(input)
+    // Set the planned amount to €3.000 and commit on blur. The dashboard fires
+    // three loads on mount (/budget/{y}/{m}, /budget/months, /budget/templates);
+    // the input appears after the first, but the other two settle DURING this
+    // interaction. Under parallel-CI CPU contention their re-renders race the
+    // controlled input, so a single change event can be reverted before React's
+    // onChange runs — leaving the field at "1100", no commit fired, and the banner
+    // stuck on amber "Still to assign". Re-apply the value until it actually sticks
+    // in the controlled input, then blur — robust to those interleaved re-renders.
+    await waitFor(
+      () => {
+        fireEvent.change(input, { target: { value: '3000' } }) // assign the remaining €1.900 to Rent
+        expect(input).toHaveValue('3000')
+      },
+      { timeout: 5000 },
+    )
+    fireEvent.blur(input) // blur -> commit
 
     // Banner flips to the balanced state and the API was called with the amount.
     expect(await screen.findByText(/Every Euro has a job/, {}, { timeout: 5000 })).toBeInTheDocument()
