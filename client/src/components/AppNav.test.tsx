@@ -37,11 +37,9 @@ describe('AppNav (feature flags)', () => {
     renderNav()
 
     expect(await screen.findByText('Budget', {}, { timeout: 5000 })).toBeInTheDocument()
-    expect(screen.getByText('Paychecks')).toBeInTheDocument()
     expect(screen.getByText('Transactions')).toBeInTheDocument()
     expect(screen.getByText('Accounts')).toBeInTheDocument()
     expect(screen.getByText('Reports')).toBeInTheDocument()
-    expect(screen.getByText('Rules')).toBeInTheDocument()
   })
 
   it('hides Accounts and Reports when their flags are off', { timeout: 15000 }, async () => {
@@ -52,7 +50,6 @@ describe('AppNav (feature flags)', () => {
     // The core EveryDollar items always show…
     expect(await screen.findByText('Budget', {}, { timeout: 5000 })).toBeInTheDocument()
     expect(screen.getByText('Transactions')).toBeInTheDocument()
-    expect(screen.getByText('Rules')).toBeInTheDocument()
     // …while the disabled differentiators are removed once the flags load.
     await waitFor(() => expect(screen.queryByText('Accounts')).not.toBeInTheDocument())
     expect(screen.queryByText('Reports')).not.toBeInTheDocument()

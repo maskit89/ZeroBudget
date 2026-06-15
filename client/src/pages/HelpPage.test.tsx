@@ -27,9 +27,8 @@ describe('HelpPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Help & guide' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Zero-based budgeting in a nutshell' })).toBeInTheDocument()
-    // "Paychecks" is also a nav link, so target the section heading specifically.
-    expect(screen.getByRole('heading', { name: 'Paychecks' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Accounts & import' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Transactions' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Accounts' })).toBeInTheDocument()
 
     const guideLink = screen.getByRole('link', { name: /complete user guide/i })
     expect(guideLink).toHaveAttribute('href', expect.stringContaining('USER_GUIDE.md'))

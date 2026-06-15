@@ -2,12 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
 import { AppShell } from '../components/AppShell'
-import { useFeatures } from '../features/FeatureContext'
 import type {
   BudgetMonthDto,
   BudgetMonthSummaryDto,
   BudgetTemplateDto,
-  ImportStatementResult,
 } from '../types'
 import {
   billAlerts,
@@ -38,7 +36,6 @@ import { RemainingBanner } from '../components/RemainingBanner'
 import { CategoryAccordion } from '../components/CategoryAccordion'
 import { FundGroup } from '../components/FundGroup'
 import { IncomeGroup } from '../components/IncomeGroup'
-import { ImportStatementButton } from '../components/ImportStatementButton'
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -49,7 +46,6 @@ const now = new Date()
 
 export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
   const { email } = useAuth()
-  const features = useFeatures()
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 })
   const [month, setMonth] = useState<MonthVM | null>(null)
   const [loading, setLoading] = useState(true)
@@ -57,7 +53,6 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [savingItemId, setSavingItemId] = useState<string | null>(null)
-  const [importSummary, setImportSummary] = useState<ImportStatementResult | null>(null)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [newCategoryIsFund, setNewCategoryIsFund] = useState(false)
   const [months, setMonths] = useState<BudgetMonthSummaryDto[]>([])
@@ -512,23 +507,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
     <AppShell
       active="budget"
       maxWidth="4xl"
-      right={
-        <>
-          <span className="hidden text-sm text-slate-500 sm:inline">{email}</span>
-          {features.camtImport && (
-            <ImportStatementButton
-              onImported={(r) => {
-                setError(null)
-                setImportSummary(r)
-              }}
-              onError={(msg) => {
-                setImportSummary(null)
-                setError(msg)
-              }}
-            />
-          )}
-        </>
-      }
+      right={<span className="hidden text-sm text-slate-500 sm:inline">{email}</span>}
     >
         {/* Month navigator — always visible so you can move between / create months. */}
         <div className="flex items-center justify-between">
@@ -567,26 +546,6 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
         {error && (
           <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}
-          </div>
-        )}
-
-        {importSummary && (
-          <div className="flex items-start justify-between gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            <span>
-              Imported <strong>{importSummary.imported}</strong> of {importSummary.totalEntries} entries
-              {importSummary.skippedDuplicates > 0 && ` (skipped ${importSummary.skippedDuplicates} duplicate${importSummary.skippedDuplicates === 1 ? '' : 's'})`}
-              {' — '}
-              {importSummary.credits} credit{importSummary.credits === 1 ? '' : 's'}, {importSummary.debits} debit{importSummary.debits === 1 ? '' : 's'}
-              {importSummary.autoCategorized > 0 && `, ${importSummary.autoCategorized} auto-categorized`}
-              {importSummary.iban && ` · ${importSummary.iban}`}.
-            </span>
-            <button
-              onClick={() => setImportSummary(null)}
-              className="shrink-0 text-emerald-600 hover:text-emerald-800"
-              aria-label="Dismiss"
-            >
-              ✕
-            </button>
           </div>
         )}
 
