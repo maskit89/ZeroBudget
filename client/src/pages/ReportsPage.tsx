@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/AppShell'
-import { Card } from '../components/ui'
+import { Card, EmptyState, ErrorBanner, PageHeader } from '../components/ui'
+import { ReportsIcon } from '../components/icons'
 import { api } from '../lib/api'
 import type { AnnualSummaryDto, BudgetMonthDto, BudgetTrendsDto } from '../types'
 import { formatMoney, fromAmount, type Minor } from '../lib/money'
@@ -108,25 +109,21 @@ export function ReportsPage() {
 
   return (
     <AppShell active="reports" maxWidth="4xl">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Reports</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            How your spending and income have tracked over your most recent months.
-          </p>
-        </div>
+        <PageHeader
+          title="Reports"
+          subtitle="How your spending and income have tracked over your most recent months."
+        />
 
         {loading && <p className="text-slate-500">Loading your reports…</p>}
 
-        {error && (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {error}
-          </div>
-        )}
+        {error && <ErrorBanner>{error}</ErrorBanner>}
 
         {!loading && !error && !hasData && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-surface px-6 py-12 text-center text-slate-500 shadow-card">
-            No budget data yet. Once you’ve built a budget or two, your trends will appear here.
-          </div>
+          <EmptyState
+            icon={<ReportsIcon className="h-6 w-6" />}
+            title="No budget data yet"
+            description="Once you’ve built a budget or two, your trends will appear here."
+          />
         )}
 
         {!loading && hasData && trends && (

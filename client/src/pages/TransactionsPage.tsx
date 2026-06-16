@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/AppShell'
-import { Badge, Button, Card, Input, Select } from '../components/ui'
+import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
+import { TransactionsIcon } from '../components/icons'
 import { api } from '../lib/api'
 import type { AccountDto, BudgetMonthDto, TransactionDto } from '../types'
 import { TransactionType } from '../types'
@@ -239,19 +240,12 @@ export function TransactionsPage() {
 
   return (
     <AppShell active="transactions">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Transactions</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Add what you’ve spent (or received) by hand, then assign each to a budget line — its
-            spending rolls up into that line.
-          </p>
-        </div>
+        <PageHeader
+          title="Transactions"
+          subtitle="Add what you’ve spent (or received) by hand, then assign each to a budget line — its spending rolls up into that line."
+        />
 
-        {error && (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {error}
-          </div>
-        )}
+        {error && <ErrorBanner>{error}</ErrorBanner>}
 
         {/* Add-transaction form (the manual "sheet" entry). */}
         <Card className="p-4">
@@ -351,9 +345,11 @@ export function TransactionsPage() {
         {loading && <p className="text-slate-500">Loading…</p>}
 
         {!loading && transactions.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-surface px-6 py-12 text-center text-slate-500 shadow-card">
-            No transactions yet. Add one above, or import a CAMT.053 statement from the Budget page.
-          </div>
+          <EmptyState
+            icon={<TransactionsIcon className="h-6 w-6" />}
+            title="No transactions yet"
+            description="Add one above, or import a CAMT.053 statement from the Budget page."
+          />
         )}
 
         {transactions.length > 0 && (
