@@ -62,7 +62,7 @@ export function FundGroup({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-card">
+    <div className="overflow-hidden rounded-2xl border border-violet-200 bg-surface shadow-card">
       <div className="flex items-center justify-between gap-2 bg-violet-50/40 px-5 py-4">
         <div className="flex flex-1 items-center gap-2">
           <button
@@ -84,7 +84,7 @@ export function FundGroup({
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
               if (e.key === 'Escape') setName(category.name)
             }}
-            className="rounded-md border border-transparent bg-transparent px-2 py-1 text-base font-semibold text-slate-800 hover:border-violet-200 focus:border-violet-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+            className="rounded-md border border-transparent bg-transparent px-2 py-1 text-base font-semibold text-slate-800 hover:border-violet-200 focus:border-violet-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-violet-500/30"
           />
           <Badge>{category.items.length}</Badge>
         </div>
@@ -173,7 +173,7 @@ export function FundGroup({
               type="button"
               onClick={submitNewItem}
               aria-label={`Add fund to ${category.name}`}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-white"
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-surface"
             >
               + Add
             </button>

@@ -550,7 +550,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
         )}
 
         {notFound && !loading && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center shadow-card">
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-surface px-6 py-12 text-center shadow-card">
             <p className="text-slate-600">
               No budget for {MONTH_NAMES[view.month - 1]} {view.year} yet.
             </p>
@@ -588,7 +588,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
                         onClick={() => createFromTemplate(t.key)}
                         disabled={creating}
                         aria-label={`Start from the ${t.name} template`}
-                        className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-brand-500 hover:bg-brand-50/40 hover:shadow-card disabled:opacity-50"
+                        className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-surface p-4 text-left transition hover:border-brand-500 hover:bg-brand-50/40 hover:shadow-card disabled:opacity-50"
                       >
                         <span className="font-semibold text-slate-800">{t.name}</span>
                         <span className="text-xs text-slate-500">{t.description}</span>
@@ -706,7 +706,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
               ))}
 
               {/* Add a new expense or fund group (EveryDollar "Add Group"). */}
-              <div className="flex items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white/60 px-4 py-3">
+              <div className="flex items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-surface/60 px-4 py-3">
                 <input
                   type="text"
                   value={newCategoryName}
@@ -735,7 +735,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
                   type="button"
                   onClick={submitNewCategory}
                   aria-label="Add category group"
-                  className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-900"
+                  className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
                 >
                   + Add group
                 </button>

@@ -44,7 +44,7 @@ export function IncomeGroup({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-card">
+    <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-surface shadow-card">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

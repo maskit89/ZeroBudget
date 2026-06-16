@@ -210,7 +210,7 @@ export function AccountsPage() {
         {loading && <p className="text-slate-500">Loading…</p>}
 
         {!loading && accounts.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-slate-500 shadow-card">
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-surface px-6 py-12 text-center text-slate-500 shadow-card">
             No accounts yet. Add one above, then tag transactions to it to track its balance.
           </div>
         )}
