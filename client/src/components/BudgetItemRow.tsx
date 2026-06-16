@@ -123,10 +123,10 @@ export function BudgetItemRow({
   const overdue = billStatus === 'overdue'
   const dueSoon = billStatus === 'due-soon'
   const billPillClass = overdue
-    ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-300 hover:bg-rose-200'
+    ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-300 hover:bg-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-500/40 dark:hover:bg-rose-500/25'
     : dueSoon
-      ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-300 hover:bg-amber-200'
-      : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+      ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-300 hover:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-amber-500/40 dark:hover:bg-amber-500/25'
+      : 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-200 dark:hover:bg-amber-500/25'
   const billTitle = overdue
     ? `Overdue — was due on day ${item.dueDay}`
     : dueSoon
@@ -201,13 +201,13 @@ export function BudgetItemRow({
                     setBillDraft(item.dueDay?.toString() ?? '')
                   }
                 }}
-                className="w-12 rounded-md border border-slate-300 px-1 py-0.5 text-xs tabular-nums focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="h-6 w-12 rounded-md border border-slate-400 px-1 text-xs tabular-nums focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
               />
               <button
                 type="button"
                 onClick={commitBill}
                 aria-label={`Save due day for ${item.name}`}
-                className="rounded px-1 text-emerald-600 hover:bg-emerald-50"
+                className="inline-flex h-6 w-6 items-center justify-center rounded text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400"
               >
                 ✓
               </button>
@@ -217,37 +217,39 @@ export function BudgetItemRow({
                   onClick={clearBill}
                   aria-label={`Remove bill from ${item.name}`}
                   title="Remove bill"
-                  className="rounded px-1 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:bg-rose-50 hover:text-rose-600"
                 >
                   ✕
                 </button>
               )}
             </span>
           ) : item.dueDay !== null ? (
-            <span className="flex shrink-0 items-center gap-1">
+            <span className="flex shrink-0 items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setBillEditing(true)}
                 aria-label={`Edit due day for ${item.name}`}
                 title={billTitle}
-                className={`rounded px-1.5 py-0.5 text-[11px] font-medium tabular-nums ${billPillClass}`}
+                className={`inline-flex min-h-6 items-center rounded px-1.5 text-[11px] font-medium tabular-nums ${billPillClass}`}
               >
                 {overdue ? '⚠' : '📅'} {item.dueDay}
               </button>
               {onSetPaid && (
-                <label
-                  className="flex items-center gap-0.5 text-[11px]"
+                <button
+                  type="button"
+                  onClick={() => onSetPaid(item.id, !item.isPaid)}
+                  aria-pressed={item.isPaid}
+                  aria-label={`Mark ${item.name} paid`}
                   title={item.isPaid ? 'Paid' : 'Mark as paid'}
+                  className={`inline-flex min-h-6 items-center gap-1 rounded px-1.5 text-[11px] font-medium ${
+                    item.isPaid
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                  }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={item.isPaid}
-                    aria-label={`Mark ${item.name} paid`}
-                    onChange={(e) => onSetPaid(item.id, e.target.checked)}
-                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <span className={item.isPaid ? 'text-emerald-600' : 'text-slate-500'}>Paid</span>
-                </label>
+                  <span aria-hidden>{item.isPaid ? '☑' : '☐'}</span>
+                  Paid
+                </button>
               )}
             </span>
           ) : (
@@ -256,7 +258,7 @@ export function BudgetItemRow({
               onClick={() => setBillEditing(true)}
               aria-label={`Add a due date to ${item.name}`}
               title="Track as a bill"
-              className="shrink-0 rounded px-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-600"
+              className="inline-flex min-h-6 shrink-0 items-center rounded px-1.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-600"
             >
               📅
             </button>
@@ -327,7 +329,7 @@ export function BudgetItemRow({
       {showAvailable ? (
         <div
           className={`col-span-2 text-right text-sm font-semibold tabular-nums ${
-            fundOverdrawn ? 'text-rose-600' : 'text-emerald-700'
+            fundOverdrawn ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'
           }`}
           title="Available in this fund (rolled over from previous months)"
         >
@@ -336,7 +338,7 @@ export function BudgetItemRow({
       ) : (
         <div
           className={`col-span-2 text-right text-sm tabular-nums ${
-            overspent ? 'font-semibold text-rose-600' : 'font-medium text-slate-500'
+            overspent ? 'font-semibold text-rose-600 dark:text-rose-400' : 'font-medium text-slate-500'
           }`}
         >
           {formatMoney(remaining, currency)}

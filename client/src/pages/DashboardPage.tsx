@@ -534,7 +534,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
             <button
               type="button"
               onClick={() => goToMonth(now.getFullYear(), now.getMonth() + 1)}
-              className="ml-1 rounded-lg px-2.5 py-1.5 text-sm font-medium text-brand-700 transition hover:bg-brand-50"
+              className="ml-1 rounded-lg px-2.5 py-1.5 text-sm font-medium text-brand-700 transition hover:bg-brand-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
             >
               This month
             </button>
@@ -619,10 +619,10 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
               const allPaid = bills.paid === bills.total
               const alerts = billAlerts(month, today)
               const tone = alerts.overdue > 0
-                ? 'border-rose-200 bg-rose-50 text-rose-800'
+                ? 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200'
                 : allPaid
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                  : 'border-amber-200 bg-amber-50 text-amber-800'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
+                  : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200'
               return (
                 <div className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-xl border px-4 py-2.5 text-sm ${tone}`}>
                   <span className="font-medium">

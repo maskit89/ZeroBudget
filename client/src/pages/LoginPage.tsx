@@ -111,7 +111,7 @@ export function LoginPage() {
           </form>
         </Card>
 
-        <p className="mt-6 text-center text-xs text-slate-400">Give every euro a job.</p>
+        <p className="mt-6 text-center text-xs text-slate-500">Give every euro a job.</p>
       </div>
     </div>
   )

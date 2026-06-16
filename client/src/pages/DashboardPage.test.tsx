@@ -425,7 +425,7 @@ describe('DashboardPage optimistic editing', () => {
     // The unpaid bill shows in the summary.
     expect(await screen.findByText(/Bills: 0\/1 paid/, {}, { timeout: 5000 })).toBeInTheDocument()
 
-    await user.click(screen.getByLabelText('Mark Rent paid'))
+    await user.click(screen.getByRole('button', { name: 'Mark Rent paid' }))
 
     await waitFor(() =>
       expect(mockPut).toHaveBeenCalledWith('/budget/items/i-rent/paid', { isPaid: true }),

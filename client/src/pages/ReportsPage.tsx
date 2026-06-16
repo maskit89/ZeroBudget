@@ -149,7 +149,7 @@ export function ReportsPage() {
                     <div key={p.key} aria-label={`Trend for ${monthLabel(p.year, p.month)}`}>
                       <div className="mb-1 flex items-center justify-between text-xs">
                         <span className="font-medium text-slate-600">{monthLabel(p.year, p.month)}</span>
-                        <span className={`tabular-nums ${overspent ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        <span className={`tabular-nums ${overspent ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                           {overspent ? '−' : '+'}
                           {formatMoney(Math.abs(incomeMinor - spentMinor), currency)}
                         </span>
@@ -240,7 +240,7 @@ export function ReportsPage() {
                           </td>
                           <td
                             className={`py-1.5 text-right font-medium tabular-nums ${
-                              !m.hasBudget ? '' : net < 0 ? 'text-rose-600' : 'text-emerald-600'
+                              !m.hasBudget ? '' : net < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
                             }`}
                           >
                             {m.hasBudget ? formatMoney(net, currency) : '—'}
@@ -344,12 +344,12 @@ function SummaryCard({
 }) {
   const color =
     tone === 'income'
-      ? 'text-emerald-600'
+      ? 'text-emerald-600 dark:text-emerald-400'
       : tone === 'spent'
         ? 'text-slate-800'
         : minor < 0
-          ? 'text-rose-600'
-          : 'text-emerald-600'
+          ? 'text-rose-600 dark:text-rose-400'
+          : 'text-emerald-600 dark:text-emerald-400'
   return (
     <Card className="p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>

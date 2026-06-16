@@ -296,7 +296,7 @@ export function AccountsPage() {
                           </td>
                           <td
                             className={`px-4 py-2.5 text-right font-semibold tabular-nums ${
-                              balanceMinor < 0 ? 'text-rose-600' : 'text-slate-800'
+                              balanceMinor < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800'
                             }`}
                           >
                             {formatMoney(balanceMinor, CURRENCY)}
@@ -337,7 +337,7 @@ export function AccountsPage() {
                   </td>
                   <td
                     className={`px-4 py-2 text-right tabular-nums ${
-                      netMinor < 0 ? 'text-rose-600' : 'text-slate-800'
+                      netMinor < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800'
                     }`}
                   >
                     {formatMoney(netMinor, CURRENCY)}
