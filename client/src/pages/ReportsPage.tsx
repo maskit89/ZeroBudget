@@ -217,7 +217,7 @@ export function ReportsPage() {
                 </div>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-400">
+                    <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
                       <th className="py-1.5 font-medium">Month</th>
                       <th className="py-1.5 text-right font-medium">Income</th>
                       <th className="py-1.5 text-right font-medium">Spent</th>
@@ -285,7 +285,7 @@ export function ReportsPage() {
                 </select>
               </div>
               {categorySpend.length === 0 ? (
-                <p className="text-sm text-slate-400">No spending recorded for this month yet.</p>
+                <p className="text-sm text-slate-500">No spending recorded for this month yet.</p>
               ) : (
                 <div className="space-y-3">
                   {categorySpend.map((c) => (
@@ -352,7 +352,7 @@ function SummaryCard({
           : 'text-emerald-600'
   return (
     <Card className="p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
       <p className={`mt-1 text-2xl font-bold tabular-nums ${color}`}>{formatMoney(minor, currency)}</p>
     </Card>
   )

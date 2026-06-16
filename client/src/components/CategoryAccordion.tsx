@@ -99,7 +99,7 @@ export function CategoryAccordion({
             type="button"
             onClick={() => setOpen((o) => !o)}
             aria-label={open ? `Collapse ${category.name}` : `Expand ${category.name}`}
-            className={`text-slate-400 transition-transform hover:text-slate-600 ${open ? 'rotate-90' : ''}`}
+            className={`text-slate-500 transition-transform hover:text-slate-600 ${open ? 'rotate-90' : ''}`}
           >
             ▶
           </button>
@@ -127,7 +127,7 @@ export function CategoryAccordion({
                 disabled={isFirst}
                 aria-label={`Move ${category.name} up`}
                 title="Move group up"
-                className="rounded px-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-transparent"
+                className="rounded px-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-transparent"
               >
                 ▲
               </button>
@@ -137,7 +137,7 @@ export function CategoryAccordion({
                 disabled={isLast}
                 aria-label={`Move ${category.name} down`}
                 title="Move group down"
-                className="rounded px-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-transparent"
+                className="rounded px-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-transparent"
               >
                 ▼
               </button>
@@ -172,7 +172,7 @@ export function CategoryAccordion({
               onClick={() => setConfirmingDelete(true)}
               aria-label={`Delete group ${category.name}`}
               title="Delete group"
-              className="rounded-md px-1.5 py-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+              className="rounded-md px-1.5 py-1 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
             >
               🗑
             </button>
@@ -182,7 +182,7 @@ export function CategoryAccordion({
 
       {open && (
         <div className="border-t border-slate-100">
-          <div className="grid grid-cols-12 gap-2 bg-slate-50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+          <div className="grid grid-cols-12 gap-2 bg-slate-50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
             <div className="col-span-4">Line</div>
             <div className="col-span-3 text-right">Planned</div>
             <div className="col-span-2 text-right">Actual</div>
@@ -211,7 +211,7 @@ export function CategoryAccordion({
               />
             ))}
             {category.items.length === 0 && (
-              <p className="px-4 py-3 text-sm text-slate-400">No lines yet — add one below.</p>
+              <p className="px-4 py-3 text-sm text-slate-500">No lines yet — add one below.</p>
             )}
           </div>
 

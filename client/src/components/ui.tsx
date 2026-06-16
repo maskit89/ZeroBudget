@@ -77,7 +77,7 @@ export function Button({
 export function Input({ className = '', ...rest }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className={`rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50 ${className}`}
+      className={`rounded-lg border border-slate-400 bg-surface px-3 py-2 text-sm text-slate-800 transition placeholder:text-slate-500 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:opacity-50 ${className}`}
       {...rest}
     />
   )
@@ -87,7 +87,7 @@ export function Input({ className = '', ...rest }: InputHTMLAttributes<HTMLInput
 export function Select({ className = '', children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={`rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm text-slate-700 transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50 ${className}`}
+      className={`rounded-lg border border-slate-400 bg-surface px-3 py-2 text-sm text-slate-700 transition focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:opacity-50 ${className}`}
       {...rest}
     >
       {children}
@@ -223,7 +223,7 @@ export function EmptyState({
   return (
     <div className="rounded-2xl border border-dashed border-slate-300 bg-surface px-6 py-12 text-center shadow-card">
       {icon && (
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500">
           {icon}
         </div>
       )}

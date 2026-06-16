@@ -592,7 +592,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
                       >
                         <span className="font-semibold text-slate-800">{t.name}</span>
                         <span className="text-xs text-slate-500">{t.description}</span>
-                        <span className="mt-1 text-xs text-slate-400">
+                        <span className="mt-1 text-xs text-slate-500">
                           {t.groups.length} groups · {lineCount} lines
                         </span>
                       </button>

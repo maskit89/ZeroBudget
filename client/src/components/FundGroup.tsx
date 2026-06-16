@@ -119,7 +119,7 @@ export function FundGroup({
               onClick={() => setConfirmingDelete(true)}
               aria-label={`Delete group ${category.name}`}
               title="Delete group"
-              className="rounded-md px-1.5 py-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+              className="rounded-md px-1.5 py-1 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
             >
               🗑
             </button>
@@ -129,7 +129,7 @@ export function FundGroup({
 
       {open && (
         <div className="border-t border-violet-100">
-          <div className="grid grid-cols-12 gap-2 bg-slate-50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+          <div className="grid grid-cols-12 gap-2 bg-slate-50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
             <div className="col-span-4">Fund</div>
             <div className="col-span-3 text-right">Planned</div>
             <div className="col-span-2 text-right">Spent</div>
@@ -153,7 +153,7 @@ export function FundGroup({
               />
             ))}
             {category.items.length === 0 && (
-              <p className="px-4 py-3 text-sm text-slate-400">No funds yet — add one below.</p>
+              <p className="px-4 py-3 text-sm text-slate-500">No funds yet — add one below.</p>
             )}
           </div>
 

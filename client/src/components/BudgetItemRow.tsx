@@ -137,14 +137,14 @@ export function BudgetItemRow({
     <div className="grid grid-cols-12 items-center gap-2 px-4 py-2.5 hover:bg-slate-50">
       <div className="col-span-4 flex items-center gap-1">
         {onMove && (
-          <div className="flex shrink-0 flex-col leading-none">
+          <div className="flex shrink-0 flex-col">
             <button
               type="button"
               onClick={() => onMove(item.id, -1)}
               disabled={isFirst}
               aria-label={`Move ${item.name} up`}
               title="Move line up"
-              className="text-[10px] text-slate-300 hover:text-slate-600 disabled:opacity-30 disabled:hover:text-slate-300"
+              className="flex h-5 w-5 items-center justify-center text-[11px] leading-none text-slate-500 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-500"
             >
               ▲
             </button>
@@ -154,7 +154,7 @@ export function BudgetItemRow({
               disabled={isLast}
               aria-label={`Move ${item.name} down`}
               title="Move line down"
-              className="text-[10px] text-slate-300 hover:text-slate-600 disabled:opacity-30 disabled:hover:text-slate-300"
+              className="flex h-5 w-5 items-center justify-center text-[11px] leading-none text-slate-500 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-500"
             >
               ▼
             </button>
@@ -217,7 +217,7 @@ export function BudgetItemRow({
                   onClick={clearBill}
                   aria-label={`Remove bill from ${item.name}`}
                   title="Remove bill"
-                  className="rounded px-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                  className="rounded px-1 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
                 >
                   ✕
                 </button>
@@ -246,7 +246,7 @@ export function BudgetItemRow({
                     onChange={(e) => onSetPaid(item.id, e.target.checked)}
                     className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                   />
-                  <span className={item.isPaid ? 'text-emerald-600' : 'text-slate-400'}>Paid</span>
+                  <span className={item.isPaid ? 'text-emerald-600' : 'text-slate-500'}>Paid</span>
                 </label>
               )}
             </span>
@@ -256,7 +256,7 @@ export function BudgetItemRow({
               onClick={() => setBillEditing(true)}
               aria-label={`Add a due date to ${item.name}`}
               title="Track as a bill"
-              className="shrink-0 rounded px-1 text-xs text-slate-300 hover:bg-slate-100 hover:text-slate-600"
+              className="shrink-0 rounded px-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-600"
             >
               📅
             </button>
@@ -264,7 +264,7 @@ export function BudgetItemRow({
       </div>
 
       <div className="col-span-3 flex items-center justify-end">
-        <span className="mr-1 text-slate-400">{currencySymbol(currency)}</span>
+        <span className="mr-1 text-slate-500">{currencySymbol(currency)}</span>
         <input
           type="text"
           inputMode="decimal"
@@ -295,7 +295,7 @@ export function BudgetItemRow({
                 ? 'Tracked by transactions — switch to manual entry'
                 : 'Manual entry — switch to transaction tracking'
             }
-            className="shrink-0 rounded px-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="shrink-0 rounded px-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-600"
           >
             {item.actualIsTracked ? '🔗' : '✎'}
           </button>
@@ -350,7 +350,7 @@ export function BudgetItemRow({
             onClick={() => onDelete(item.id)}
             aria-label={`Delete ${item.name}`}
             title="Delete line"
-            className="rounded-md px-1.5 py-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+            className="rounded-md px-1.5 py-1 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
           >
             ✕
           </button>

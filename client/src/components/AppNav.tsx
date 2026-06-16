@@ -34,7 +34,7 @@ export function AppNav({
   ]
 
   return (
-    <nav className="flex flex-col gap-1 p-3">
+    <nav aria-label="Primary" className="flex flex-col gap-1 p-3">
       {items
         .filter((i) => i.show)
         .map((i) => {

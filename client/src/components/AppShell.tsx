@@ -28,6 +28,14 @@ export function AppShell({
 
   return (
     <div className="min-h-full bg-slate-50">
+      {/* Bypass Blocks (2.4.1): a keyboard skip link to the main content. */}
+      <a
+        href="#main-content"
+        className="sr-only rounded-lg font-semibold text-brand-700 focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:border focus:border-brand-500 focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:shadow-card"
+      >
+        Skip to main content
+      </a>
+
       {/* Mobile backdrop — tap to dismiss the drawer. */}
       {navOpen && (
         <div
@@ -50,7 +58,7 @@ export function AppShell({
             type="button"
             onClick={() => setNavOpen(false)}
             aria-label="Close menu"
-            className="ml-auto rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 lg:hidden"
+            className="ml-auto rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-600 lg:hidden"
           >
             <CloseIcon className="h-5 w-5" />
           </button>
@@ -76,7 +84,7 @@ export function AppShell({
               to="/help"
               aria-label="Help & guide"
               title="Help & guide"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-600"
             >
               <HelpIcon className="h-5 w-5" />
             </Link>
@@ -108,7 +116,13 @@ export function AppShell({
           </div>
         </header>
 
-        <main className={`mx-auto ${width} space-y-6 px-4 py-8 sm:px-6 lg:px-8`}>{children}</main>
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className={`mx-auto ${width} space-y-6 px-4 py-8 focus:outline-none sm:px-6 lg:px-8`}
+        >
+          {children}
+        </main>
       </div>
     </div>
   )
