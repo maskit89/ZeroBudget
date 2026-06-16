@@ -61,8 +61,8 @@ export function FundGroup({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-violet-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between gap-2 bg-violet-50/40 px-4 py-3">
+    <div className="overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-card">
+      <div className="flex items-center justify-between gap-2 bg-violet-50/40 px-5 py-4">
         <div className="flex flex-1 items-center gap-2">
           <button
             type="button"
@@ -85,7 +85,7 @@ export function FundGroup({
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
               if (e.key === 'Escape') setName(category.name)
             }}
-            className="rounded-md border border-transparent bg-transparent px-2 py-1 font-semibold text-slate-800 hover:border-violet-200 focus:border-violet-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-violet-500"
+            className="rounded-md border border-transparent bg-transparent px-2 py-1 text-base font-semibold text-slate-800 hover:border-violet-200 focus:border-violet-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/30"
           />
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
             {category.items.length}

@@ -171,7 +171,7 @@ export function BudgetItemRow({
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
               if (e.key === 'Escape') setName(item.name)
             }}
-            className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-slate-700 hover:border-slate-200 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-slate-700 hover:border-slate-200 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
           />
         ) : (
           <span className="min-w-0 flex-1 truncate px-2 text-sm font-medium text-slate-700">{item.name}</span>
@@ -276,7 +276,7 @@ export function BudgetItemRow({
             if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
             if (e.key === 'Escape') setDraft(toEditString(item.plannedMinor))
           }}
-          className="w-24 rounded-md border border-slate-300 px-2 py-1 text-right text-sm tabular-nums focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          className="w-24 rounded-lg border border-transparent bg-transparent px-2 py-1 text-right text-sm font-medium tabular-nums text-slate-800 transition hover:bg-slate-100 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
         />
       </div>
 
@@ -312,7 +312,7 @@ export function BudgetItemRow({
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
               if (e.key === 'Escape') setActualDraft(toEditString(item.actualMinor))
             }}
-            className="w-16 rounded-md border border-slate-200 px-2 py-1 text-right text-sm tabular-nums text-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="w-16 rounded-lg border border-transparent bg-transparent px-2 py-1 text-right text-sm tabular-nums text-slate-600 transition hover:bg-slate-100 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
           />
         ) : (
           <span
@@ -335,8 +335,8 @@ export function BudgetItemRow({
         </div>
       ) : (
         <div
-          className={`col-span-2 text-right text-sm font-semibold tabular-nums ${
-            overspent ? 'text-rose-600' : 'text-slate-700'
+          className={`col-span-2 text-right text-sm tabular-nums ${
+            overspent ? 'font-semibold text-rose-600' : 'font-medium text-slate-500'
           }`}
         >
           {formatMoney(remaining, currency)}

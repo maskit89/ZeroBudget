@@ -43,11 +43,11 @@ export function IncomeGroup({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-card">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between bg-emerald-50 px-4 py-3 text-left transition-colors hover:bg-emerald-100/70"
+        className="flex w-full items-center justify-between bg-emerald-50 px-5 py-4 text-left transition-colors hover:bg-emerald-100/70"
       >
         <div className="flex items-center gap-2">
           <span
@@ -56,7 +56,7 @@ export function IncomeGroup({
           >
             ▶
           </span>
-          <span className="font-semibold text-emerald-900">{category.name}</span>
+          <span className="text-base font-semibold text-emerald-900">{category.name}</span>
           <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
             {category.items.length}
           </span>

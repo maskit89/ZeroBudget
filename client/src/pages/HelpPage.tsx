@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react'
 import { AppShell } from '../components/AppShell'
+import { Card } from '../components/ui'
 
 const GUIDE_URL = 'https://github.com/maskit89/ZeroBudget/blob/main/docs/USER_GUIDE.md'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <Card className="p-5">
       <h3 className="mb-2 text-sm font-semibold text-slate-800">{title}</h3>
       <div className="space-y-1.5 text-sm leading-relaxed text-slate-600">{children}</div>
-    </section>
+    </Card>
   )
 }
 

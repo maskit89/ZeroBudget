@@ -8,9 +8,13 @@
   /* Brand accent (emerald family) — referenced as bg-brand-600 etc. where wanted. */
   --color-brand-50: #ecfdf5;
   --color-brand-100: #d1fae5;
+  --color-brand-200: #a7f3d0;
   --color-brand-500: #10b981;
   --color-brand-600: #059669;
   --color-brand-700: #047857;
+
+  /* A soft, layered card shadow — used by the `shadow-card` utility. */
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
 }
 
 /* App-wide defaults. */
