@@ -85,7 +85,7 @@ export function AppShell({
 
             <div className="flex items-center gap-2">
               <span
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700 dark:bg-brand-500/20 dark:text-brand-200"
                 aria-hidden
               >
                 {initial}

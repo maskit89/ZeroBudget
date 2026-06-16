@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/AppShell'
-import { Button, Card, Input, Select } from '../components/ui'
+import { Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
+import { AccountsIcon } from '../components/icons'
 import { api } from '../lib/api'
 import type { AccountDto } from '../types'
 import { ACCOUNT_TYPE_LABELS, AccountType } from '../types'
@@ -143,19 +144,12 @@ export function AccountsPage() {
 
   return (
     <AppShell active="accounts">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Accounts</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Where your money actually sits. Each balance is your opening balance plus every transaction
-            assigned to the account — so the register stays the source of truth.
-          </p>
-        </div>
+        <PageHeader
+          title="Accounts"
+          subtitle="Where your money actually sits. Each balance is your opening balance plus every transaction assigned to the account — so the register stays the source of truth."
+        />
 
-        {error && (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {error}
-          </div>
-        )}
+        {error && <ErrorBanner>{error}</ErrorBanner>}
 
         {/* Add-account form. */}
         <Card className="p-4">
@@ -210,9 +204,11 @@ export function AccountsPage() {
         {loading && <p className="text-slate-500">Loading…</p>}
 
         {!loading && accounts.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-surface px-6 py-12 text-center text-slate-500 shadow-card">
-            No accounts yet. Add one above, then tag transactions to it to track its balance.
-          </div>
+          <EmptyState
+            icon={<AccountsIcon className="h-6 w-6" />}
+            title="No accounts yet"
+            description="Add one above, then tag transactions to it to track its balance."
+          />
         )}
 
         {accounts.length > 0 && (

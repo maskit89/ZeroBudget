@@ -4,6 +4,7 @@ import type {
   ElementType,
   HTMLAttributes,
   InputHTMLAttributes,
+  ReactNode,
   SelectHTMLAttributes,
 } from 'react'
 
@@ -97,11 +98,12 @@ export function Select({ className = '', children, ...rest }: SelectHTMLAttribut
 type BadgeTone = 'neutral' | 'brand' | 'violet' | 'rose' | 'amber'
 
 const BADGE_TONES: Record<BadgeTone, string> = {
+  // neutral rides the inverted slate ramp, so it needs no `dark:` variant.
   neutral: 'bg-slate-100 text-slate-600',
-  brand: 'bg-brand-100 text-brand-700',
-  violet: 'bg-violet-100 text-violet-700',
-  rose: 'bg-rose-100 text-rose-700',
-  amber: 'bg-amber-100 text-amber-700',
+  brand: 'bg-brand-100 text-brand-700 dark:bg-brand-500/15 dark:text-brand-200',
+  violet: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
+  rose: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
+  amber: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
 }
 
 /** A small rounded pill for counts, tags and statuses. */
@@ -115,5 +117,119 @@ export function Badge({
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${BADGE_TONES[tone]} ${className}`}
       {...rest}
     />
+  )
+}
+
+/**
+ * The standard page heading: an `<h1>` title with optional muted subtitle and a
+ * right-hand actions slot. Gives every page a single, consistent top-level
+ * heading (good for both visual hierarchy and screen-reader navigation).
+ */
+export function PageHeader({
+  title,
+  subtitle,
+  actions,
+}: {
+  title: ReactNode
+  subtitle?: ReactNode
+  actions?: ReactNode
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+      </div>
+      {actions}
+    </div>
+  )
+}
+
+/**
+ * A segmented control — a row of mutually-exclusive options rendered as toggle
+ * buttons (`aria-pressed`), not an ARIA tablist, so it stays accessible without
+ * the full roving-tabindex tab pattern. The selected option is raised.
+ */
+export function SegmentedControl<T extends string>({
+  value,
+  onChange,
+  options,
+  ariaLabel,
+}: {
+  value: T
+  onChange: (value: T) => void
+  options: { value: T; label: string }[]
+  ariaLabel?: string
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      className="grid auto-cols-fr grid-flow-col gap-1 rounded-lg bg-slate-100 p-1 text-sm font-medium"
+    >
+      {options.map((o) => {
+        const selected = o.value === value
+        return (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={selected}
+            onClick={() => onChange(o.value)}
+            className={`rounded-md px-3 py-1.5 transition ${
+              selected
+                ? 'bg-surface text-slate-900 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * An inline error message. `role="alert"` so assistive tech announces it when it
+ * appears. Dark-aware (the rose tint is tuned for dark surfaces).
+ */
+export function ErrorBanner({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      role="alert"
+      className={`rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200 ${className}`}
+    >
+      {children}
+    </div>
+  )
+}
+
+/**
+ * A friendly empty/zero-data placeholder: an optional icon medallion, a title,
+ * supporting copy and an optional actions row. Replaces ad-hoc "nothing here yet"
+ * divs so empty states look intentional and consistent.
+ */
+export function EmptyState({
+  icon,
+  title,
+  description,
+  children,
+}: {
+  icon?: ReactNode
+  title: string
+  description?: ReactNode
+  children?: ReactNode
+}) {
+  return (
+    <div className="rounded-2xl border border-dashed border-slate-300 bg-surface px-6 py-12 text-center shadow-card">
+      {icon && (
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+          {icon}
+        </div>
+      )}
+      <p className="text-base font-semibold text-slate-700">{title}</p>
+      {description && <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{description}</p>}
+      {children && <div className="mt-5 flex flex-wrap justify-center gap-3">{children}</div>}
+    </div>
   )
 }

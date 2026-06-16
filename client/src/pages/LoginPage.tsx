@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import axios from 'axios'
 import { LogoMark } from '../components/icons'
-import { Button, Card, Input } from '../components/ui'
+import { Button, Card, Input, SegmentedControl } from '../components/ui'
 
 export function LoginPage() {
   const { login, register } = useAuth()
@@ -54,22 +54,16 @@ export function LoginPage() {
 
         <Card className="p-8">
           {/* Segmented sign-in / register toggle. */}
-          <div className="mb-6 grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1 text-sm font-medium">
-            {(['login', 'register'] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => switchMode(m)}
-                aria-pressed={mode === m}
-                className={`rounded-md px-3 py-1.5 transition ${
-                  mode === m
-                    ? 'bg-surface text-slate-900 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {m === 'login' ? 'Sign in' : 'Create account'}
-              </button>
-            ))}
+          <div className="mb-6">
+            <SegmentedControl
+              ariaLabel="Sign in or create an account"
+              value={mode}
+              onChange={switchMode}
+              options={[
+                { value: 'login', label: 'Sign in' },
+                { value: 'register', label: 'Create account' },
+              ]}
+            />
           </div>
 
           <form onSubmit={onSubmit} className="space-y-4">

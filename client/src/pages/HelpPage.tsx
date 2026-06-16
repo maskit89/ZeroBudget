@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { AppShell } from '../components/AppShell'
-import { Card } from '../components/ui'
+import { Card, PageHeader } from '../components/ui'
 
 const GUIDE_URL = 'https://github.com/maskit89/ZeroBudget/blob/main/docs/USER_GUIDE.md'
 
@@ -16,16 +16,23 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 export function HelpPage() {
   return (
     <AppShell>
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight text-slate-900">Help &amp; guide</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          A quick tour of the portal. For the full manual, see the{' '}
-          <a href={GUIDE_URL} target="_blank" rel="noreferrer" className="font-medium text-emerald-600 hover:underline">
-            complete user guide
-          </a>
-          .
-        </p>
-      </div>
+      <PageHeader
+        title="Help & guide"
+        subtitle={
+          <>
+            A quick tour of the portal. For the full manual, see the{' '}
+            <a
+              href={GUIDE_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-brand-600 hover:underline"
+            >
+              complete user guide
+            </a>
+            .
+          </>
+        }
+      />
 
       {/* The core idea + a monthly rhythm to follow. */}
       <Section title="Zero-based budgeting in a nutshell">
