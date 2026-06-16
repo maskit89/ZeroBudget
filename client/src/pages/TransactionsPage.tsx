@@ -499,7 +499,7 @@ export function TransactionsPage() {
                             </td>
                             <td
                               className={`px-4 py-2.5 text-right font-semibold tabular-nums ${
-                                isIncome ? 'text-emerald-600' : 'text-slate-700'
+                                isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700'
                               }`}
                             >
                               {isIncome ? '+' : '−'}
@@ -588,7 +588,7 @@ export function TransactionsPage() {
                                 <span
                                   aria-label="Remaining to allocate"
                                   className={`text-xs font-semibold tabular-nums ${
-                                    remainderMinor === 0 ? 'text-emerald-600' : 'text-rose-600'
+                                    remainderMinor === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                                   }`}
                                 >
                                   {remainderMinor === 0
@@ -660,7 +660,7 @@ export function TransactionsPage() {
                                     onClick={() => removeSplit(t.id)}
                                     disabled={savingId === t.id}
                                     aria-label="Remove split"
-                                    className="rounded-md px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                                    className="rounded-md px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
                                   >
                                     Remove split
                                   </button>

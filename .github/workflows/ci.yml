@@ -54,3 +54,30 @@ jobs:
       # Runs tsc type-check + vite production build.
       - name: Build
         run: npm run build
+
+  a11y:
+    name: a11y
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Drives the app in headless Chromium and asserts no axe-core WCAG 2.x A/AA
+      # violations on each page, in both light and dark themes.
+      - name: Accessibility (axe) checks
+        run: npm run test:e2e

@@ -25,7 +25,7 @@ export function HelpPage() {
               href={GUIDE_URL}
               target="_blank"
               rel="noreferrer"
-              className="font-medium text-brand-600 hover:underline"
+              className="font-medium text-brand-600 hover:underline dark:text-emerald-400"
             >
               complete user guide
             </a>

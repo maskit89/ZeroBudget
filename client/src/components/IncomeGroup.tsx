@@ -44,11 +44,11 @@ export function IncomeGroup({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-surface shadow-card">
+    <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-surface shadow-card dark:border-emerald-500/30">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between bg-emerald-50 px-5 py-4 text-left transition-colors hover:bg-emerald-100/70"
+        className="flex w-full items-center justify-between bg-emerald-50 px-5 py-4 text-left transition-colors hover:bg-emerald-100/70 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20"
       >
         <div className="flex items-center gap-2">
           <span
@@ -57,17 +57,17 @@ export function IncomeGroup({
           >
             ▶
           </span>
-          <span className="text-base font-semibold text-emerald-900">{category.name}</span>
+          <span className="text-base font-semibold text-emerald-900 dark:text-emerald-200">{category.name}</span>
           <Badge tone="brand">{category.items.length}</Badge>
         </div>
-        <span className="text-sm font-semibold tabular-nums text-emerald-800">
+        <span className="text-sm font-semibold tabular-nums text-emerald-800 dark:text-emerald-300">
           {formatMoney(categoryPlanned(category), currency)}
         </span>
       </button>
 
       {open && (
-        <div className="border-t border-emerald-100">
-          <div className="grid grid-cols-12 gap-2 bg-emerald-50/50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-emerald-700/70">
+        <div className="border-t border-emerald-100 dark:border-emerald-500/20">
+          <div className="grid grid-cols-12 gap-2 bg-emerald-50/50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-emerald-800 dark:bg-emerald-500/5 dark:text-emerald-200">
             <div className="col-span-5">Source</div>
             <div className="col-span-3 text-right">Planned</div>
             <div className="col-span-3 text-right">Received</div>
@@ -95,7 +95,7 @@ export function IncomeGroup({
             )}
           </div>
 
-          <div className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50/30 px-4 py-2.5">
+          <div className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50/30 px-4 py-2.5 dark:border-emerald-500/20 dark:bg-emerald-500/5">
             <input
               type="text"
               value={newName}

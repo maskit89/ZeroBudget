@@ -62,8 +62,8 @@ export function FundGroup({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-violet-200 bg-surface shadow-card">
-      <div className="flex items-center justify-between gap-2 bg-violet-50/40 px-5 py-4">
+    <div className="overflow-hidden rounded-2xl border border-violet-200 bg-surface shadow-card dark:border-violet-500/30">
+      <div className="flex items-center justify-between gap-2 bg-violet-50/40 px-5 py-4 dark:bg-violet-500/10">
         <div className="flex flex-1 items-center gap-2">
           <button
             type="button"
@@ -128,7 +128,7 @@ export function FundGroup({
       </div>
 
       {open && (
-        <div className="border-t border-violet-100">
+        <div className="border-t border-violet-100 dark:border-violet-500/20">
           <div className="grid grid-cols-12 gap-2 bg-slate-50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
             <div className="col-span-4">Fund</div>
             <div className="col-span-3 text-right">Planned</div>
