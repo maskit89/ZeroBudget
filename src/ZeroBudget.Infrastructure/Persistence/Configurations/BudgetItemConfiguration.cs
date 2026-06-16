@@ -43,6 +43,15 @@ public class BudgetItemConfiguration : IEntityTypeConfiguration<BudgetItem>
         // cross-month balance roll-up. Null for ordinary income/expense lines.
         builder.HasIndex(i => i.FundId);
 
+        // A fund line's FundId is the id of its SinkingFund (shared across the fund's
+        // monthly instances). Deleting a fund detaches its lines — they become ordinary
+        // lines rather than deleting budget history — mirroring Transaction -> BudgetItem.
+        // No navigation property: keeps BudgetItem unaware of the fund definition.
+        builder.HasOne<SinkingFund>()
+            .WithMany()
+            .HasForeignKey(i => i.FundId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasMany(i => i.Transactions)
             .WithOne(t => t.BudgetItem)
             .HasForeignKey(t => t.BudgetItemId)
