@@ -73,3 +73,22 @@ body {
   outline: 2px solid var(--color-brand-500);
   outline-offset: 1px;
 }
+
+/* WCAG 2.4.11 (Focus Not Obscured): keep a scrolled-to / focused element clear
+   of the 4rem sticky header. */
+html {
+  scroll-padding-top: 5rem;
+}
+
+/* WCAG 2.3.3 / respecting prefers-reduced-motion: drop non-essential motion
+   (sidebar slide, the "saving" pulse, transitions) for users who ask for it. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -91,7 +91,7 @@ export function IncomeLineRow({
       </div>
 
       <div className="col-span-3 flex items-center justify-end">
-        <span className="mr-1 text-slate-400">{currencySymbol(currency)}</span>
+        <span className="mr-1 text-slate-500">{currencySymbol(currency)}</span>
         <input
           type="text"
           inputMode="decimal"
@@ -121,7 +121,7 @@ export function IncomeLineRow({
               ? 'Received from transactions — switch to manual entry'
               : 'Manual entry — switch to transaction tracking'
           }
-          className="shrink-0 rounded px-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          className="shrink-0 rounded px-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-600"
         >
           {item.actualIsTracked ? '🔗' : '✎'}
         </button>
@@ -152,7 +152,7 @@ export function IncomeLineRow({
           onClick={() => onDelete(item.id)}
           aria-label={`Delete ${item.name}`}
           title="Delete income source"
-          className="rounded-md px-1.5 py-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+          className="rounded-md px-1.5 py-1 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
         >
           ✕
         </button>
