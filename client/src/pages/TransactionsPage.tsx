@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/AppShell'
+import { Card } from '../components/ui'
 import { api } from '../lib/api'
 import type { AccountDto, BudgetMonthDto, TransactionDto } from '../types'
 import { TransactionType } from '../types'
@@ -239,8 +240,8 @@ export function TransactionsPage() {
   return (
     <AppShell active="transactions">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Transactions</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Transactions</h2>
+          <p className="mt-1 text-sm text-slate-500">
             Add what you’ve spent (or received) by hand, then assign each to a budget line — its
             spending rolls up into that line.
           </p>
@@ -253,7 +254,7 @@ export function TransactionsPage() {
         )}
 
         {/* Add-transaction form (the manual "sheet" entry). */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <Card className="p-4">
           <h3 className="mb-3 text-sm font-semibold text-slate-700">Add a transaction</h3>
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
@@ -352,12 +353,12 @@ export function TransactionsPage() {
               Add
             </button>
           </div>
-        </div>
+        </Card>
 
         {loading && <p className="text-slate-500">Loading…</p>}
 
         {!loading && transactions.length === 0 && (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-slate-500">
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-slate-500 shadow-card">
             No transactions yet. Add one above, or import a CAMT.053 statement from the Budget page.
           </div>
         )}
@@ -386,7 +387,7 @@ export function TransactionsPage() {
               </label>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <Card className="overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400">
@@ -705,7 +706,7 @@ export function TransactionsPage() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </Card>
           </>
         )}
     </AppShell>

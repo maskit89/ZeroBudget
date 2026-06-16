@@ -6,7 +6,7 @@ const GUIDE_URL = 'https://github.com/maskit89/ZeroBudget/blob/main/docs/USER_GU
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Card className="p-5">
+    <Card as="section" className="p-5">
       <h3 className="mb-2 text-sm font-semibold text-slate-800">{title}</h3>
       <div className="space-y-1.5 text-sm leading-relaxed text-slate-600">{children}</div>
     </Card>
@@ -17,8 +17,8 @@ export function HelpPage() {
   return (
     <AppShell>
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-800">Help &amp; guide</h2>
-        <p className="mt-0.5 text-sm text-slate-500">
+        <h2 className="text-3xl font-bold tracking-tight text-slate-900">Help &amp; guide</h2>
+        <p className="mt-1 text-sm text-slate-500">
           A quick tour of the portal. For the full manual, see the{' '}
           <a href={GUIDE_URL} target="_blank" rel="noreferrer" className="font-medium text-emerald-600 hover:underline">
             complete user guide

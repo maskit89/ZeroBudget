@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/AppShell'
+import { Card } from '../components/ui'
 import { api } from '../lib/api'
 import type { AccountDto } from '../types'
 import { ACCOUNT_TYPE_LABELS, AccountType } from '../types'
@@ -143,8 +144,8 @@ export function AccountsPage() {
   return (
     <AppShell active="accounts">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Accounts</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Accounts</h2>
+          <p className="mt-1 text-sm text-slate-500">
             Where your money actually sits. Each balance is your opening balance plus every transaction
             assigned to the account — so the register stays the source of truth.
           </p>
@@ -157,7 +158,7 @@ export function AccountsPage() {
         )}
 
         {/* Add-account form. */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <Card className="p-4">
           <h3 className="mb-3 text-sm font-semibold text-slate-700">Add an account</h3>
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-slate-500">
@@ -211,18 +212,18 @@ export function AccountsPage() {
               Add
             </button>
           </div>
-        </div>
+        </Card>
 
         {loading && <p className="text-slate-500">Loading…</p>}
 
         {!loading && accounts.length === 0 && (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-slate-500">
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-slate-500 shadow-card">
             No accounts yet. Add one above, then tag transactions to it to track its balance.
           </div>
         )}
 
         {accounts.length > 0 && (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <Card className="overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400">
@@ -356,7 +357,7 @@ export function AccountsPage() {
                 </tr>
               </tfoot>
             </table>
-          </div>
+          </Card>
         )}
     </AppShell>
   )

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, HTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, ComponentPropsWithoutRef, ElementType } from 'react'
 
 /**
  * In-house UI primitives built on the existing Tailwind v4 `@theme` tokens —
@@ -6,10 +6,19 @@ import type { ButtonHTMLAttributes, HTMLAttributes } from 'react'
  * components style themselves by reaching for these plus utility classes.
  */
 
-/** A soft, modern surface: rounded, hairline border, gentle `shadow-card`. */
-export function Card({ className = '', ...rest }: HTMLAttributes<HTMLDivElement>) {
+/**
+ * A soft, modern surface: rounded, hairline border, gentle `shadow-card`.
+ * Polymorphic via `as` so it can render a semantic element (e.g. `section`)
+ * while keeping the same look.
+ */
+export function Card<T extends ElementType = 'div'>({
+  as,
+  className = '',
+  ...rest
+}: { as?: T; className?: string } & Omit<ComponentPropsWithoutRef<T>, 'as' | 'className'>) {
+  const Component = (as ?? 'div') as ElementType
   return (
-    <div
+    <Component
       className={`rounded-2xl border border-slate-200/70 bg-white shadow-card ${className}`}
       {...rest}
     />
