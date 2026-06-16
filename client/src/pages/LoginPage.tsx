@@ -63,7 +63,7 @@ export function LoginPage() {
                 aria-pressed={mode === m}
                 className={`rounded-md px-3 py-1.5 transition ${
                   mode === m
-                    ? 'bg-white text-slate-900 shadow-sm'
+                    ? 'bg-surface text-slate-900 shadow-sm'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >

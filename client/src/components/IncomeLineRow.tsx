@@ -79,7 +79,7 @@ export function IncomeLineRow({
             if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
             if (e.key === 'Escape') setName(item.name)
           }}
-          className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-slate-700 hover:border-slate-200 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-slate-700 hover:border-slate-200 focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
         />
         {saving && (
           <span
@@ -103,7 +103,7 @@ export function IncomeLineRow({
             if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
             if (e.key === 'Escape') setDraft(toEditString(item.plannedMinor))
           }}
-          className="w-24 rounded-lg border border-transparent bg-transparent px-2 py-1 text-right text-sm font-medium tabular-nums text-slate-800 transition hover:bg-slate-100 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          className="w-24 rounded-lg border border-transparent bg-transparent px-2 py-1 text-right text-sm font-medium tabular-nums text-slate-800 transition hover:bg-slate-100 focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
         />
       </div>
 
@@ -137,7 +137,7 @@ export function IncomeLineRow({
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
               if (e.key === 'Escape') setReceivedDraft(toEditString(item.actualMinor))
             }}
-            className="w-20 rounded-lg border border-transparent bg-transparent px-2 py-1 text-right text-sm tabular-nums text-slate-600 transition hover:bg-slate-100 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            className="w-20 rounded-lg border border-transparent bg-transparent px-2 py-1 text-right text-sm tabular-nums text-slate-600 transition hover:bg-slate-100 focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
           />
         ) : (
           <span className="text-sm tabular-nums text-slate-500" title="Received from transactions">

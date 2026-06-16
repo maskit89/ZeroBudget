@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { AppNav, type NavKey } from './AppNav'
 import { CloseIcon, HelpIcon, LogoMark, LogoutIcon, MenuIcon } from './icons'
+import { ThemeToggle } from './ThemeToggle'
 
 /**
  * The shared dashboard chrome: a fixed left sidebar for primary navigation and a
@@ -30,7 +31,7 @@ export function AppShell({
       {/* Mobile backdrop — tap to dismiss the drawer. */}
       {navOpen && (
         <div
-          className="fixed inset-0 z-30 bg-slate-900/40 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
           aria-hidden
           onClick={() => setNavOpen(false)}
         />
@@ -38,7 +39,7 @@ export function AppShell({
 
       {/* Sidebar: a fixed drawer that slides in on mobile, pinned on desktop. */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 ease-out lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-surface transition-transform duration-200 ease-out lg:translate-x-0 ${
           navOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -59,7 +60,7 @@ export function AppShell({
 
       {/* Content column, offset past the sidebar on desktop. */}
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-surface/80 px-4 backdrop-blur sm:px-6">
           <button
             type="button"
             onClick={() => setNavOpen(true)}
@@ -70,6 +71,7 @@ export function AppShell({
           </button>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <Link
               to="/help"
               aria-label="Help & guide"

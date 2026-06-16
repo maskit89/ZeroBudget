@@ -124,7 +124,7 @@ export function ReportsPage() {
         )}
 
         {!loading && !error && !hasData && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-slate-500 shadow-card">
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-surface px-6 py-12 text-center text-slate-500 shadow-card">
             No budget data yet. Once you’ve built a budget or two, your trends will appear here.
           </div>
         )}
@@ -278,7 +278,7 @@ export function ReportsPage() {
                   aria-label="Breakdown month"
                   value={breakdownKey ?? ''}
                   onChange={(e) => setBreakdownKey(e.target.value)}
-                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  className="rounded-md border border-slate-300 bg-surface px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
                 >
                   {[...trends.points].reverse().map((p) => (
                     <option key={p.key} value={p.key}>

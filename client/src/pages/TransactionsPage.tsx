@@ -351,7 +351,7 @@ export function TransactionsPage() {
         {loading && <p className="text-slate-500">Loading…</p>}
 
         {!loading && transactions.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-slate-500 shadow-card">
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-surface px-6 py-12 text-center text-slate-500 shadow-card">
             No transactions yet. Add one above, or import a CAMT.053 statement from the Budget page.
           </div>
         )}
@@ -654,7 +654,7 @@ export function TransactionsPage() {
                                   type="button"
                                   onClick={addSplitRow}
                                   aria-label="Add split line"
-                                  className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-white"
+                                  className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-surface"
                                 >
                                   + Add line
                                 </button>
