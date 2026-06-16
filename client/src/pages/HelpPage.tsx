@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react'
 import { AppShell } from '../components/AppShell'
+import { Card } from '../components/ui'
 
 const GUIDE_URL = 'https://github.com/maskit89/ZeroBudget/blob/main/docs/USER_GUIDE.md'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <Card as="section" className="p-5">
       <h3 className="mb-2 text-sm font-semibold text-slate-800">{title}</h3>
       <div className="space-y-1.5 text-sm leading-relaxed text-slate-600">{children}</div>
-    </section>
+    </Card>
   )
 }
 
@@ -16,8 +17,8 @@ export function HelpPage() {
   return (
     <AppShell>
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-800">Help &amp; guide</h2>
-        <p className="mt-0.5 text-sm text-slate-500">
+        <h2 className="text-3xl font-bold tracking-tight text-slate-900">Help &amp; guide</h2>
+        <p className="mt-1 text-sm text-slate-500">
           A quick tour of the portal. For the full manual, see the{' '}
           <a href={GUIDE_URL} target="_blank" rel="noreferrer" className="font-medium text-emerald-600 hover:underline">
             complete user guide

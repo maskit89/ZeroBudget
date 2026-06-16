@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
-import { useAuth } from '../auth/AuthContext'
 import { AppShell } from '../components/AppShell'
 import type {
   BudgetMonthDto,
@@ -45,7 +44,6 @@ const MONTH_NAMES = [
 const now = new Date()
 
 export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
-  const { email } = useAuth()
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 })
   const [month, setMonth] = useState<MonthVM | null>(null)
   const [loading, setLoading] = useState(true)
@@ -504,41 +502,43 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
   }
 
   return (
-    <AppShell
-      active="budget"
-      maxWidth="4xl"
-      right={<span className="hidden text-sm text-slate-500 sm:inline">{email}</span>}
-    >
-        {/* Month navigator — always visible so you can move between / create months. */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <AppShell active="budget" maxWidth="4xl">
+        {/* Page heading + month navigator — always visible so you can move between / create months. */}
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Budget</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Give every euro a job until “Remaining to Budget” reaches €0.00.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={goPrev}
               aria-label="Previous month"
-              className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-slate-600 hover:bg-slate-50"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
             >
               ◀
             </button>
-            <h2 className="min-w-44 text-center text-2xl font-bold tabular-nums text-slate-800">
+            <h2 className="min-w-40 text-center text-lg font-semibold tabular-nums text-slate-800">
               {MONTH_NAMES[view.month - 1]} {view.year}
             </h2>
             <button
               type="button"
               onClick={goNext}
               aria-label="Next month"
-              className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-slate-600 hover:bg-slate-50"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
             >
               ▶
             </button>
+            <button
+              type="button"
+              onClick={() => goToMonth(now.getFullYear(), now.getMonth() + 1)}
+              className="ml-1 rounded-lg px-2.5 py-1.5 text-sm font-medium text-brand-700 transition hover:bg-brand-50"
+            >
+              This month
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => goToMonth(now.getFullYear(), now.getMonth() + 1)}
-            className="text-sm font-medium text-emerald-700 hover:text-emerald-800"
-          >
-            This month
-          </button>
         </div>
 
         {loading && <p className="text-slate-500">Loading your budget…</p>}
@@ -550,7 +550,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
         )}
 
         {notFound && !loading && (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center shadow-card">
             <p className="text-slate-600">
               No budget for {MONTH_NAMES[view.month - 1]} {view.year} yet.
             </p>
@@ -588,7 +588,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
                         onClick={() => createFromTemplate(t.key)}
                         disabled={creating}
                         aria-label={`Start from the ${t.name} template`}
-                        className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-emerald-400 hover:bg-emerald-50/40 disabled:opacity-50"
+                        className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-brand-500 hover:bg-brand-50/40 hover:shadow-card disabled:opacity-50"
                       >
                         <span className="font-semibold text-slate-800">{t.name}</span>
                         <span className="text-xs text-slate-500">{t.description}</span>
@@ -606,10 +606,6 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
 
         {month && (
           <>
-            <p className="text-sm text-slate-500">
-              Assign every Euro of income until “Remaining to Budget” reaches €0.00.
-            </p>
-
             <RemainingBanner
               totalIncomeMinor={totalIncome(month)}
               totalPlannedMinor={monthPlanned(month)}
@@ -710,7 +706,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
               ))}
 
               {/* Add a new expense or fund group (EveryDollar "Add Group"). */}
-              <div className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white/60 px-4 py-3">
+              <div className="flex items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white/60 px-4 py-3">
                 <input
                   type="text"
                   value={newCategoryName}

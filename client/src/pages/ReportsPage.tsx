@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/AppShell'
+import { Card } from '../components/ui'
 import { api } from '../lib/api'
 import type { AnnualSummaryDto, BudgetMonthDto, BudgetTrendsDto } from '../types'
 import { formatMoney, fromAmount, type Minor } from '../lib/money'
@@ -108,8 +109,8 @@ export function ReportsPage() {
   return (
     <AppShell active="reports" maxWidth="4xl">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Reports</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Reports</h2>
+          <p className="mt-1 text-sm text-slate-500">
             How your spending and income have tracked over your most recent months.
           </p>
         </div>
@@ -123,7 +124,7 @@ export function ReportsPage() {
         )}
 
         {!loading && !error && !hasData && (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-slate-500">
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-slate-500 shadow-card">
             No budget data yet. Once you’ve built a budget or two, your trends will appear here.
           </div>
         )}
@@ -139,7 +140,7 @@ export function ReportsPage() {
             </div>
 
             {/* Income vs spending per month. */}
-            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <Card as="section" className="p-5">
               <h3 className="mb-4 text-sm font-semibold text-slate-700">Income vs spending</h3>
               <div className="space-y-4">
                 {trends.points.map((p) => {
@@ -188,11 +189,11 @@ export function ReportsPage() {
                   <span className="h-2 w-3 rounded-sm bg-slate-400" /> Spent
                 </span>
               </div>
-            </section>
+            </Card>
 
             {/* Whole-year overview, with its own year navigator. */}
             {annual?.months && annual.months.length > 0 && (
-              <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <Card as="section" className="p-5">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-slate-700">Annual overview</h3>
                   <div className="flex items-center gap-2">
@@ -266,11 +267,11 @@ export function ReportsPage() {
                     </tr>
                   </tfoot>
                 </table>
-              </section>
+              </Card>
             )}
 
             {/* Spending by category for the chosen month. */}
-            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <Card as="section" className="p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h3 className="text-sm font-semibold text-slate-700">Spending by category</h3>
                 <select
@@ -313,7 +314,7 @@ export function ReportsPage() {
                   ))}
                 </div>
               )}
-            </section>
+            </Card>
           </>
         )}
     </AppShell>
@@ -353,9 +354,9 @@ function SummaryCard({
           ? 'text-rose-600'
           : 'text-emerald-600'
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <Card className="p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
       <p className={`mt-1 text-2xl font-bold tabular-nums ${color}`}>{formatMoney(minor, currency)}</p>
-    </div>
+    </Card>
   )
 }

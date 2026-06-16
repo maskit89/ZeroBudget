@@ -3,6 +3,7 @@ import type { CategoryVM } from '../budgetModel'
 import { billStatus, categoryPlanned } from '../budgetModel'
 import { formatMoney, type Minor } from '../lib/money'
 import { BudgetItemRow } from './BudgetItemRow'
+import { Card } from './ui'
 
 interface Props {
   category: CategoryVM
@@ -91,8 +92,8 @@ export function CategoryAccordion({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between gap-2 px-4 py-3">
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-5 py-4">
         <div className="flex flex-1 items-center gap-2">
           <button
             type="button"
@@ -112,9 +113,9 @@ export function CategoryAccordion({
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
               if (e.key === 'Escape') setName(category.name)
             }}
-            className="rounded-md border border-transparent bg-transparent px-2 py-1 font-semibold text-slate-800 hover:border-slate-200 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="rounded-md border border-transparent bg-transparent px-2 py-1 text-base font-semibold text-slate-800 hover:border-slate-200 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
           />
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
             {category.items.length}
           </span>
         </div>
@@ -239,6 +240,6 @@ export function CategoryAccordion({
           </div>
         </div>
       )}
-    </div>
+    </Card>
   )
 }
