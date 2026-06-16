@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/AppShell'
-import { Card } from '../components/ui'
+import { Badge, Button, Card, Input, Select } from '../components/ui'
 import { api } from '../lib/api'
 import type { AccountDto, BudgetMonthDto, TransactionDto } from '../types'
 import { TransactionType } from '../types'
@@ -259,28 +259,28 @@ export function TransactionsPage() {
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
               Date
-              <input
+              <Input
                 type="date"
                 value={date}
                 aria-label="Transaction date"
                 onChange={(e) => setDate(e.target.value)}
-                className="rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-700 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="text-slate-700"
               />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-slate-500">
               Payee
-              <input
+              <Input
                 type="text"
                 value={payee}
                 placeholder="e.g. Tesco"
                 aria-label="Transaction payee"
                 onChange={(e) => setPayee(e.target.value)}
-                className="min-w-32 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="min-w-32"
               />
             </label>
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
               Amount
-              <input
+              <Input
                 type="text"
                 inputMode="decimal"
                 value={amount}
@@ -290,28 +290,27 @@ export function TransactionsPage() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') addTransaction()
                 }}
-                className="w-28 rounded-md border border-slate-300 px-2 py-1.5 text-right text-sm tabular-nums focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-28 text-right tabular-nums"
               />
             </label>
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
               Type
-              <select
+              <Select
                 value={type}
                 aria-label="Transaction type"
                 onChange={(e) => setType(Number(e.target.value))}
-                className="rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               >
                 <option value={TransactionType.Expense}>Expense</option>
                 <option value={TransactionType.Income}>Income</option>
-              </select>
+              </Select>
             </label>
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
               Assign to
-              <select
+              <Select
                 value={assignTo}
                 aria-label="Assign transaction to"
                 onChange={(e) => setAssignTo(e.target.value)}
-                className="w-48 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-48"
               >
                 <option value="">Unassigned</option>
                 {optionGroups.map((g) => (
@@ -323,16 +322,16 @@ export function TransactionsPage() {
                     ))}
                   </optgroup>
                 ))}
-              </select>
+              </Select>
             </label>
             {accounts.length > 0 && (
               <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
                 Account
-                <select
+                <Select
                   value={account}
                   aria-label="Transaction account"
                   onChange={(e) => setAccount(e.target.value)}
-                  className="w-40 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-40"
                 >
                   <option value="">No account</option>
                   {accounts.map((a) => (
@@ -340,18 +339,12 @@ export function TransactionsPage() {
                       {a.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             )}
-            <button
-              type="button"
-              onClick={addTransaction}
-              disabled={adding}
-              aria-label="Add transaction"
-              className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-            >
+            <Button onClick={addTransaction} disabled={adding} aria-label="Add transaction">
               Add
-            </button>
+            </Button>
           </div>
         </Card>
 
@@ -519,9 +512,7 @@ export function TransactionsPage() {
                             <td className="px-4 py-2.5">
                               {t.isSplit ? (
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className="rounded bg-violet-100 px-1.5 py-0.5 text-xs font-semibold text-violet-700">
-                                    Split
-                                  </span>
+                                  <Badge tone="violet">Split</Badge>
                                   <span className="text-xs text-slate-500">
                                     {t.splits
                                       .map(

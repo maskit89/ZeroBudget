@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import axios from 'axios'
+import { LogoMark } from '../components/icons'
+import { Button, Card, Input } from '../components/ui'
 
 export function LoginPage() {
   const { login, register } = useAuth()
@@ -12,6 +14,11 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  function switchMode(next: 'login' | 'register') {
+    setMode(next)
+    setError(null)
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -37,65 +44,80 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center bg-slate-50 px-6">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="mb-6 text-center">
-          <div className="text-3xl">💶</div>
-          <h1 className="mt-2 text-xl font-bold text-slate-800">ZeroBudget</h1>
-          <p className="text-sm text-slate-500">
-            {mode === 'login' ? 'Sign in to your budget' : 'Create your account'}
-          </p>
+    <div className="flex min-h-full items-center justify-center bg-slate-50 px-4 py-12">
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <LogoMark className="h-12 w-12 text-brand-600" />
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">ZeroBudget</h1>
+          <p className="mt-1 text-sm text-slate-500">Zero-based budgeting, built for Europe.</p>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              placeholder="you@example.eu"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">Password</label>
-            <input
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              placeholder="At least 8 characters"
-            />
+        <Card className="p-8">
+          {/* Segmented sign-in / register toggle. */}
+          <div className="mb-6 grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1 text-sm font-medium">
+            {(['login', 'register'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => switchMode(m)}
+                aria-pressed={mode === m}
+                className={`rounded-md px-3 py-1.5 transition ${
+                  mode === m
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {m === 'login' ? 'Sign in' : 'Create account'}
+              </button>
+            ))}
           </div>
 
-          {error && <p className="text-sm text-rose-600">{error}</p>}
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-600">
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.eu"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-600">
+                Password
+              </label>
+              <Input
+                id="password"
+                type="password"
+                required
+                minLength={8}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                className="w-full"
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-          >
-            {busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
-          </button>
-        </form>
+            {error && (
+              <p role="alert" className="text-sm text-rose-600">
+                {error}
+              </p>
+            )}
 
-        <p className="mt-6 text-center text-sm text-slate-500">
-          {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
-          <button
-            type="button"
-            onClick={() => {
-              setMode(mode === 'login' ? 'register' : 'login')
-              setError(null)
-            }}
-            className="font-semibold text-emerald-600 hover:underline"
-          >
-            {mode === 'login' ? 'Register' : 'Sign in'}
-          </button>
-        </p>
+            <Button type="submit" disabled={busy} className="w-full">
+              {busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
+            </Button>
+          </form>
+        </Card>
+
+        <p className="mt-6 text-center text-xs text-slate-400">Give every euro a job.</p>
       </div>
     </div>
   )

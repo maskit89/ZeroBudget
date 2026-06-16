@@ -3,7 +3,7 @@ import type { CategoryVM } from '../budgetModel'
 import { billStatus, categoryPlanned } from '../budgetModel'
 import { formatMoney, type Minor } from '../lib/money'
 import { BudgetItemRow } from './BudgetItemRow'
-import { Card } from './ui'
+import { Badge, Card } from './ui'
 
 interface Props {
   category: CategoryVM
@@ -115,9 +115,7 @@ export function CategoryAccordion({
             }}
             className="rounded-md border border-transparent bg-transparent px-2 py-1 text-base font-semibold text-slate-800 hover:border-slate-200 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
           />
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-            {category.items.length}
-          </span>
+          <Badge>{category.items.length}</Badge>
         </div>
 
         <div className="flex items-center gap-3">
