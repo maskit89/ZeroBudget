@@ -3,6 +3,7 @@ import type { CategoryVM } from '../budgetModel'
 import { categoryPlanned } from '../budgetModel'
 import { formatMoney, type Minor } from '../lib/money'
 import { BudgetItemRow } from './BudgetItemRow'
+import { Badge } from './ui'
 
 interface Props {
   category: CategoryVM
@@ -72,9 +73,7 @@ export function FundGroup({
           >
             ▶
           </button>
-          <span className="rounded bg-violet-100 px-1.5 py-0.5 text-xs font-semibold text-violet-700">
-            Fund
-          </span>
+          <Badge tone="violet">Fund</Badge>
           <input
             type="text"
             value={name}
@@ -87,9 +86,7 @@ export function FundGroup({
             }}
             className="rounded-md border border-transparent bg-transparent px-2 py-1 text-base font-semibold text-slate-800 hover:border-violet-200 focus:border-violet-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/30"
           />
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-            {category.items.length}
-          </span>
+          <Badge>{category.items.length}</Badge>
         </div>
 
         <div className="flex items-center gap-3">

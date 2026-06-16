@@ -3,6 +3,7 @@ import type { CategoryVM } from '../budgetModel'
 import { categoryPlanned } from '../budgetModel'
 import { formatMoney, type Minor } from '../lib/money'
 import { IncomeLineRow } from './IncomeLineRow'
+import { Badge } from './ui'
 
 interface Props {
   category: CategoryVM
@@ -57,9 +58,7 @@ export function IncomeGroup({
             ▶
           </span>
           <span className="text-base font-semibold text-emerald-900">{category.name}</span>
-          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
-            {category.items.length}
-          </span>
+          <Badge tone="brand">{category.items.length}</Badge>
         </div>
         <span className="text-sm font-semibold tabular-nums text-emerald-800">
           {formatMoney(categoryPlanned(category), currency)}

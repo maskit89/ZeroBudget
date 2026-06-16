@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/AppShell'
-import { Card } from '../components/ui'
+import { Button, Card, Input, Select } from '../components/ui'
 import { api } from '../lib/api'
 import type { AccountDto } from '../types'
 import { ACCOUNT_TYPE_LABELS, AccountType } from '../types'
@@ -163,33 +163,32 @@ export function AccountsPage() {
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-slate-500">
               Name
-              <input
+              <Input
                 type="text"
                 value={name}
                 placeholder="e.g. Everyday current"
                 aria-label="Account name"
                 onChange={(e) => setName(e.target.value)}
-                className="min-w-32 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="min-w-32"
               />
             </label>
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
               Type
-              <select
+              <Select
                 value={type}
                 aria-label="Account type"
                 onChange={(e) => setType(Number(e.target.value))}
-                className="rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               >
                 {TYPE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
               Opening balance
-              <input
+              <Input
                 type="text"
                 inputMode="decimal"
                 value={opening}
@@ -199,18 +198,12 @@ export function AccountsPage() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') addAccount()
                 }}
-                className="w-32 rounded-md border border-slate-300 px-2 py-1.5 text-right text-sm tabular-nums focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-32 text-right tabular-nums"
               />
             </label>
-            <button
-              type="button"
-              onClick={addAccount}
-              disabled={adding}
-              aria-label="Add account"
-              className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-            >
+            <Button onClick={addAccount} disabled={adding} aria-label="Add account">
               Add
-            </button>
+            </Button>
           </div>
         </Card>
 
