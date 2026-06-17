@@ -105,6 +105,16 @@ export interface AccountDto {
   displayOrder: number
 }
 
+export interface AccountReconciliationDto {
+  accountId: string
+  accountName: string
+  currentBalance: number
+  backedFundsTotal: number
+  backedFundCount: number
+  /** CurrentBalance − BackedFundsTotal: unallocated float (or shortfall when negative). */
+  float: number
+}
+
 export interface BudgetTrendPointDto {
   year: number
   month: number

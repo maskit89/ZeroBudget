@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import type { SinkingFundDto } from '../types'
+import type { AccountDto, SinkingFundDto } from '../types'
 
 const { mockGet, mockPut, mockPost } = vi.hoisted(() => ({
   mockGet: vi.fn(),
@@ -42,12 +42,13 @@ function fund(over: Partial<SinkingFundDto> = {}): SinkingFundDto {
   }
 }
 
-function funds(): SinkingFundDto[] {
-  return [
-    fund(),
-    fund({ id: 'f2', name: 'Holiday', kind: 0, targetAmount: 1000, currentBalance: -40, requiredMonthlyContribution: 0, status: 'Overspent', targetDate: null, projectedFullyFundedDate: null }),
-  ]
-}
+// Account names deliberately don't collide with fund names so the funding-account
+// <option>s don't create duplicate text matches.
+const accountsData: AccountDto[] = [
+  { id: 'acc1', name: 'Joint Current', type: 0, currency: 'EUR', openingBalance: 0, currentBalance: 0, displayOrder: 0 },
+]
+
+let fundsData: SinkingFundDto[] = []
 
 function renderPage() {
   return render(
@@ -64,10 +65,19 @@ describe('FundsPage', () => {
     mockGet.mockReset()
     mockPut.mockReset()
     mockPost.mockReset()
+    fundsData = []
+    mockGet.mockImplementation((url: string) =>
+      url === '/accounts'
+        ? Promise.resolve({ data: accountsData })
+        : Promise.resolve({ data: fundsData }),
+    )
   })
 
   it('lists funds with status and balances', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: funds() })
+    fundsData = [
+      fund(),
+      fund({ id: 'f2', name: 'Holiday', kind: 0, targetAmount: 1000, currentBalance: -40, requiredMonthlyContribution: 0, status: 'Overspent', targetDate: null, projectedFullyFundedDate: null }),
+    ]
 
     renderPage()
 
@@ -75,12 +85,11 @@ describe('FundsPage', () => {
     expect(screen.getByText('Holiday')).toBeInTheDocument()
     expect(screen.getByText('On track')).toBeInTheDocument()
     expect(screen.getByText('Overspent')).toBeInTheDocument()
-    // Home insurance balance 120,00 of 300,00.
     expect(screen.getByText(/120,00/)).toBeInTheDocument()
   })
 
   it('adds a fund', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: [] })
+    fundsData = []
     mockPost.mockResolvedValue({ data: fund({ id: 'f9', name: 'Vacation', kind: 0, targetAmount: 1200, status: 'OnTrack' }) })
     const user = userEvent.setup()
 
@@ -100,7 +109,10 @@ describe('FundsPage', () => {
   })
 
   it('archives a fund', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: funds() })
+    fundsData = [
+      fund(),
+      fund({ id: 'f2', name: 'Holiday', kind: 0 }),
+    ]
     mockPut.mockResolvedValue({ data: null })
     const user = userEvent.setup()
 
@@ -115,7 +127,7 @@ describe('FundsPage', () => {
   })
 
   it('shows an empty state when there are no funds', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: [] })
+    fundsData = []
 
     renderPage()
 

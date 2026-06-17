@@ -3,7 +3,7 @@ import { AppShell } from '../components/AppShell'
 import { Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
 import { AccountsIcon } from '../components/icons'
 import { api } from '../lib/api'
-import type { AccountDto } from '../types'
+import type { AccountDto, AccountReconciliationDto } from '../types'
 import { ACCOUNT_TYPE_LABELS, AccountType } from '../types'
 import { formatMoney, fromAmount, parseMinor, toAmount, toEditString } from '../lib/money'
 
@@ -28,6 +28,7 @@ function parseSignedAmount(input: string): number | null {
 
 export function AccountsPage() {
   const [accounts, setAccounts] = useState<AccountDto[]>([])
+  const [reconciliation, setReconciliation] = useState<AccountReconciliationDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
@@ -56,6 +57,19 @@ export function AccountsPage() {
       cancelled = true
     }
   }, [])
+
+  // Reconciliation reflects current balances + fund backing, so refresh it whenever
+  // the account set changes (initial load and after any add/edit/delete).
+  useEffect(() => {
+    let cancelled = false
+    api
+      .get<AccountReconciliationDto[]>('/accounts/reconciliation')
+      .then(({ data }) => !cancelled && setReconciliation(Array.isArray(data) ? data : []))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [accounts])
 
   const addAccount = useCallback(async () => {
     if (name.trim() === '') {
@@ -345,6 +359,49 @@ export function AccountsPage() {
                   <td />
                 </tr>
               </tfoot>
+            </table>
+          </Card>
+        )}
+
+        {reconciliation.some((r) => r.backedFundCount > 0) && (
+          <Card className="overflow-hidden">
+            <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+              <h2 className="text-sm font-semibold text-slate-700">Fund reconciliation</h2>
+              <p className="text-xs text-slate-500">
+                Each account’s balance against the sinking funds it holds — the float is what’s not yet earmarked.
+              </p>
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <th className="px-4 py-2 font-medium">Account</th>
+                  <th className="px-4 py-2 text-right font-medium">Balance</th>
+                  <th className="px-4 py-2 text-right font-medium">In funds</th>
+                  <th className="px-4 py-2 text-right font-medium">Float</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {reconciliation
+                  .filter((r) => r.backedFundCount > 0)
+                  .map((r) => (
+                    <tr key={r.accountId} className="hover:bg-slate-50">
+                      <td className="px-4 py-2.5 font-medium text-slate-700">{r.accountName}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">
+                        {formatMoney(fromAmount(r.currentBalance), CURRENCY)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-500">
+                        {formatMoney(fromAmount(r.backedFundsTotal), CURRENCY)}
+                      </td>
+                      <td
+                        className={`px-4 py-2.5 text-right font-semibold tabular-nums ${
+                          fromAmount(r.float) < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800'
+                        }`}
+                      >
+                        {formatMoney(fromAmount(r.float), CURRENCY)}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
             </table>
           </Card>
         )}
