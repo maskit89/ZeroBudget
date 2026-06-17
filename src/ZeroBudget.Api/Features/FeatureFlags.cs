@@ -21,12 +21,16 @@ public class FeatureFlags
     /// <summary>Reports, trends and the annual overview.</summary>
     public bool Reports { get; set; } = true;
 
+    /// <summary>Sinking-fund management: targets, due dates, accrual methods and projections.</summary>
+    public bool SinkingFunds { get; set; } = true;
+
     public bool IsEnabled(string feature) => feature switch
     {
         nameof(Accounts) => Accounts,
         nameof(MultiCurrency) => MultiCurrency,
         nameof(CamtImport) => CamtImport,
         nameof(Reports) => Reports,
+        nameof(SinkingFunds) => SinkingFunds,
         _ => true,
     };
 }
