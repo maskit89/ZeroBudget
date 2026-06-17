@@ -4,8 +4,10 @@ using ZeroBudget.Application.Budgets.Dtos;
 using ZeroBudget.Application.Budgets.Templates;
 using ZeroBudget.Application.Common.Exceptions;
 using ZeroBudget.Application.Common.Interfaces;
+using ZeroBudget.Application.SinkingFunds;
 using ZeroBudget.Domain.Entities;
 using ZeroBudget.Domain.Enums;
+using ZeroBudget.Domain.Services;
 using ZeroBudget.Domain.ValueObjects;
 
 namespace ZeroBudget.Application.Budgets.Commands.CreateBudgetMonth;
@@ -48,6 +50,24 @@ public class CreateBudgetMonthCommandHandler : IRequestHandler<CreateBudgetMonth
             .OrderByDescending(m => m.Year)
                 .ThenByDescending(m => m.Month)
             .FirstOrDefaultAsync(cancellationToken);
+
+        // Sinking-fund contributions are seeded from the accrual calculator rather than
+        // copied flat: any fund with a configured target gets this month's required
+        // amount. Funds without a target (e.g. legacy/auto-created) keep the copied value
+        // so existing budgets are unaffected; ProportionalPool funds wait for the pool
+        // (allocation engine, a later slice) and are left to copy for now.
+        var seededFunds = (await _db.SinkingFunds
+            .AsNoTracking()
+            .Where(f => f.OwnerId == userId && !f.IsArchived && f.TargetAmount > 0m
+                        && f.Accrual != AccrualMethod.ProportionalPool)
+            .ToListAsync(cancellationToken))
+            .ToDictionary(f => f.Id);
+
+        var fundTrackedBalances = seededFunds.Count > 0
+            ? await FundBalances.ComputeAsync(_db, userId, cancellationToken)
+            : new Dictionary<Guid, decimal>();
+
+        var seedAsOf = new DateOnly(request.Year, request.Month, 1);
 
         var budget = new BudgetMonth
         {
@@ -109,7 +129,12 @@ public class CreateBudgetMonthCommandHandler : IRequestHandler<CreateBudgetMonth
                         .Select(i => new BudgetItem
                         {
                             Name = i.Name,
-                            PlannedAmount = i.PlannedAmount,
+                            // Fund lines with a configured target are seeded at the
+                            // calculated required contribution; everything else copies.
+                            PlannedAmount = i.FundId is { } fid && seededFunds.TryGetValue(fid, out var fund)
+                                ? FundAccrualCalculator.RequiredMonthlyContribution(
+                                    fund, seedAsOf, fund.OpeningBalance + fundTrackedBalances.GetValueOrDefault(fid))
+                                : i.PlannedAmount,
                             DisplayOrder = i.DisplayOrder,
                             ActualEntryMode = i.ActualEntryMode,
                             ManualActualAmount = 0m,
