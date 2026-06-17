@@ -156,12 +156,59 @@ export interface BudgetTemplateDto {
   groups: BudgetTemplateGroupDto[]
 }
 
+// Matches Domain.Enums.FundKind (serialized as a number).
+export const FundKind = { Annual: 0, Commitment: 1, Goal: 2 } as const
+
+export const FUND_KIND_LABELS: Record<number, string> = {
+  0: 'Annual',
+  1: 'Commitment',
+  2: 'Goal',
+}
+
+// Matches Domain.Enums.AccrualMethod (serialized as a number).
+export const AccrualMethod = { StraightLine: 0, TargetByDate: 1, ProportionalPool: 2, DailyRate: 3 } as const
+
+export const ACCRUAL_METHOD_LABELS: Record<number, string> = {
+  0: 'Straight line (÷ 12)',
+  1: 'By target date',
+  2: 'Proportional pool',
+  3: 'Daily rate',
+}
+
+export interface SinkingFundDto {
+  id: string
+  name: string
+  /** Numeric FundKind. */
+  kind: number
+  targetAmount: number
+  /** ISO date (yyyy-MM-dd) or null. */
+  targetDate: string | null
+  coverStart: string | null
+  coverEnd: string | null
+  /** Numeric AccrualMethod. */
+  accrual: number
+  recurAnnually: boolean
+  openingBalance: number
+  openingAsOf: string | null
+  fundingAccountId: string | null
+  isArchived: boolean
+  /** Opening balance plus every contribution minus every spend, across all months. */
+  currentBalance: number
+  /** What to put in this month, per the fund's accrual method. */
+  requiredMonthlyContribution: number
+  /** When the fund reaches its target at the required rate; null when funded/open-ended. */
+  projectedFullyFundedDate: string | null
+  /** Overspent | Unfunded | FullyFunded | Behind | OnTrack. */
+  status: string
+}
+
 /** Toggles for the beyond-EveryDollar features (from GET /api/features). */
 export interface FeatureFlags {
   accounts: boolean
   multiCurrency: boolean
   camtImport: boolean
   reports: boolean
+  sinkingFunds: boolean
 }
 
 export interface AuthResponse {

@@ -1,9 +1,9 @@
 import type { ComponentType } from 'react'
 import { Link } from 'react-router-dom'
 import { useFeatures } from '../features/FeatureContext'
-import { AccountsIcon, DashboardIcon, ReportsIcon, TransactionsIcon } from './icons'
+import { AccountsIcon, DashboardIcon, FundsIcon, ReportsIcon, TransactionsIcon } from './icons'
 
-export type NavKey = 'budget' | 'transactions' | 'accounts' | 'reports'
+export type NavKey = 'budget' | 'transactions' | 'accounts' | 'funds' | 'reports'
 
 /**
  * The primary navigation, rendered as a vertical list inside the sidebar. The
@@ -30,6 +30,7 @@ export function AppNav({
     { key: 'budget', to: '/', label: 'Dashboard', icon: DashboardIcon, show: true },
     { key: 'transactions', to: '/transactions', label: 'Transactions', icon: TransactionsIcon, show: true },
     { key: 'accounts', to: '/accounts', label: 'Accounts', icon: AccountsIcon, show: features.accounts },
+    { key: 'funds', to: '/funds', label: 'Funds', icon: FundsIcon, show: features.sinkingFunds },
     { key: 'reports', to: '/reports', label: 'Reports', icon: ReportsIcon, show: features.reports },
   ]
 

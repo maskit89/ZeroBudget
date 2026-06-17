@@ -3,7 +3,13 @@ import { api } from '../lib/api'
 import type { FeatureFlags } from '../types'
 
 /** Everything on by default — so the UI renders fully until (and unless) a flag is off. */
-const ALL_ON: FeatureFlags = { accounts: true, multiCurrency: true, camtImport: true, reports: true }
+const ALL_ON: FeatureFlags = {
+  accounts: true,
+  multiCurrency: true,
+  camtImport: true,
+  reports: true,
+  sinkingFunds: true,
+}
 
 const FeatureContext = createContext<FeatureFlags>(ALL_ON)
 
