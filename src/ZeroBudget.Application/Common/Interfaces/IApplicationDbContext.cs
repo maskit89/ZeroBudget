@@ -17,6 +17,7 @@ public interface IApplicationDbContext
     DbSet<TransactionSplit> TransactionSplits { get; }
     DbSet<Account> Accounts { get; }
     DbSet<SinkingFund> SinkingFunds { get; }
+    DbSet<HouseholdMember> HouseholdMembers { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

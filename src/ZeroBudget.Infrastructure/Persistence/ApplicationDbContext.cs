@@ -27,6 +27,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<TransactionSplit> TransactionSplits => Set<TransactionSplit>();
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<SinkingFund> SinkingFunds => Set<SinkingFund>();
+    public DbSet<HouseholdMember> HouseholdMembers => Set<HouseholdMember>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

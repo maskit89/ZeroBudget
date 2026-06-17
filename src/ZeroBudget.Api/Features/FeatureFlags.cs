@@ -24,6 +24,9 @@ public class FeatureFlags
     /// <summary>Sinking-fund management: targets, due dates, accrual methods and projections.</summary>
     public bool SinkingFunds { get; set; } = true;
 
+    /// <summary>Household members and the rules-based income allocation engine.</summary>
+    public bool HouseholdAllocation { get; set; } = true;
+
     public bool IsEnabled(string feature) => feature switch
     {
         nameof(Accounts) => Accounts,
@@ -31,6 +34,7 @@ public class FeatureFlags
         nameof(CamtImport) => CamtImport,
         nameof(Reports) => Reports,
         nameof(SinkingFunds) => SinkingFunds,
+        nameof(HouseholdAllocation) => HouseholdAllocation,
         _ => true,
     };
 }

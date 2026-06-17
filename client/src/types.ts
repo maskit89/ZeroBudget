@@ -202,6 +202,17 @@ export interface SinkingFundDto {
   status: string
 }
 
+export interface HouseholdMemberDto {
+  id: string
+  name: string
+  netMonthlyIncome: number
+  personalSavingsAccountId: string | null
+  displayOrder: number
+  isArchived: boolean
+  /** This member's share of household net income (0–1). */
+  incomeSharePct: number
+}
+
 /** Toggles for the beyond-EveryDollar features (from GET /api/features). */
 export interface FeatureFlags {
   accounts: boolean
@@ -209,6 +220,7 @@ export interface FeatureFlags {
   camtImport: boolean
   reports: boolean
   sinkingFunds: boolean
+  householdAllocation: boolean
 }
 
 export interface AuthResponse {
