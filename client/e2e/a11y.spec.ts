@@ -4,7 +4,14 @@ import { expect, test, type Page, type Route } from '@playwright/test'
 // The WCAG 2.x success criteria we assert against (A + AA, through 2.2).
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
-const FLAGS = { accounts: true, multiCurrency: true, camtImport: true, reports: true, sinkingFunds: true }
+const FLAGS = { accounts: true, multiCurrency: true, camtImport: true, reports: true, sinkingFunds: true, householdAllocation: true }
+
+function householdMembers() {
+  return [
+    { id: 'm1', name: 'Chris', netMonthlyIncome: 6000, personalSavingsAccountId: null, displayOrder: 0, isArchived: false, incomeSharePct: 0.6 },
+    { id: 'm2', name: 'Liza', netMonthlyIncome: 4000, personalSavingsAccountId: null, displayOrder: 1, isArchived: false, incomeSharePct: 0.4 },
+  ]
+}
 
 // A couple of sinking funds so the /funds page renders cards, badges and progress
 // bars (incl. an overspent one) for axe to scan in both themes.
@@ -59,6 +66,7 @@ async function mockApi(route: Route) {
     return json(budgetMonth(Number(y), Number(m)))
   }
   if (path === '/sinkingfunds') return json(sinkingFunds())
+  if (path === '/members') return json(householdMembers())
   if (path === '/budget/months') return json([])
   if (path === '/budget/templates') return json([])
   if (path === '/reports/trends') return json({ points: [], totalIncome: 0, totalIncomeReceived: 0, totalSpent: 0 })
@@ -82,7 +90,7 @@ async function expectNoViolations(page: Page) {
   expect(violations, summary).toEqual([])
 }
 
-const AUTHED_ROUTES = ['/', '/transactions', '/accounts', '/funds', '/reports', '/help']
+const AUTHED_ROUTES = ['/', '/transactions', '/accounts', '/funds', '/members', '/reports', '/help']
 
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`a11y — ${theme}`, () => {

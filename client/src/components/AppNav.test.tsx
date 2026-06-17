@@ -25,7 +25,7 @@ function renderNav() {
 }
 
 const flags = (over: Partial<FeatureFlags>): FeatureFlags => ({
-  accounts: true, multiCurrency: true, camtImport: true, reports: true, sinkingFunds: true, ...over,
+  accounts: true, multiCurrency: true, camtImport: true, reports: true, sinkingFunds: true, householdAllocation: true, ...over,
 })
 
 describe('AppNav (feature flags)', () => {

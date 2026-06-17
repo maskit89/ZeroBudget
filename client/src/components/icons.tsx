@@ -89,6 +89,18 @@ export function FundsIcon({ className }: { className?: string }) {
   )
 }
 
+/** Members — two people. */
+export function MembersIcon({ className }: { className?: string }) {
+  return (
+    <Base className={className}>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+      <path d="M16 5.3a3 3 0 0 1 0 5.4" />
+      <path d="M17.5 13.6A5.5 5.5 0 0 1 20.5 19" />
+    </Base>
+  )
+}
+
 /** Reports — a bar chart. */
 export function ReportsIcon({ className }: { className?: string }) {
   return (

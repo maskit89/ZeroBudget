@@ -9,6 +9,7 @@ const ALL_ON: FeatureFlags = {
   camtImport: true,
   reports: true,
   sinkingFunds: true,
+  householdAllocation: true,
 }
 
 const FeatureContext = createContext<FeatureFlags>(ALL_ON)
