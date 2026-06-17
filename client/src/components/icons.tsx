@@ -101,6 +101,17 @@ export function MembersIcon({ className }: { className?: string }) {
   )
 }
 
+/** Allocation — income splitting into branches. */
+export function AllocationIcon({ className }: { className?: string }) {
+  return (
+    <Base className={className}>
+      <path d="M6 3v6a3 3 0 0 0 3 3h9" />
+      <path d="M6 21v-6a3 3 0 0 1 3-3" />
+      <path d="M15 9l3 3-3 3" />
+    </Base>
+  )
+}
+
 /** Reports — a bar chart. */
 export function ReportsIcon({ className }: { className?: string }) {
   return (

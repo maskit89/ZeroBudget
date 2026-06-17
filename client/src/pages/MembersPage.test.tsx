@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import type { HouseholdMemberDto } from '../types'
+import type { AccountDto, HouseholdMemberDto } from '../types'
 
 const { mockGet, mockPut, mockPost } = vi.hoisted(() => ({
   mockGet: vi.fn(),
@@ -32,9 +32,13 @@ function member(over: Partial<HouseholdMemberDto> = {}): HouseholdMemberDto {
   }
 }
 
-function members(): HouseholdMemberDto[] {
-  return [member(), member({ id: 'm2', name: 'Liza', netMonthlyIncome: 4000, displayOrder: 1, incomeSharePct: 0.4 })]
-}
+const accountsData: AccountDto[] = [
+  { id: 'acc1', name: 'Chris Savings', type: 1, currency: 'EUR', openingBalance: 0, currentBalance: 0, displayOrder: 0 },
+]
+
+// The page fetches /members and /accounts on mount, and re-fetches /members after
+// each mutation, so the GET mock is URL-aware and returns the current member list.
+let membersData: HouseholdMemberDto[] = []
 
 function renderPage() {
   return render(
@@ -51,45 +55,56 @@ describe('MembersPage', () => {
     mockGet.mockReset()
     mockPut.mockReset()
     mockPost.mockReset()
+    membersData = []
+    mockGet.mockImplementation((url: string) =>
+      url === '/accounts'
+        ? Promise.resolve({ data: accountsData })
+        : Promise.resolve({ data: membersData }),
+    )
   })
 
   it('lists members with income and share', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: members() })
+    membersData = [member(), member({ id: 'm2', name: 'Liza', netMonthlyIncome: 4000, displayOrder: 1, incomeSharePct: 0.4 })]
 
     renderPage()
 
     const table = within(await screen.findByRole('table', {}, { timeout: 5000 }))
     expect(table.getByText('Chris')).toBeInTheDocument()
     expect(table.getByText('Liza')).toBeInTheDocument()
-    expect(table.getByText(/6\.000,00/)).toBeInTheDocument() // 6000 in de-DE
+    expect(table.getByText(/6\.000,00/)).toBeInTheDocument()
     expect(table.getByText('60.0%')).toBeInTheDocument()
   })
 
-  it('adds a member', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValueOnce({ data: [] }) // mount
-    mockPost.mockResolvedValue({ data: member({ id: 'm9', incomeSharePct: 1 }) })
-    mockGet.mockResolvedValueOnce({ data: [member({ id: 'm9', incomeSharePct: 1 })] }) // refetch
+  it('adds a member with a savings account', { timeout: 15000 }, async () => {
+    membersData = []
+    mockPost.mockImplementation(() => {
+      membersData = [member({ id: 'm9', personalSavingsAccountId: 'acc1', incomeSharePct: 1 })]
+      return Promise.resolve({ data: membersData[0] })
+    })
     const user = userEvent.setup()
 
     renderPage()
 
     await user.type(await screen.findByLabelText('Member name', {}, { timeout: 5000 }), 'Chris')
     await user.type(screen.getByLabelText('Net monthly income'), '6000')
+    await user.selectOptions(screen.getByLabelText('Savings account'), 'acc1')
     await user.click(screen.getByRole('button', { name: 'Add member' }))
 
     await waitFor(() =>
       expect(mockPost).toHaveBeenCalledWith(
         '/members',
-        expect.objectContaining({ name: 'Chris', netMonthlyIncome: 6000, personalSavingsAccountId: null }),
+        expect.objectContaining({ name: 'Chris', netMonthlyIncome: 6000, personalSavingsAccountId: 'acc1' }),
       ),
     )
     expect(await screen.findByRole('table', {}, { timeout: 5000 })).toBeInTheDocument()
   })
 
   it('archives a member', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValueOnce({ data: members() }) // mount
-    mockPut.mockResolvedValue({ data: null })
-    mockGet.mockResolvedValueOnce({ data: [members()[1]] }) // refetch — only Liza
+    membersData = [member(), member({ id: 'm2', name: 'Liza', displayOrder: 1 })]
+    mockPut.mockImplementation(() => {
+      membersData = [member({ id: 'm2', name: 'Liza', displayOrder: 1 })]
+      return Promise.resolve({ data: null })
+    })
     const user = userEvent.setup()
 
     renderPage()
@@ -101,7 +116,7 @@ describe('MembersPage', () => {
   })
 
   it('shows an empty state when there are no members', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: [] })
+    membersData = []
 
     renderPage()
 
