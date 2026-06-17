@@ -5,6 +5,7 @@ using ZeroBudget.Application.Accounts.Commands.CreateAccount;
 using ZeroBudget.Application.Accounts.Commands.DeleteAccount;
 using ZeroBudget.Application.Accounts.Commands.UpdateAccount;
 using ZeroBudget.Application.Accounts.Dtos;
+using ZeroBudget.Application.Accounts.Queries.GetAccountReconciliation;
 using ZeroBudget.Application.Accounts.Queries.GetAccounts;
 using ZeroBudget.Api.Features;
 using ZeroBudget.Domain.Enums;
@@ -34,6 +35,15 @@ public class AccountsController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<AccountDto>>> List(CancellationToken ct)
     {
         var result = await _mediator.Send(new GetAccountsQuery(), ct);
+        return Ok(result);
+    }
+
+    /// <summary>Reconciles each account against the sinking funds it backs (balance vs backed total vs float).</summary>
+    [HttpGet("reconciliation")]
+    [ProducesResponseType(typeof(IReadOnlyList<AccountReconciliationDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<AccountReconciliationDto>>> Reconciliation(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetAccountReconciliationQuery(), ct);
         return Ok(result);
     }
 

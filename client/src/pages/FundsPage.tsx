@@ -3,7 +3,7 @@ import { AppShell } from '../components/AppShell'
 import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
 import { FundsIcon } from '../components/icons'
 import { api } from '../lib/api'
-import type { SinkingFundDto } from '../types'
+import type { AccountDto, SinkingFundDto } from '../types'
 import {
   AccrualMethod,
   ACCRUAL_METHOD_LABELS,
@@ -56,6 +56,7 @@ interface FormState {
   accrual: number
   opening: string
   recurAnnually: boolean
+  fundingAccountId: string
 }
 
 const BLANK_FORM: FormState = {
@@ -66,10 +67,12 @@ const BLANK_FORM: FormState = {
   accrual: AccrualMethod.TargetByDate,
   opening: '',
   recurAnnually: false,
+  fundingAccountId: '',
 }
 
 export function FundsPage() {
   const [funds, setFunds] = useState<SinkingFundDto[]>([])
+  const [accounts, setAccounts] = useState<AccountDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -79,15 +82,23 @@ export function FundsPage() {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    api
-      .get<SinkingFundDto[]>('/sinkingfunds')
-      .then(({ data }) => !cancelled && setFunds(data))
+    Promise.all([
+      api.get<SinkingFundDto[]>('/sinkingfunds'),
+      api.get<AccountDto[]>('/accounts').catch(() => ({ data: [] })),
+    ])
+      .then(([f, acc]) => {
+        if (cancelled) return
+        setFunds(f.data)
+        setAccounts(Array.isArray(acc?.data) ? acc.data : [])
+      })
       .catch(() => !cancelled && setError('Could not load your sinking funds.'))
       .finally(() => !cancelled && setLoading(false))
     return () => {
       cancelled = true
     }
   }, [])
+
+  const accountName = (id: string | null) => (id ? accounts.find((a) => a.id === id)?.name ?? null : null)
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -120,7 +131,7 @@ export function FundsPage() {
       recurAnnually: form.recurAnnually,
       openingBalance,
       openingAsOf: null,
-      fundingAccountId: null,
+      fundingAccountId: form.fundingAccountId || null,
     }
 
     setSaving(true)
@@ -151,6 +162,7 @@ export function FundsPage() {
       accrual: f.accrual,
       opening: toEditString(fromAmount(f.openingBalance)),
       recurAnnually: f.recurAnnually,
+      fundingAccountId: f.fundingAccountId ?? '',
     })
   }
 
@@ -246,6 +258,24 @@ export function FundsPage() {
               className="w-28 text-right tabular-nums"
             />
           </label>
+          {accounts.length > 0 && (
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+              Held in
+              <Select
+                value={form.fundingAccountId}
+                aria-label="Funding account"
+                onChange={(e) => set('fundingAccountId', e.target.value)}
+                className="w-40"
+              >
+                <option value="">No account</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          )}
           <label className="flex items-center gap-2 pb-2 text-xs font-medium text-slate-600">
             <input
               type="checkbox"
@@ -282,7 +312,14 @@ export function FundsPage() {
       {funds.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {funds.map((f) => (
-            <FundCard key={f.id} fund={f} onEdit={() => startEdit(f)} onArchive={() => archive(f)} disabled={saving} />
+            <FundCard
+              key={f.id}
+              fund={f}
+              fundingAccountName={accountName(f.fundingAccountId)}
+              onEdit={() => startEdit(f)}
+              onArchive={() => archive(f)}
+              disabled={saving}
+            />
           ))}
         </div>
       )}
@@ -292,11 +329,13 @@ export function FundsPage() {
 
 function FundCard({
   fund,
+  fundingAccountName,
   onEdit,
   onArchive,
   disabled,
 }: {
   fund: SinkingFundDto
+  fundingAccountName: string | null
   onEdit: () => void
   onArchive: () => void
   disabled: boolean
@@ -350,6 +389,12 @@ function FundCard({
           <>
             <dt>Funded by</dt>
             <dd className="text-right tabular-nums text-slate-700">{fund.projectedFullyFundedDate}</dd>
+          </>
+        )}
+        {fundingAccountName && (
+          <>
+            <dt>Held in</dt>
+            <dd className="text-right text-slate-700">{fundingAccountName}</dd>
           </>
         )}
       </dl>

@@ -79,6 +79,19 @@ function allocationPreview() {
   }
 }
 
+function accountsList() {
+  return [
+    { id: 'acc0', name: 'Joint Current', type: 0, currency: 'EUR', openingBalance: 1000, currentBalance: 1200, displayOrder: 0 },
+    { id: 'acc1', name: 'Savings Joint', type: 1, currency: 'EUR', openingBalance: 0, currentBalance: 5000, displayOrder: 1 },
+  ]
+}
+
+function accountReconciliation() {
+  return [
+    { accountId: 'acc1', accountName: 'Savings Joint', currentBalance: 5000, backedFundsTotal: 3000, backedFundCount: 2, float: 2000 },
+  ]
+}
+
 // Stub every /api call so the SPA renders content without a backend.
 async function mockApi(route: Route) {
   const path = new URL(route.request().url()).pathname.replace(/^\/api/, '')
@@ -91,6 +104,8 @@ async function mockApi(route: Route) {
     const [, , y, m] = path.split('/')
     return json(budgetMonth(Number(y), Number(m)))
   }
+  if (path === '/accounts') return json(accountsList())
+  if (path === '/accounts/reconciliation') return json(accountReconciliation())
   if (path === '/sinkingfunds') return json(sinkingFunds())
   if (path === '/members') return json(householdMembers())
   if (path === '/allocation/profile') return json(allocationProfile())
