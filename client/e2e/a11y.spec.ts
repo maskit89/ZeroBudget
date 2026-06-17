@@ -53,6 +53,32 @@ function budgetMonth(year: number, month: number) {
   }
 }
 
+function allocationProfile() {
+  return {
+    id: 'p1', name: 'Household allocation', sourceAccountId: 'acc0',
+    rules: [
+      { id: 'r0', order: 0, type: 0, split: 0, fixedAmountPerMember: 0 },
+      { id: 'r1', order: 1, type: 1, split: 0, fixedAmountPerMember: 0 },
+      { id: 'r2', order: 2, type: 2, split: 0, fixedAmountPerMember: 250 },
+      { id: 'r3', order: 3, type: 3, split: 0, fixedAmountPerMember: 0 },
+    ],
+  }
+}
+
+function allocationPreview() {
+  return {
+    pool: 8411.61, envelopesTotal: 3641, fundsTotal: 2164, transfersCreated: 0,
+    steps: [
+      { type: 0, total: 3641, perMember: [{ memberId: 'm1', name: 'Chris', amount: 1820.5 }, { memberId: 'm2', name: 'Liza', amount: 1820.5 }] },
+      { type: 3, total: 2106.61, perMember: [{ memberId: 'm1', name: 'Chris', amount: 1259.14 }, { memberId: 'm2', name: 'Liza', amount: 847.47 }] },
+    ],
+    members: [
+      { memberId: 'm1', name: 'Chris', netIncome: 4411.64, residual: 1259.14, savingsAccountId: 'acc1' },
+      { memberId: 'm2', name: 'Liza', netIncome: 3999.97, residual: 847.47, savingsAccountId: 'acc2' },
+    ],
+  }
+}
+
 // Stub every /api call so the SPA renders content without a backend.
 async function mockApi(route: Route) {
   const path = new URL(route.request().url()).pathname.replace(/^\/api/, '')
@@ -67,6 +93,8 @@ async function mockApi(route: Route) {
   }
   if (path === '/sinkingfunds') return json(sinkingFunds())
   if (path === '/members') return json(householdMembers())
+  if (path === '/allocation/profile') return json(allocationProfile())
+  if (/^\/allocation\/preview\/\d+\/\d+$/.test(path)) return json(allocationPreview())
   if (path === '/budget/months') return json([])
   if (path === '/budget/templates') return json([])
   if (path === '/reports/trends') return json({ points: [], totalIncome: 0, totalIncomeReceived: 0, totalSpent: 0 })
@@ -90,7 +118,7 @@ async function expectNoViolations(page: Page) {
   expect(violations, summary).toEqual([])
 }
 
-const AUTHED_ROUTES = ['/', '/transactions', '/accounts', '/funds', '/members', '/reports', '/help']
+const AUTHED_ROUTES = ['/', '/transactions', '/accounts', '/funds', '/members', '/allocation', '/reports', '/help']
 
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`a11y — ${theme}`, () => {

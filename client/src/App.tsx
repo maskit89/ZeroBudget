@@ -8,6 +8,7 @@ import { TransactionsPage } from './pages/TransactionsPage'
 import { AccountsPage } from './pages/AccountsPage'
 import { FundsPage } from './pages/FundsPage'
 import { MembersPage } from './pages/MembersPage'
+import { AllocationPage } from './pages/AllocationPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { HelpPage } from './pages/HelpPage'
 
@@ -68,6 +69,16 @@ export default function App() {
           element={
             <RequireAuth>
               <MembersPage />
+            </RequireAuth>
+          }
+        />
+      )}
+      {features.householdAllocation && (
+        <Route
+          path="/allocation"
+          element={
+            <RequireAuth>
+              <AllocationPage />
             </RequireAuth>
           }
         />

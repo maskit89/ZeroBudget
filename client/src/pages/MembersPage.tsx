@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AppShell } from '../components/AppShell'
-import { Button, Card, EmptyState, ErrorBanner, Input, PageHeader } from '../components/ui'
+import { Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
 import { MembersIcon } from '../components/icons'
 import { api } from '../lib/api'
-import type { HouseholdMemberDto } from '../types'
+import type { AccountDto, HouseholdMemberDto } from '../types'
 import { formatMoney, fromAmount, parseMinor, toAmount, toEditString } from '../lib/money'
 
 const CURRENCY = 'EUR'
@@ -21,6 +21,7 @@ function sharePct(share: number): string {
 
 export function MembersPage() {
   const [members, setMembers] = useState<HouseholdMemberDto[]>([])
+  const [accounts, setAccounts] = useState<AccountDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
@@ -28,25 +29,43 @@ export function MembersPage() {
   // Add form.
   const [name, setName] = useState('')
   const [income, setIncome] = useState('')
+  const [savings, setSavings] = useState('')
   const [adding, setAdding] = useState(false)
 
   // Inline edit.
   const [editingId, setEditingId] = useState<string | null>(null)
   const [eName, setEName] = useState('')
   const [eIncome, setEIncome] = useState('')
+  const [eSavings, setESavings] = useState('')
+
+  const reload = useCallback(async () => {
+    const { data } = await api.get<HouseholdMemberDto[]>('/members')
+    setMembers(data)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    api
-      .get<HouseholdMemberDto[]>('/members')
-      .then(({ data }) => !cancelled && setMembers(data))
+    Promise.all([
+      api.get<HouseholdMemberDto[]>('/members'),
+      api.get<AccountDto[]>('/accounts').catch(() => ({ data: [] })),
+    ])
+      .then(([m, acc]) => {
+        if (cancelled) return
+        setMembers(m.data)
+        setAccounts(Array.isArray(acc?.data) ? acc.data : [])
+      })
       .catch(() => !cancelled && setError('Could not load household members.'))
       .finally(() => !cancelled && setLoading(false))
     return () => {
       cancelled = true
     }
   }, [])
+
+  function accountName(id: string | null): string {
+    if (!id) return '—'
+    return accounts.find((a) => a.id === id)?.name ?? '—'
+  }
 
   const addMember = useCallback(async () => {
     if (name.trim() === '') {
@@ -61,27 +80,27 @@ export function MembersPage() {
     setAdding(true)
     setError(null)
     try {
-      const { data } = await api.post<HouseholdMemberDto>('/members', {
+      await api.post<HouseholdMemberDto>('/members', {
         name: name.trim(),
         netMonthlyIncome,
-        personalSavingsAccountId: null,
+        personalSavingsAccountId: savings || null,
       })
-      // Income shares shift when a member is added, so reload the set.
-      const { data: refreshed } = await api.get<HouseholdMemberDto[]>('/members')
-      setMembers(Array.isArray(refreshed) ? refreshed : [...members, data])
+      await reload() // income shares shift when a member is added
       setName('')
       setIncome('')
+      setSavings('')
     } catch {
       setError('Could not add that member.')
     } finally {
       setAdding(false)
     }
-  }, [name, income, members])
+  }, [name, income, savings, reload])
 
   function startEdit(m: HouseholdMemberDto) {
     setEditingId(m.id)
     setEName(m.name)
     setEIncome(toEditString(fromAmount(m.netMonthlyIncome)))
+    setESavings(m.personalSavingsAccountId ?? '')
   }
 
   const saveEdit = useCallback(
@@ -101,10 +120,9 @@ export function MembersPage() {
         await api.put<HouseholdMemberDto>(`/members/${id}`, {
           name: eName.trim(),
           netMonthlyIncome,
-          personalSavingsAccountId: members.find((m) => m.id === id)?.personalSavingsAccountId ?? null,
+          personalSavingsAccountId: eSavings || null,
         })
-        const { data: refreshed } = await api.get<HouseholdMemberDto[]>('/members')
-        setMembers(refreshed)
+        await reload()
         setEditingId(null)
       } catch {
         setError('Could not save that member.')
@@ -112,28 +130,30 @@ export function MembersPage() {
         setSavingId(null)
       }
     },
-    [eName, eIncome, members],
+    [eName, eIncome, eSavings, reload],
   )
 
-  const archive = useCallback(async (id: string) => {
-    setSavingId(id)
-    setError(null)
-    try {
-      await api.put(`/members/${id}/archive`, { archived: true })
-      const { data: refreshed } = await api.get<HouseholdMemberDto[]>('/members')
-      setMembers(refreshed)
-    } catch {
-      setError('Could not archive that member.')
-    } finally {
-      setSavingId(null)
-    }
-  }, [])
+  const archive = useCallback(
+    async (id: string) => {
+      setSavingId(id)
+      setError(null)
+      try {
+        await api.put(`/members/${id}/archive`, { archived: true })
+        await reload()
+      } catch {
+        setError('Could not archive that member.')
+      } finally {
+        setSavingId(null)
+      }
+    },
+    [reload],
+  )
 
   return (
     <AppShell active="members">
       <PageHeader
         title="Household members"
-        subtitle="The people who share this budget. Their net incomes set how shared costs and the monthly surplus are split."
+        subtitle="The people who share this budget. Their net incomes set how shared costs and the monthly surplus are split; the savings account is where their allocated surplus lands."
       />
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
@@ -167,6 +187,24 @@ export function MembersPage() {
               className="w-36 text-right tabular-nums"
             />
           </label>
+          {accounts.length > 0 && (
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+              Savings account
+              <Select
+                value={savings}
+                aria-label="Savings account"
+                onChange={(e) => setSavings(e.target.value)}
+                className="w-40"
+              >
+                <option value="">None</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          )}
           <Button onClick={addMember} disabled={adding} aria-label="Add member">
             Add
           </Button>
@@ -191,6 +229,7 @@ export function MembersPage() {
                 <th className="px-4 py-2 font-medium">Member</th>
                 <th className="px-4 py-2 text-right font-medium">Net monthly income</th>
                 <th className="px-4 py-2 text-right font-medium">Income share</th>
+                <th className="px-4 py-2 font-medium">Savings</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
@@ -221,6 +260,21 @@ export function MembersPage() {
                           />
                         </td>
                         <td className="px-4 py-2.5 text-right tabular-nums text-slate-400">{sharePct(m.incomeSharePct)}</td>
+                        <td className="px-4 py-2">
+                          <select
+                            value={eSavings}
+                            aria-label={`Savings account for ${m.name}`}
+                            onChange={(e) => setESavings(e.target.value)}
+                            className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-600"
+                          >
+                            <option value="">None</option>
+                            {accounts.map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {a.name}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
                         <td className="px-4 py-2 text-right">
                           <div className="flex justify-end gap-1">
                             <button
@@ -250,6 +304,7 @@ export function MembersPage() {
                           {formatMoney(fromAmount(m.netMonthlyIncome), CURRENCY)}
                         </td>
                         <td className="px-4 py-2.5 text-right tabular-nums text-slate-500">{sharePct(m.incomeSharePct)}</td>
+                        <td className="px-4 py-2.5 text-slate-500">{accountName(m.personalSavingsAccountId)}</td>
                         <td className="px-4 py-2.5 text-right">
                           <div className="flex justify-end gap-1">
                             <button

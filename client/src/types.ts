@@ -213,6 +213,73 @@ export interface HouseholdMemberDto {
   incomeSharePct: number
 }
 
+// Matches Domain.Enums.AllocationRuleType (serialized as a number).
+export const AllocationRuleType = {
+  FundEnvelopes: 0,
+  FundSinkingFunds: 1,
+  FixedPerMember: 2,
+  SplitRemainderToMembers: 3,
+} as const
+
+export const ALLOCATION_RULE_LABELS: Record<number, string> = {
+  0: 'Living costs',
+  1: 'Sinking funds',
+  2: 'Pocket money',
+  3: 'To savings',
+}
+
+// Matches Domain.Enums.SplitMethod (serialized as a number).
+export const SplitMethod = { Equal: 0, ByIncomeRatio: 1 } as const
+
+export const SPLIT_METHOD_LABELS: Record<number, string> = {
+  0: 'Split equally',
+  1: 'By income',
+}
+
+export interface AllocationRuleDto {
+  id: string
+  order: number
+  type: number
+  split: number
+  fixedAmountPerMember: number
+}
+
+export interface AllocationProfileDto {
+  id: string
+  name: string
+  sourceAccountId: string | null
+  rules: AllocationRuleDto[]
+}
+
+export interface MemberShareDto {
+  memberId: string
+  name: string
+  amount: number
+}
+
+export interface AllocationStepDto {
+  type: number
+  total: number
+  perMember: MemberShareDto[]
+}
+
+export interface MemberAllocationDto {
+  memberId: string
+  name: string
+  netIncome: number
+  residual: number
+  savingsAccountId: string | null
+}
+
+export interface AllocationResultDto {
+  pool: number
+  envelopesTotal: number
+  fundsTotal: number
+  steps: AllocationStepDto[]
+  members: MemberAllocationDto[]
+  transfersCreated: number
+}
+
 /** Toggles for the beyond-EveryDollar features (from GET /api/features). */
 export interface FeatureFlags {
   accounts: boolean
