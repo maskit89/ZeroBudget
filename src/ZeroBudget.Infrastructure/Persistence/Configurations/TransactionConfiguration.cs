@@ -47,6 +47,14 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
         builder.Property(t => t.Type)
             .HasConversion<int>();
 
+        // A Transfer's destination account. Restrict (not SetNull) so this second
+        // reference to Accounts doesn't create a second cascade path (AccountId already
+        // uses SetNull); DeleteAccountCommandHandler clears these refs before removing.
+        builder.HasOne(t => t.TransferAccount)
+            .WithMany()
+            .HasForeignKey(t => t.TransferAccountId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(t => t.OwnerId);
 
         // Speeds up the dedup lookup on re-import.

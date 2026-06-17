@@ -29,15 +29,23 @@ public static class AccountBalances
 
         var accountIds = accounts.Select(a => a.Id).ToList();
 
-        // Net movement per account: + income, − expense, at the transaction's amount.
+        // Income/expense legs: net movement per account (+ income, − expense).
         var nets = (await db.Transactions
             .Where(t => t.OwnerId == ownerId
                         && t.AccountId != null
+                        && (t.Type == TransactionType.Income || t.Type == TransactionType.Expense)
                         && accountIds.Contains(t.AccountId.Value))
             .GroupBy(t => new { AccountId = t.AccountId!.Value, t.Type })
             .Select(g => new { g.Key.AccountId, g.Key.Type, Total = g.Sum(t => t.Amount) })
             .ToListAsync(cancellationToken))
             .ToList();
+
+        // Transfers move money between two of the user's accounts: out of the source
+        // (AccountId), into the destination (TransferAccountId). Not income or expense.
+        var transfers = await db.Transactions
+            .Where(t => t.OwnerId == ownerId && t.Type == TransactionType.Transfer)
+            .Select(t => new { t.AccountId, t.TransferAccountId, t.Amount })
+            .ToListAsync(cancellationToken);
 
         foreach (var account in accounts)
         {
@@ -47,8 +55,14 @@ public static class AccountBalances
             var expense = nets
                 .Where(n => n.AccountId == account.Id && n.Type == TransactionType.Expense)
                 .Sum(n => n.Total);
+            var transferOut = transfers
+                .Where(t => t.AccountId == account.Id)
+                .Sum(t => t.Amount);
+            var transferIn = transfers
+                .Where(t => t.TransferAccountId == account.Id)
+                .Sum(t => t.Amount);
 
-            account.CurrentBalance = account.OpeningBalance + income - expense;
+            account.CurrentBalance = account.OpeningBalance + income - expense - transferOut + transferIn;
         }
     }
 }

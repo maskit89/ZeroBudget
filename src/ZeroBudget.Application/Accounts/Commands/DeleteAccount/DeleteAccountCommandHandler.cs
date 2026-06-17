@@ -44,6 +44,16 @@ public class DeleteAccountCommandHandler : IRequestHandler<DeleteAccountCommand>
             t.AccountId = null;
         }
 
+        // Transfers into this account reference it via TransferAccountId (an FK with
+        // Restrict, so it must be cleared before the account can be removed).
+        var transfersIn = await _db.Transactions
+            .Where(t => t.TransferAccountId == account.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var t in transfersIn)
+        {
+            t.TransferAccountId = null;
+        }
+
         _db.Accounts.Remove(account);
         await _db.SaveChangesAsync(cancellationToken);
     }

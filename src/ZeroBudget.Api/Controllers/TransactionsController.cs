@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ZeroBudget.Application.Transactions.Commands.AssignTransaction;
 using ZeroBudget.Application.Transactions.Commands.CreateTransaction;
+using ZeroBudget.Application.Transactions.Commands.CreateTransfer;
 using ZeroBudget.Application.Transactions.Commands.DeleteTransaction;
 using ZeroBudget.Application.Transactions.Commands.SplitTransaction;
 using ZeroBudget.Application.Transactions.Commands.UpdateTransaction;
@@ -51,6 +52,20 @@ public class TransactionsController : ControllerBase
             new CreateTransactionCommand(
                 request.Date, request.Payee, request.Amount, request.Type,
                 request.BudgetItemId, request.AccountId),
+            ct);
+        return CreatedAtAction(nameof(List), new { }, result);
+    }
+
+    /// <summary>Records a transfer between two of the user's accounts and returns it.</summary>
+    [HttpPost("transfer")]
+    [ProducesResponseType(typeof(TransactionDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TransactionDto>> Transfer(CreateTransferRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(
+            new CreateTransferCommand(request.Date, request.Amount, request.FromAccountId, request.ToAccountId, request.Payee),
             ct);
         return CreatedAtAction(nameof(List), new { }, result);
     }
@@ -128,6 +143,14 @@ public record CreateTransactionRequest(
     TransactionType Type,
     Guid? BudgetItemId,
     Guid? AccountId = null);
+
+/// <summary>Request body for transferring money between two accounts.</summary>
+public record CreateTransferRequest(
+    DateOnly Date,
+    decimal Amount,
+    Guid FromAccountId,
+    Guid ToAccountId,
+    string? Payee = null);
 
 /// <summary>Request body for editing a transaction (the id comes from the route).</summary>
 public record UpdateTransactionRequest(

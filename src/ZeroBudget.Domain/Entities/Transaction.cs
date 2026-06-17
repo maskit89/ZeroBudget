@@ -24,6 +24,13 @@ public class Transaction : BaseEntity
     public Guid? AccountId { get; set; }
     public Account? Account { get; set; }
 
+    /// <summary>
+    /// For a <see cref="TransactionType.Transfer"/>, the destination account the money moved into
+    /// (<see cref="AccountId"/> is the source). Null for ordinary income/expense transactions.
+    /// </summary>
+    public Guid? TransferAccountId { get; set; }
+    public Account? TransferAccount { get; set; }
+
     /// <summary>Amount in the transaction's own <see cref="Currency"/>. Positive magnitude; direction is on <see cref="Type"/>.</summary>
     public decimal Amount { get; set; }
 

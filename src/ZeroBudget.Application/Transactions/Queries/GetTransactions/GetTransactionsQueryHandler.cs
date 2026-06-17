@@ -28,6 +28,7 @@ public class GetTransactionsQueryHandler
             .AsNoTracking()
             .Include(t => t.BudgetItem)
             .Include(t => t.Account)
+            .Include(t => t.TransferAccount)
             .Include(t => t.Splits)
                 .ThenInclude(s => s.BudgetItem)
             .Where(t => t.OwnerId == userId);
