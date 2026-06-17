@@ -78,6 +78,17 @@ export function AccountsIcon({ className }: { className?: string }) {
   )
 }
 
+/** Funds — a target / bullseye (saving toward a goal). */
+export function FundsIcon({ className }: { className?: string }) {
+  return (
+    <Base className={className}>
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="12" cy="12" r="0.6" fill="currentColor" stroke="none" />
+    </Base>
+  )
+}
+
 /** Reports — a bar chart. */
 export function ReportsIcon({ className }: { className?: string }) {
   return (

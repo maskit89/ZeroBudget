@@ -25,7 +25,7 @@ function renderNav() {
 }
 
 const flags = (over: Partial<FeatureFlags>): FeatureFlags => ({
-  accounts: true, multiCurrency: true, camtImport: true, reports: true, ...over,
+  accounts: true, multiCurrency: true, camtImport: true, reports: true, sinkingFunds: true, ...over,
 })
 
 describe('AppNav (feature flags)', () => {
@@ -39,11 +39,12 @@ describe('AppNav (feature flags)', () => {
     expect(await screen.findByText('Dashboard', {}, { timeout: 5000 })).toBeInTheDocument()
     expect(screen.getByText('Transactions')).toBeInTheDocument()
     expect(screen.getByText('Accounts')).toBeInTheDocument()
+    expect(screen.getByText('Funds')).toBeInTheDocument()
     expect(screen.getByText('Reports')).toBeInTheDocument()
   })
 
-  it('hides Accounts and Reports when their flags are off', { timeout: 15000 }, async () => {
-    mockGet.mockResolvedValue({ data: flags({ accounts: false, reports: false }) })
+  it('hides Accounts, Funds and Reports when their flags are off', { timeout: 15000 }, async () => {
+    mockGet.mockResolvedValue({ data: flags({ accounts: false, reports: false, sinkingFunds: false }) })
 
     renderNav()
 
@@ -52,6 +53,7 @@ describe('AppNav (feature flags)', () => {
     expect(screen.getByText('Transactions')).toBeInTheDocument()
     // …while the disabled differentiators are removed once the flags load.
     await waitFor(() => expect(screen.queryByText('Accounts')).not.toBeInTheDocument())
+    expect(screen.queryByText('Funds')).not.toBeInTheDocument()
     expect(screen.queryByText('Reports')).not.toBeInTheDocument()
   })
 })

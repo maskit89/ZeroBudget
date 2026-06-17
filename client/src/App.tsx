@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { TransactionsPage } from './pages/TransactionsPage'
 import { AccountsPage } from './pages/AccountsPage'
+import { FundsPage } from './pages/FundsPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { HelpPage } from './pages/HelpPage'
 
@@ -46,6 +47,16 @@ export default function App() {
           element={
             <RequireAuth>
               <AccountsPage />
+            </RequireAuth>
+          }
+        />
+      )}
+      {features.sinkingFunds && (
+        <Route
+          path="/funds"
+          element={
+            <RequireAuth>
+              <FundsPage />
             </RequireAuth>
           }
         />
