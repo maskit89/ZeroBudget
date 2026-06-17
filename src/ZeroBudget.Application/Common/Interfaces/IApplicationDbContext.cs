@@ -18,6 +18,8 @@ public interface IApplicationDbContext
     DbSet<Account> Accounts { get; }
     DbSet<SinkingFund> SinkingFunds { get; }
     DbSet<HouseholdMember> HouseholdMembers { get; }
+    DbSet<AllocationProfile> AllocationProfiles { get; }
+    DbSet<AllocationRule> AllocationRules { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
