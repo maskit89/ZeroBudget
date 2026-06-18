@@ -70,31 +70,63 @@ internal static class TransactionSeeder
             .Where(m => m.OwnerId == owner)
             .Include(m => m.Categories).ThenInclude(c => c.Items)
             .ToListAsync();
-        var lineByMonthName = new Dictionary<(int, string), BudgetItem>();
-        foreach (var m in months)
-            foreach (var item in m.Categories.Where(c => c.Name == "Living Costs").SelectMany(c => c.Items))
-                lineByMonthName[(m.Month, item.Name)] = item;
+        BudgetItem? Line(int month, string category, string name) => months
+            .FirstOrDefault(m => m.Month == month)?.Categories
+            .FirstOrDefault(c => c.Name == category)?.Items
+            .FirstOrDefault(i => i.Name == name);
+
         var lineNameByCode = budgetData.LivingLines.ToDictionary(
             l => l.Code.ToUpperInvariant(), l => l.Name, StringComparer.OrdinalIgnoreCase);
+
+        // Fund names grouped for the payee-matched "guess the jar" attribution.
+        var yearlyByCategory = reference.Funds.Where(f => f.Kind == FundKind.Annual)
+            .GroupBy(f => f.Category)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(f => f.Name).ToList(),
+                StringComparer.OrdinalIgnoreCase);
+        var monthlyNames = (IReadOnlyList<string>)reference.Funds
+            .Where(f => f.Kind == FundKind.Commitment).Select(f => f.Name).ToList();
 
         // Idempotent re-import: clear this owner's transactions first.
         await db.TransactionSplits.Where(s => s.Transaction.OwnerId == owner).ExecuteDeleteAsync();
         var removed = await db.Transactions.Where(t => t.OwnerId == owner).ExecuteDeleteAsync();
         if (removed > 0) Console.WriteLine($"  Cleared {removed} existing transactions.");
 
-        int assigned = 0, seq = 0;
+        int living = 0, yearly = 0, monthly = 0, seq = 0;
         foreach (var row in ledger.Rows)
         {
             if (!accountIdByName.TryGetValue(row.Account, out var accountId)) continue;
 
-            Guid? budgetItemId = null;
-            if (row.Type == TransactionType.Expense && row.Code is { } code
-                && lineNameByCode.TryGetValue(code, out var lineName)
-                && lineByMonthName.TryGetValue((row.Month, lineName), out var item))
+            // Attribute the spend to a budget line, in priority order:
+            //   1. living-cost code → its Living Costs line (exact);
+            //   2. yearly-fund code → the best-matching fund in that category (guessed by payee);
+            //   3. otherwise → the best-matching monthly commitment fund (guessed by payee).
+            BudgetItem? target = null;
+            if (row.Type == TransactionType.Expense)
             {
-                budgetItemId = item.Id;
-                item.ActualEntryMode = ActualEntryMode.Tracked; // assigned spends drive the line's actual
-                assigned++;
+                if (row.Code is { } code && lineNameByCode.TryGetValue(code, out var lineName))
+                {
+                    target = Line(row.Month, "Living Costs", lineName);
+                    if (target != null) living++;
+                }
+                else if (row.Code is { } yc && FundMatcher.YearlyCodeToCategory.TryGetValue(yc, out var cat)
+                    && yearlyByCategory.TryGetValue(cat, out var cands)
+                    && FundMatcher.Best(row.Payee, cands) is { } yname)
+                {
+                    target = Line(row.Month, "Yearly Funds", yname);
+                    if (target != null) yearly++;
+                }
+                else if (row.Code is null && FundMatcher.Best(row.Payee, monthlyNames) is { } mname)
+                {
+                    target = Line(row.Month, "Monthly Commitments", mname);
+                    if (target != null) monthly++;
+                }
+            }
+
+            Guid? budgetItemId = null;
+            if (target != null)
+            {
+                budgetItemId = target.Id;
+                target.ActualEntryMode = ActualEntryMode.Tracked; // assigned spends drive the line's actual
             }
 
             db.Transactions.Add(new Transaction
@@ -112,7 +144,9 @@ internal static class TransactionSeeder
             });
         }
         await db.SaveChangesAsync();
-        Console.WriteLine($"  Imported {ledger.Rows.Count} transactions ({assigned} attributed to living-cost lines).");
+        Console.WriteLine($"  Imported {ledger.Rows.Count} transactions — attributed: "
+            + $"{living} living-cost, {yearly} yearly-fund, {monthly} monthly-commitment "
+            + $"({living + yearly + monthly} of {ledger.Rows.Count}).");
 
         return await VerifyAsync(db, owner, ledger, openings) ? 0 : 2;
     }

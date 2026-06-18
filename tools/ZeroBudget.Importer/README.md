@@ -168,27 +168,29 @@ the **exact jar**. When you buy Netflix *and* Google One *and* Disney+, the note
 writes `LIC` ("Licenses") on all of them — it doesn’t say *which* subscription jar. But the app
 has a **separate jar for each** (Netflix jar, Google One jar, Disney+ jar… 26 jars in total).
 
-So right now those spends are saved on the **piggy bank** (which is why every piggy-bank total
-is perfect ✅), but they are **not dropped into the exact jar**. The effect:
+So the robot now **guesses the jar from the shop name**: if a charge clearly matches a jar —
+“GOOGLE ONE” → the Google One jar, “NETFLIX” → the Netflix jar, the loan and car insurances →
+their jars — the spend is dropped into that jar. If the shop name is **ambiguous** (a pharmacy
+could be any of several health jars), the spend stays on the **piggy bank only** — so we never
+put money in the *wrong* jar.
 
 ```mermaid
 flowchart LR
-    IN["Top-ups IN ✅<br/>(tracked perfectly)"] --> JAR["🫙 Jar balance"]
-    OUT["Spending OUT ⚠️<br/>(known only by group,<br/>not by exact jar)"] -. "not subtracted yet" .-> JAR
-    JAR --> LOOK["Jars look fuller<br/>than they really are"]
+    OUT["A spend, e.g.<br/>'GOOGLE ONE …'"] --> Q{"Does the shop name<br/>clearly match a jar?"}
+    Q -- "yes" --> JAR["🫙 drop it in that jar"]
+    Q -- "not sure" --> BANK["🐷 keep it on the<br/>piggy bank only"]
 ```
 
-**Two ways to finish it**, whenever you like:
+Today that lands **207 of the 425** spends in a jar (all the living-cost ones, plus the obvious
+yearly and monthly matches). The rest are clear on the piggy bank but left out of the jars on
+purpose.
 
-1. **Guess the jar from the shop name** — e.g. a charge that says “GOOGLE ONE” goes to the
-   Google One jar, “NETFLIX” to the Netflix jar. Good, but a few odd shop names would be guesses.
-2. **Make the app’s jars match the notebook’s groups** — 6 yearly groups (Maintenance,
-   Licenses, Accessories, Health, Gifts, Liz Maintenance) instead of 26 separate jars. Then the
-   group codes line up exactly and spending reconciles perfectly — but you’d lose the per-item
-   jars (Netflix vs Google One).
+If you ever want **every** yearly spend in a jar, the alternative is to **make the app’s jars
+match the notebook’s 6 groups** (Maintenance, Licenses, Accessories, Health, Gifts, Liz
+Maintenance) instead of 26 separate jars — then the group codes line up exactly, at the cost of
+the per-item jars (Netflix vs Google One).
 
-Everything else — **all account balances and all living-cost spending** — already reconciles
-to the cent.
+Either way, **all account balances and all living-cost spending** reconcile to the cent.
 
 ---
 
