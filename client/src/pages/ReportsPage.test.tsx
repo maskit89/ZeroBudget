@@ -59,7 +59,18 @@ function annual(year: number): AnnualSummaryDto {
     planned: i + 1 === 6 ? 2900 : 0,
     spent: i + 1 === 6 ? 2700 : 0,
   }))
-  return { year, months, totalIncome: 3000, totalPlanned: 2900, totalSpent: 2700 }
+  return {
+    year,
+    months,
+    totalIncome: 3000,
+    totalPlanned: 2900,
+    totalSpent: 2700,
+    budgetedMonths: 1,
+    categories: [
+      { name: 'Housing', kind: 'Expense', total: 1500, averagePerMonth: 1500 },
+      { name: 'Food', kind: 'Expense', total: 1200, averagePerMonth: 1200 },
+    ],
+  }
 }
 
 function renderPage() {
@@ -142,6 +153,24 @@ describe('ReportsPage', () => {
 
     await waitFor(() => expect(mockGet).toHaveBeenCalledWith('/reports/annual/2025'))
     expect(await screen.findByText('2025', {}, { timeout: 5000 })).toBeInTheDocument()
+  })
+
+  it('shows the average monthly spend per category for the year', { timeout: 15000 }, async () => {
+    mockGet.mockImplementation((url?: string) => {
+      if (url?.startsWith('/reports/trends')) return Promise.resolve({ data: trends() })
+      if (url === '/budget/2026/6') return Promise.resolve({ data: latestMonth() })
+      if (url === '/reports/annual/2026') return Promise.resolve({ data: annual(2026) })
+      return Promise.resolve({ data: {} })
+    })
+
+    renderPage()
+
+    expect(
+      await screen.findByText('Average monthly spending by category', {}, { timeout: 5000 }),
+    ).toBeInTheDocument()
+    // Both spending categories from the annual fixture get an averaged row.
+    expect(screen.getByLabelText('Average spending for Housing')).toBeInTheDocument()
+    expect(screen.getByLabelText('Average spending for Food')).toBeInTheDocument()
   })
 
   it('shows an empty state when there is no budget data', { timeout: 15000 }, async () => {

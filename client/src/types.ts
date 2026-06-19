@@ -148,12 +148,26 @@ export interface AnnualMonthDto {
   spent: number
 }
 
+export interface AnnualCategoryDto {
+  name: string
+  /** "Expense" or "Fund". */
+  kind: string
+  /** Total actual spending for this category across the year. */
+  total: number
+  /** Total ÷ number of budgeted months. */
+  averagePerMonth: number
+}
+
 export interface AnnualSummaryDto {
   year: number
   months: AnnualMonthDto[]
   totalIncome: number
   totalPlanned: number
   totalSpent: number
+  /** How many of the 12 months have a budget (the averaging denominator). */
+  budgetedMonths: number
+  /** Per-category spending across the year, biggest average first. */
+  categories: AnnualCategoryDto[]
 }
 
 export interface BudgetTemplateGroupDto {

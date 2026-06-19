@@ -87,6 +87,27 @@ public class AnnualSummaryTests
     }
 
     [Fact]
+    public async Task Annual_AveragesEachSpendingCategoryOverBudgetedMonths()
+    {
+        await using var db = NewContext();
+        SeedMonth(db, "user-1", 2026, 5, spent: 750m);
+        SeedMonth(db, "user-1", 2026, 6, spent: 800m);
+
+        var handler = new GetAnnualSummaryQueryHandler(db, new CurrentUserStub("user-1"));
+        var dto = await handler.Handle(new GetAnnualSummaryQuery(2026), CancellationToken.None);
+
+        dto.BudgetedMonths.Should().Be(2);
+
+        var housing = dto.Categories.Single(c => c.Name == "Housing");
+        housing.Kind.Should().Be("Expense");
+        housing.Total.Should().Be(1550m);          // 750 + 800
+        housing.AveragePerMonth.Should().Be(775m);  // ÷ 2 budgeted months
+
+        // Income categories are excluded from the spending averages.
+        dto.Categories.Should().NotContain(c => c.Name == "Income");
+    }
+
+    [Fact]
     public async Task Annual_IsScopedToTheYearAndTheOwner()
     {
         await using var db = NewContext();

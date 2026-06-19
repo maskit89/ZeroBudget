@@ -33,6 +33,11 @@ public class GetAnnualSummaryQueryHandler : IRequestHandler<GetAnnualSummaryQuer
 
         var byMonth = months.ToDictionary(m => m.Month);
 
+        // Accumulate each spending category's actuals across the year, keyed by
+        // (name, kind) since the category entities are per-month, not stable ids.
+        var categoryTotals = new Dictionary<(string Name, CategoryKind Kind), decimal>();
+        var budgetedMonths = 0;
+
         var result = new AnnualSummaryDto { Year = request.Year };
         for (var month = 1; month <= 12; month++)
         {
@@ -47,11 +52,18 @@ public class GetAnnualSummaryQueryHandler : IRequestHandler<GetAnnualSummaryQuer
             {
                 await BudgetActuals.ApplyAsync(_db, userId, budget, cancellationToken);
                 entry.HasBudget = true;
+                budgetedMonths++;
                 entry.Income = budget.TotalIncome;
                 entry.Planned = budget.TotalPlanned;
                 entry.Spent = budget.Categories
                     .Where(c => c.Kind != CategoryKind.Income)
                     .Sum(c => c.TotalActual);
+
+                foreach (var category in budget.Categories.Where(c => c.Kind != CategoryKind.Income))
+                {
+                    var key = (category.Name, category.Kind);
+                    categoryTotals[key] = categoryTotals.GetValueOrDefault(key) + category.TotalActual;
+                }
             }
 
             result.Months.Add(entry);
@@ -60,6 +72,21 @@ public class GetAnnualSummaryQueryHandler : IRequestHandler<GetAnnualSummaryQuer
         result.TotalIncome = result.Months.Sum(m => m.Income);
         result.TotalPlanned = result.Months.Sum(m => m.Planned);
         result.TotalSpent = result.Months.Sum(m => m.Spent);
+        result.BudgetedMonths = budgetedMonths;
+
+        result.Categories = categoryTotals
+            .Where(kvp => kvp.Value != 0m)
+            .Select(kvp => new AnnualCategoryDto
+            {
+                Name = kvp.Key.Name,
+                Kind = kvp.Key.Kind.ToString(),
+                Total = kvp.Value,
+                AveragePerMonth = budgetedMonths == 0
+                    ? 0m
+                    : Math.Round(kvp.Value / budgetedMonths, 2, MidpointRounding.AwayFromZero),
+            })
+            .OrderByDescending(c => c.AveragePerMonth)
+            .ToList();
 
         return result;
     }
