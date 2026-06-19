@@ -101,6 +101,12 @@ export function ReportsPage() {
   const categoryTotalMinor = categorySpend.reduce((s, c) => s + c.spentMinor, 0)
   const categoryMaxMinor = categorySpend.reduce((m, c) => Math.max(m, c.spentMinor), 0)
 
+  // Scale the per-category yearly-average bars to the biggest average.
+  const annualAvgMaxMinor = useMemo(
+    () => (annual?.categories ?? []).reduce((m, c) => Math.max(m, fromAmount(c.averagePerMonth)), 0),
+    [annual],
+  )
+
   const hasData = trends !== null && trends.points.length > 0
   const totalIncomeMinor = trends ? fromAmount(trends.totalIncome) : 0
   const totalReceivedMinor = trends ? fromAmount(trends.totalIncomeReceived) : 0
@@ -264,6 +270,46 @@ export function ReportsPage() {
                     </tr>
                   </tfoot>
                 </table>
+              </Card>
+            )}
+
+            {/* Average monthly spend per category across the year (the workbook's AVERAGE column). */}
+            {annual?.categories && annual.categories.length > 0 && (
+              <Card as="section" className="p-5">
+                <h3 className="mb-1 text-sm font-semibold text-slate-700">
+                  Average monthly spending by category
+                </h3>
+                <p className="mb-4 text-xs text-slate-500">
+                  Each category’s spend averaged over the {annual.budgetedMonths}{' '}
+                  {annual.budgetedMonths === 1 ? 'budgeted month' : 'budgeted months'} of {annual.year}.
+                </p>
+                <div className="space-y-3">
+                  {annual.categories.map((c) => {
+                    const avgMinor = fromAmount(c.averagePerMonth)
+                    return (
+                      <div key={`${c.kind}-${c.name}`} aria-label={`Average spending for ${c.name}`}>
+                        <div className="mb-1 flex items-center justify-between text-xs">
+                          <span className="font-medium text-slate-600">
+                            {c.name}
+                            {c.kind === 'Fund' && (
+                              <span className="ml-1 rounded bg-violet-100 px-1 py-0.5 text-[10px] font-semibold text-violet-700">
+                                Fund
+                              </span>
+                            )}
+                          </span>
+                          <span className="tabular-nums text-slate-500">
+                            {formatMoney(avgMinor, currency)}/mo · {formatMoney(fromAmount(c.total), currency)} total
+                          </span>
+                        </div>
+                        <Bar
+                          widthPct={pct(avgMinor, annualAvgMaxMinor)}
+                          className="bg-sky-500"
+                          label={`Average for ${c.name}`}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
               </Card>
             )}
 
