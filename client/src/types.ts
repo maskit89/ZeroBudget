@@ -49,7 +49,7 @@ export interface BudgetMonthSummaryDto {
 }
 
 // Matches Domain.Enums.TransactionType (System.Text.Json serializes as a number).
-export const TransactionType = { Expense: 0, Income: 1 } as const
+export const TransactionType = { Expense: 0, Income: 1, Transfer: 2 } as const
 
 export interface TransactionSplitDto {
   id: string
@@ -72,6 +72,9 @@ export interface TransactionDto {
   budgetItemName: string | null
   accountId: string | null
   accountName: string | null
+  /** For a transfer, the destination account the money moved into. */
+  transferAccountId: string | null
+  transferAccountName: string | null
   isSplit: boolean
   splits: TransactionSplitDto[]
 }

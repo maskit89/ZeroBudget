@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/AppShell'
-import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
+import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, SegmentedControl, Select } from '../components/ui'
 import { TransactionsIcon } from '../components/icons'
 import { api } from '../lib/api'
 import type { AccountDto, BudgetMonthDto, TransactionDto } from '../types'
@@ -20,6 +20,9 @@ export function TransactionsPage() {
   const [error, setError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
 
+  // Add form: "transaction" (spend/receive) or "transfer" (move between accounts).
+  const [mode, setMode] = useState<'transaction' | 'transfer'>('transaction')
+
   // Add-transaction form state.
   const [date, setDate] = useState(today)
   const [payee, setPayee] = useState('')
@@ -28,6 +31,14 @@ export function TransactionsPage() {
   const [assignTo, setAssignTo] = useState('')
   const [account, setAccount] = useState('')
   const [adding, setAdding] = useState(false)
+
+  // Transfer form state (move money between two of the user's own accounts).
+  const [tDate, setTDate] = useState(today)
+  const [tAmount, setTAmount] = useState('')
+  const [tFrom, setTFrom] = useState('')
+  const [tTo, setTTo] = useState('')
+  const [tPayee, setTPayee] = useState('')
+  const [transferring, setTransferring] = useState(false)
 
   // Filters (client-side — the per-user list is small).
   const [search, setSearch] = useState('')
@@ -105,6 +116,40 @@ export function TransactionsPage() {
       setAdding(false)
     }
   }, [date, payee, amount, type, assignTo, account])
+
+  const addTransfer = useCallback(async () => {
+    const minor = parseMinor(tAmount)
+    if (minor === null || minor <= 0) {
+      setError('Enter a valid transfer amount greater than zero.')
+      return
+    }
+    if (!tFrom || !tTo) {
+      setError('Choose both a source and a destination account.')
+      return
+    }
+    if (tFrom === tTo) {
+      setError('A transfer needs two different accounts.')
+      return
+    }
+    setTransferring(true)
+    setError(null)
+    try {
+      const { data } = await api.post<TransactionDto>('/transactions/transfer', {
+        date: tDate,
+        amount: toAmount(minor),
+        fromAccountId: tFrom,
+        toAccountId: tTo,
+        payee: tPayee || null,
+      })
+      setTransactions((prev) => [data, ...prev])
+      setTAmount('')
+      setTPayee('')
+    } catch {
+      setError('Could not record that transfer.')
+    } finally {
+      setTransferring(false)
+    }
+  }, [tDate, tAmount, tFrom, tTo, tPayee])
 
   const removeTransaction = useCallback(async (id: string) => {
     setSavingId(id)
@@ -249,7 +294,26 @@ export function TransactionsPage() {
 
         {/* Add-transaction form (the manual "sheet" entry). */}
         <Card className="p-4">
-          <h3 className="mb-3 text-sm font-semibold text-slate-700">Add a transaction</h3>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-slate-700">
+              {mode === 'transfer' ? 'Record a transfer' : 'Add a transaction'}
+            </h3>
+            {accounts.length >= 2 && (
+              <SegmentedControl
+                ariaLabel="Entry type"
+                value={mode}
+                onChange={(m) => {
+                  setMode(m)
+                  setError(null)
+                }}
+                options={[
+                  { value: 'transaction', label: 'Transaction' },
+                  { value: 'transfer', label: 'Transfer' },
+                ]}
+              />
+            )}
+          </div>
+          {mode === 'transaction' ? (
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
               Date
@@ -340,6 +404,81 @@ export function TransactionsPage() {
               Add
             </Button>
           </div>
+          ) : (
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+              Date
+              <Input
+                type="date"
+                value={tDate}
+                aria-label="Transfer date"
+                onChange={(e) => setTDate(e.target.value)}
+                className="text-slate-700"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+              Amount
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={tAmount}
+                placeholder="0,00"
+                aria-label="Transfer amount"
+                onChange={(e) => setTAmount(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') addTransfer()
+                }}
+                className="w-28 text-right tabular-nums"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+              From
+              <Select
+                value={tFrom}
+                aria-label="Transfer from account"
+                onChange={(e) => setTFrom(e.target.value)}
+                className="w-40"
+              >
+                <option value="">Choose…</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+              To
+              <Select
+                value={tTo}
+                aria-label="Transfer to account"
+                onChange={(e) => setTTo(e.target.value)}
+                className="w-40"
+              >
+                <option value="">Choose…</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-slate-500">
+              Note
+              <Input
+                type="text"
+                value={tPayee}
+                placeholder="Transfer"
+                aria-label="Transfer note"
+                onChange={(e) => setTPayee(e.target.value)}
+                className="min-w-32"
+              />
+            </label>
+            <Button onClick={addTransfer} disabled={transferring} aria-label="Record transfer">
+              Transfer
+            </Button>
+          </div>
+          )}
         </Card>
 
         {loading && <p className="text-slate-500">Loading…</p>}
@@ -397,6 +536,7 @@ export function TransactionsPage() {
                   )}
                   {visible.map((t) => {
                     const isIncome = transactionTypeLabel(t.type) === 'Income'
+                    const isTransfer = t.type === TransactionType.Transfer
                     const editing = editingId === t.id
                     const splitting = splittingId === t.id
                     const splitOptions = buildItemOptions(month, t.type)
@@ -490,8 +630,8 @@ export function TransactionsPage() {
                           <>
                             <td className="px-4 py-2.5 tabular-nums text-slate-500">{t.date}</td>
                             <td className="px-4 py-2.5 font-medium text-slate-700">
-                              {t.payee || '—'}
-                              {t.accountName && (
+                              {t.payee || (isTransfer ? 'Transfer' : '—')}
+                              {!isTransfer && t.accountName && (
                                 <span className="block text-xs font-normal text-slate-500">
                                   {t.accountName}
                                 </span>
@@ -499,14 +639,25 @@ export function TransactionsPage() {
                             </td>
                             <td
                               className={`px-4 py-2.5 text-right font-semibold tabular-nums ${
-                                isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700'
+                                isTransfer
+                                  ? 'text-slate-500'
+                                  : isIncome
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-slate-700'
                               }`}
                             >
-                              {isIncome ? '+' : '−'}
+                              {isTransfer ? '' : isIncome ? '+' : '−'}
                               {formatMoney(fromAmount(t.amount), t.currency)}
                             </td>
                             <td className="px-4 py-2.5">
-                              {t.isSplit ? (
+                              {isTransfer ? (
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <Badge tone="brand">Transfer</Badge>
+                                  <span className="text-xs text-slate-500">
+                                    {t.accountName ?? '—'} → {t.transferAccountName ?? '—'}
+                                  </span>
+                                </div>
+                              ) : t.isSplit ? (
                                 <div className="flex flex-wrap items-center gap-1.5">
                                   <Badge tone="violet">Split</Badge>
                                   <span className="text-xs text-slate-500">
@@ -544,24 +695,28 @@ export function TransactionsPage() {
                             </td>
                             <td className="px-4 py-2.5 text-right">
                               <div className="flex justify-end gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => startEdit(t)}
-                                  aria-label={`Edit transaction: ${t.payee || t.date}`}
-                                  title="Edit transaction"
-                                  className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                                >
-                                  ✎
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => startSplit(t)}
-                                  aria-label={`Split transaction: ${t.payee || t.date}`}
-                                  title="Split across budget lines"
-                                  className="rounded-md px-2 py-1 text-slate-500 hover:bg-violet-50 hover:text-violet-600"
-                                >
-                                  ⑂
-                                </button>
+                                {!isTransfer && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => startEdit(t)}
+                                      aria-label={`Edit transaction: ${t.payee || t.date}`}
+                                      title="Edit transaction"
+                                      className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                                    >
+                                      ✎
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => startSplit(t)}
+                                      aria-label={`Split transaction: ${t.payee || t.date}`}
+                                      title="Split across budget lines"
+                                      className="rounded-md px-2 py-1 text-slate-500 hover:bg-violet-50 hover:text-violet-600"
+                                    >
+                                      ⑂
+                                    </button>
+                                  </>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => removeTransaction(t.id)}
