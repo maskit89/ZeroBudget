@@ -46,6 +46,7 @@ function tx(): TransactionDto {
     id: 't1', date: '2026-06-10', payee: 'Tesco', amount: 12.5, currency: 'EUR',
     exchangeRate: 1, baseAmount: 12.5, type: 0, bankReference: null,
     budgetItemId: null, budgetItemName: null, accountId: null, accountName: null,
+    transferAccountId: null, transferAccountName: null,
     isSplit: false, splits: [],
   }
 }
@@ -133,6 +134,56 @@ describe('TransactionsPage manual sheet', () => {
     // The posted account shows under the payee in the table (not the add-form option).
     const table = within(await screen.findByRole('table', {}, { timeout: 5000 }))
     expect(table.getByText('Everyday')).toBeInTheDocument()
+  })
+
+  it('records a transfer between two accounts', { timeout: 15000 }, async () => {
+    mockLoad([], accountsFixture())
+    mockPost.mockResolvedValue({
+      data: {
+        ...tx(),
+        payee: 'Move to savings',
+        amount: 50,
+        type: 2,
+        accountId: 'a1', accountName: 'Everyday',
+        transferAccountId: 'a2', transferAccountName: 'Savings',
+      },
+    })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    // The Transaction/Transfer toggle appears once 2+ accounts have loaded.
+    await user.click(await screen.findByRole('button', { name: 'Transfer' }, { timeout: 5000 }))
+    await user.type(screen.getByLabelText('Transfer amount'), '50')
+    await user.selectOptions(screen.getByLabelText('Transfer from account'), 'a1')
+    await user.selectOptions(screen.getByLabelText('Transfer to account'), 'a2')
+    await user.click(screen.getByRole('button', { name: 'Record transfer' }))
+
+    await waitFor(() =>
+      expect(mockPost).toHaveBeenCalledWith(
+        '/transactions/transfer',
+        expect.objectContaining({ amount: 50, fromAccountId: 'a1', toAccountId: 'a2' }),
+      ),
+    )
+    const table = within(await screen.findByRole('table', {}, { timeout: 5000 }))
+    expect(table.getByText('Move to savings')).toBeInTheDocument()
+    expect(table.getByText('Transfer')).toBeInTheDocument()
+  })
+
+  it('blocks a transfer between the same account without calling the API', { timeout: 15000 }, async () => {
+    mockLoad([], accountsFixture())
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Transfer' }, { timeout: 5000 }))
+    await user.type(screen.getByLabelText('Transfer amount'), '50')
+    await user.selectOptions(screen.getByLabelText('Transfer from account'), 'a1')
+    await user.selectOptions(screen.getByLabelText('Transfer to account'), 'a1')
+    await user.click(screen.getByRole('button', { name: 'Record transfer' }))
+
+    expect(await screen.findByText(/two different accounts/, {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(mockPost).not.toHaveBeenCalled()
   })
 
   it('rejects a non-positive amount without calling the API', { timeout: 15000 }, async () => {
