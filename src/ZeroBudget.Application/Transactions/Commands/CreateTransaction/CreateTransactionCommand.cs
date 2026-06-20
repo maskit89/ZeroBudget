@@ -15,4 +15,5 @@ public record CreateTransactionCommand(
     decimal Amount,
     TransactionType Type,
     Guid? BudgetItemId,
-    Guid? AccountId = null) : IRequest<TransactionDto>;
+    Guid? AccountId = null,
+    Guid? MemberId = null) : IRequest<TransactionDto>;

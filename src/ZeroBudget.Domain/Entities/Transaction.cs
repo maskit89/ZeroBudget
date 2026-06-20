@@ -31,6 +31,15 @@ public class Transaction : BaseEntity
     public Guid? TransferAccountId { get; set; }
     public Account? TransferAccount { get; set; }
 
+    /// <summary>
+    /// The household member this whole transaction is attributed to (optional) — e.g. whose
+    /// spend it was. When the transaction is split, per-member attribution lives on the
+    /// slices instead (<see cref="TransactionSplit.MemberId"/>), mirroring how the budget-line
+    /// attribution moves to the slices.
+    /// </summary>
+    public Guid? MemberId { get; set; }
+    public HouseholdMember? Member { get; set; }
+
     /// <summary>Amount in the transaction's own <see cref="Currency"/>. Positive magnitude; direction is on <see cref="Type"/>.</summary>
     public decimal Amount { get; set; }
 

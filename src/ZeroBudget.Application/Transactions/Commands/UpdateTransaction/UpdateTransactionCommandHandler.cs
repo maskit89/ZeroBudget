@@ -53,12 +53,30 @@ public class UpdateTransactionCommandHandler : IRequestHandler<UpdateTransaction
             }
         }
 
+        HouseholdMember? member = null;
+        if (request.MemberId is Guid memberId)
+        {
+            member = await _db.HouseholdMembers
+                .FirstOrDefaultAsync(m => m.Id == memberId, cancellationToken);
+
+            if (member is null)
+            {
+                throw new NotFoundException($"Household member {memberId} was not found.");
+            }
+            if (member.OwnerId != userId)
+            {
+                throw new ForbiddenAccessException();
+            }
+        }
+
         transaction.Date = request.Date;
         transaction.Payee = request.Payee.Trim();
         transaction.Amount = request.Amount;
         transaction.Type = request.Type;
         transaction.Account = account;
         transaction.AccountId = account?.Id;
+        transaction.Member = member;
+        transaction.MemberId = member?.Id;
 
         await _db.SaveChangesAsync(cancellationToken);
 

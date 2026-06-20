@@ -76,6 +76,25 @@ public class SplitTransactionCommandHandler : IRequestHandler<SplitTransactionCo
             }
         }
 
+        // Any per-slice member attributions must belong to this user.
+        var memberIds = request.Allocations
+            .Where(a => a.MemberId is not null)
+            .Select(a => a.MemberId!.Value)
+            .Distinct()
+            .ToList();
+        if (memberIds.Count > 0)
+        {
+            var ownedMemberIds = await _db.HouseholdMembers
+                .Where(m => memberIds.Contains(m.Id) && m.OwnerId == userId)
+                .Select(m => m.Id)
+                .ToListAsync(cancellationToken);
+            var missing = memberIds.Except(ownedMemberIds).FirstOrDefault();
+            if (missing != Guid.Empty)
+            {
+                throw new NotFoundException($"Household member {missing} was not found.");
+            }
+        }
+
         // Replace any previous split, and drop the whole-transaction assignment —
         // the slices carry the attribution now.
         if (transaction.Splits.Count > 0)
@@ -95,6 +114,7 @@ public class SplitTransactionCommandHandler : IRequestHandler<SplitTransactionCo
             {
                 TransactionId = transaction.Id,
                 BudgetItemId = item.Id,
+                MemberId = allocation.MemberId,
                 Amount = allocation.Amount,
             });
         }
@@ -105,8 +125,11 @@ public class SplitTransactionCommandHandler : IRequestHandler<SplitTransactionCo
         var saved = await _db.Transactions
             .AsNoTracking()
             .Include(t => t.BudgetItem)
+            .Include(t => t.Member)
             .Include(t => t.Splits)
                 .ThenInclude(s => s.BudgetItem)
+            .Include(t => t.Splits)
+                .ThenInclude(s => s.Member)
             .FirstAsync(t => t.Id == transaction.Id, cancellationToken);
 
         return saved.ToDto();

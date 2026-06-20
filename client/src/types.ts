@@ -55,6 +55,9 @@ export interface TransactionSplitDto {
   id: string
   budgetItemId: string | null
   budgetItemName: string | null
+  /** Household member this slice is attributed to (shared-purchase splitting). */
+  memberId: string | null
+  memberName: string | null
   amount: number
 }
 
@@ -75,6 +78,9 @@ export interface TransactionDto {
   /** For a transfer, the destination account the money moved into. */
   transferAccountId: string | null
   transferAccountName: string | null
+  /** Household member this whole transaction is attributed to, if any. */
+  memberId: string | null
+  memberName: string | null
   isSplit: boolean
   splits: TransactionSplitDto[]
 }
@@ -238,6 +244,13 @@ export interface HouseholdMemberDto {
   isArchived: boolean
   /** This member's share of household net income (0–1). */
   incomeSharePct: number
+}
+
+/** Per-member attributed spending (the "who spent what" lens). */
+export interface MemberSpendingDto {
+  memberId: string
+  name: string
+  spent: number
 }
 
 // Matches Domain.Enums.AllocationRuleType (serialized as a number).

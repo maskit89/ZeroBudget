@@ -29,8 +29,11 @@ public class GetTransactionsQueryHandler
             .Include(t => t.BudgetItem)
             .Include(t => t.Account)
             .Include(t => t.TransferAccount)
+            .Include(t => t.Member)
             .Include(t => t.Splits)
                 .ThenInclude(s => s.BudgetItem)
+            .Include(t => t.Splits)
+                .ThenInclude(s => s.Member)
             .Where(t => t.OwnerId == userId);
 
         if (request.Year is int year)

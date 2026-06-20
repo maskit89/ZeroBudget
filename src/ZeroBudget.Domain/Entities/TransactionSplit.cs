@@ -24,6 +24,15 @@ public class TransactionSplit : BaseEntity
     public Guid? BudgetItemId { get; set; }
     public BudgetItem? BudgetItem { get; set; }
 
+    /// <summary>
+    /// The household member this slice is attributed to (optional) — this is how a single
+    /// shared purchase is divided across people (e.g. the workbook's Visa Liz/Chris/Marisa
+    /// columns). Independent of <see cref="BudgetItemId"/>: a slice can carry both a budget
+    /// line and a member.
+    /// </summary>
+    public Guid? MemberId { get; set; }
+    public HouseholdMember? Member { get; set; }
+
     /// <summary>Portion of the parent's amount — a positive magnitude, in the parent's currency.</summary>
     public decimal Amount { get; set; }
 }

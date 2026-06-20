@@ -55,7 +55,15 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
             .HasForeignKey(t => t.TransferAccountId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Whole-transaction member attribution. SetNull so removing a member never
+        // blocks (members are soft-archived, not deleted, so this rarely fires).
+        builder.HasOne(t => t.Member)
+            .WithMany()
+            .HasForeignKey(t => t.MemberId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasIndex(t => t.OwnerId);
+        builder.HasIndex(t => t.MemberId);
 
         // Speeds up the dedup lookup on re-import.
         builder.HasIndex(t => new { t.OwnerId, t.BankReference });

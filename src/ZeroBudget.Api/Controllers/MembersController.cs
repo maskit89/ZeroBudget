@@ -7,6 +7,7 @@ using ZeroBudget.Application.Household.Commands.CreateHouseholdMember;
 using ZeroBudget.Application.Household.Commands.UpdateHouseholdMember;
 using ZeroBudget.Application.Household.Dtos;
 using ZeroBudget.Application.Household.Queries.GetHouseholdMembers;
+using ZeroBudget.Application.Household.Queries.GetMemberSpending;
 
 namespace ZeroBudget.Api.Controllers;
 
@@ -34,6 +35,15 @@ public class MembersController : ControllerBase
         [FromQuery] bool includeArchived, CancellationToken ct)
     {
         var result = await _mediator.Send(new GetHouseholdMembersQuery(includeArchived), ct);
+        return Ok(result);
+    }
+
+    /// <summary>Per-member attributed spending (the "who spent what" lens).</summary>
+    [HttpGet("spending")]
+    [ProducesResponseType(typeof(IReadOnlyList<MemberSpendingDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<MemberSpendingDto>>> Spending(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetMemberSpendingQuery(), ct);
         return Ok(result);
     }
 

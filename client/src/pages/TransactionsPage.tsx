@@ -3,7 +3,7 @@ import { AppShell } from '../components/AppShell'
 import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, SegmentedControl, Select } from '../components/ui'
 import { TransactionsIcon } from '../components/icons'
 import { api } from '../lib/api'
-import type { AccountDto, BudgetMonthDto, TransactionDto } from '../types'
+import type { AccountDto, BudgetMonthDto, HouseholdMemberDto, TransactionDto } from '../types'
 import { TransactionType } from '../types'
 import { formatMoney, fromAmount, parseMinor, sumMinor, toAmount } from '../lib/money'
 import { buildItemOptions, transactionTypeLabel } from '../lib/transactions'
@@ -16,6 +16,7 @@ export function TransactionsPage() {
   const [transactions, setTransactions] = useState<TransactionDto[]>([])
   const [month, setMonth] = useState<BudgetMonthDto | null>(null)
   const [accounts, setAccounts] = useState<AccountDto[]>([])
+  const [members, setMembers] = useState<HouseholdMemberDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
@@ -30,6 +31,7 @@ export function TransactionsPage() {
   const [type, setType] = useState<number>(TransactionType.Expense)
   const [assignTo, setAssignTo] = useState('')
   const [account, setAccount] = useState('')
+  const [member, setMember] = useState('')
   const [adding, setAdding] = useState(false)
 
   // Transfer form state (move money between two of the user's own accounts).
@@ -51,10 +53,11 @@ export function TransactionsPage() {
   const [eAmount, setEAmount] = useState('')
   const [eType, setEType] = useState<number>(TransactionType.Expense)
   const [eAccount, setEAccount] = useState('')
+  const [eMember, setEMember] = useState('')
 
   // Split editor state.
   const [splittingId, setSplittingId] = useState<string | null>(null)
-  const [splitRows, setSplitRows] = useState<{ budgetItemId: string; amount: string }[]>([])
+  const [splitRows, setSplitRows] = useState<{ budgetItemId: string; amount: string; memberId: string }[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -63,12 +66,14 @@ export function TransactionsPage() {
       api.get<TransactionDto[]>('/transactions'),
       api.get<BudgetMonthDto>('/budget/current').catch(() => null),
       api.get<AccountDto[]>('/accounts').catch(() => null),
+      api.get<HouseholdMemberDto[]>('/members').catch(() => null),
     ])
-      .then(([tx, budget, acc]) => {
+      .then(([tx, budget, acc, mem]) => {
         if (cancelled) return
         setTransactions(tx.data)
         setMonth(budget?.data ?? null)
         setAccounts(Array.isArray(acc?.data) ? acc.data : [])
+        setMembers(Array.isArray(mem?.data) ? mem.data : [])
       })
       .catch(() => !cancelled && setError('Could not load transactions.'))
       .finally(() => !cancelled && setLoading(false))
@@ -106,6 +111,7 @@ export function TransactionsPage() {
         type,
         budgetItemId: assignTo || null,
         accountId: account || null,
+        memberId: member || null,
       })
       setTransactions((prev) => [data, ...prev])
       setPayee('')
@@ -115,7 +121,7 @@ export function TransactionsPage() {
     } finally {
       setAdding(false)
     }
-  }, [date, payee, amount, type, assignTo, account])
+  }, [date, payee, amount, type, assignTo, account, member])
 
   const addTransfer = useCallback(async () => {
     const minor = parseMinor(tAmount)
@@ -172,6 +178,7 @@ export function TransactionsPage() {
     setEAmount(String(t.amount))
     setEType(t.type)
     setEAccount(t.accountId ?? '')
+    setEMember(t.memberId ?? '')
   }
 
   const saveEdit = useCallback(
@@ -190,6 +197,7 @@ export function TransactionsPage() {
           amount: toAmount(minor),
           type: eType,
           accountId: eAccount || null,
+          memberId: eMember || null,
         })
         setTransactions((prev) => prev.map((t) => (t.id === id ? data : t)))
         setEditingId(null)
@@ -199,18 +207,24 @@ export function TransactionsPage() {
         setSavingId(null)
       }
     },
-    [eDate, ePayee, eAmount, eType, eAccount],
+    [eDate, ePayee, eAmount, eType, eAccount, eMember],
   )
 
   function startSplit(t: TransactionDto) {
     setEditingId(null)
     setSplittingId(t.id)
     if (t.isSplit && t.splits.length > 0) {
-      setSplitRows(t.splits.map((s) => ({ budgetItemId: s.budgetItemId ?? '', amount: String(s.amount) })))
+      setSplitRows(
+        t.splits.map((s) => ({
+          budgetItemId: s.budgetItemId ?? '',
+          amount: String(s.amount),
+          memberId: s.memberId ?? '',
+        })),
+      )
     } else {
       setSplitRows([
-        { budgetItemId: t.budgetItemId ?? '', amount: '' },
-        { budgetItemId: '', amount: '' },
+        { budgetItemId: t.budgetItemId ?? '', amount: '', memberId: t.memberId ?? '' },
+        { budgetItemId: '', amount: '', memberId: '' },
       ])
     }
   }
@@ -228,12 +242,15 @@ export function TransactionsPage() {
     [assign],
   )
 
-  function updateSplitRow(index: number, patch: Partial<{ budgetItemId: string; amount: string }>) {
+  function updateSplitRow(
+    index: number,
+    patch: Partial<{ budgetItemId: string; amount: string; memberId: string }>,
+  ) {
     setSplitRows((rows) => rows.map((r, i) => (i === index ? { ...r, ...patch } : r)))
   }
 
   function addSplitRow() {
-    setSplitRows((rows) => [...rows, { budgetItemId: '', amount: '' }])
+    setSplitRows((rows) => [...rows, { budgetItemId: '', amount: '', memberId: '' }])
   }
 
   function removeSplitRow(index: number) {
@@ -242,7 +259,11 @@ export function TransactionsPage() {
 
   const saveSplit = useCallback(
     async (t: TransactionDto) => {
-      const parsed = splitRows.map((r) => ({ budgetItemId: r.budgetItemId, minor: parseMinor(r.amount) }))
+      const parsed = splitRows.map((r) => ({
+        budgetItemId: r.budgetItemId,
+        memberId: r.memberId,
+        minor: parseMinor(r.amount),
+      }))
       if (parsed.length < 2 || parsed.some((a) => !a.budgetItemId || a.minor === null || a.minor <= 0)) {
         setError('Give every split line a category and an amount greater than zero.')
         return
@@ -259,6 +280,7 @@ export function TransactionsPage() {
           allocations: parsed.map((a) => ({
             budgetItemId: a.budgetItemId,
             amount: toAmount(a.minor as number),
+            memberId: a.memberId || null,
           })),
         })
         setTransactions((prev) => prev.map((x) => (x.id === t.id ? data : x)))
@@ -395,6 +417,24 @@ export function TransactionsPage() {
                   {accounts.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            )}
+            {members.length > 0 && (
+              <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+                Member
+                <Select
+                  value={member}
+                  aria-label="Transaction member"
+                  onChange={(e) => setMember(e.target.value)}
+                  className="w-36"
+                >
+                  <option value="">No member</option>
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
                     </option>
                   ))}
                 </Select>
@@ -581,6 +621,21 @@ export function TransactionsPage() {
                                     ))}
                                   </select>
                                 )}
+                                {members.length > 0 && (
+                                  <select
+                                    value={eMember}
+                                    aria-label="Edit member"
+                                    onChange={(e) => setEMember(e.target.value)}
+                                    className="w-full rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600"
+                                  >
+                                    <option value="">No member</option>
+                                    {members.map((m) => (
+                                      <option key={m.id} value={m.id}>
+                                        {m.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
                               </div>
                             </td>
                             <td className="px-4 py-2 text-right">
@@ -631,9 +686,9 @@ export function TransactionsPage() {
                             <td className="px-4 py-2.5 tabular-nums text-slate-500">{t.date}</td>
                             <td className="px-4 py-2.5 font-medium text-slate-700">
                               {t.payee || (isTransfer ? 'Transfer' : '—')}
-                              {!isTransfer && t.accountName && (
+                              {!isTransfer && (t.accountName || t.memberName) && (
                                 <span className="block text-xs font-normal text-slate-500">
-                                  {t.accountName}
+                                  {[t.accountName, t.memberName].filter(Boolean).join(' · ')}
                                 </span>
                               )}
                             </td>
@@ -664,10 +719,9 @@ export function TransactionsPage() {
                                     {t.splits
                                       .map(
                                         (s) =>
-                                          `${s.budgetItemName ?? 'Unassigned'} ${formatMoney(
-                                            fromAmount(s.amount),
-                                            t.currency,
-                                          )}`,
+                                          `${s.budgetItemName ?? 'Unassigned'}${
+                                            s.memberName ? ` (${s.memberName})` : ''
+                                          } ${formatMoney(fromAmount(s.amount), t.currency)}`,
                                       )
                                       .join(' · ')}
                                   </span>
@@ -786,6 +840,21 @@ export function TransactionsPage() {
                                     onChange={(e) => updateSplitRow(index, { amount: e.target.value })}
                                     className="w-28 rounded-md border border-slate-300 px-2 py-1 text-right text-sm tabular-nums focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
                                   />
+                                  {members.length > 0 && (
+                                    <select
+                                      value={row.memberId}
+                                      aria-label={`Split line ${index + 1} member`}
+                                      onChange={(e) => updateSplitRow(index, { memberId: e.target.value })}
+                                      className="w-36 rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-600 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                                    >
+                                      <option value="">No member</option>
+                                      {members.map((m) => (
+                                        <option key={m.id} value={m.id}>
+                                          {m.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  )}
                                   {splitRows.length > 2 && (
                                     <button
                                       type="button"
