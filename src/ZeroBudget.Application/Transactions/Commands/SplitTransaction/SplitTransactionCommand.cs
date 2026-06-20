@@ -14,5 +14,5 @@ public record SplitTransactionCommand(
     Guid TransactionId,
     IReadOnlyList<SplitAllocationInput> Allocations) : IRequest<TransactionDto>;
 
-/// <summary>One requested slice: an amount attributed to a budget line.</summary>
-public record SplitAllocationInput(Guid BudgetItemId, decimal Amount);
+/// <summary>One requested slice: an amount attributed to a budget line and, optionally, a household member.</summary>
+public record SplitAllocationInput(Guid BudgetItemId, decimal Amount, Guid? MemberId = null);

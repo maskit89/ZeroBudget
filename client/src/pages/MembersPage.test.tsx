@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import type { AccountDto, HouseholdMemberDto } from '../types'
+import type { AccountDto, HouseholdMemberDto, MemberSpendingDto } from '../types'
 
 const { mockGet, mockPut, mockPost } = vi.hoisted(() => ({
   mockGet: vi.fn(),
@@ -39,6 +39,7 @@ const accountsData: AccountDto[] = [
 // The page fetches /members and /accounts on mount, and re-fetches /members after
 // each mutation, so the GET mock is URL-aware and returns the current member list.
 let membersData: HouseholdMemberDto[] = []
+let spendingData: MemberSpendingDto[] = []
 
 function renderPage() {
   return render(
@@ -56,11 +57,12 @@ describe('MembersPage', () => {
     mockPut.mockReset()
     mockPost.mockReset()
     membersData = []
-    mockGet.mockImplementation((url: string) =>
-      url === '/accounts'
-        ? Promise.resolve({ data: accountsData })
-        : Promise.resolve({ data: membersData }),
-    )
+    spendingData = []
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/accounts') return Promise.resolve({ data: accountsData })
+      if (url === '/members/spending') return Promise.resolve({ data: spendingData })
+      return Promise.resolve({ data: membersData })
+    })
   })
 
   it('lists members with income and share', { timeout: 15000 }, async () => {
@@ -73,6 +75,20 @@ describe('MembersPage', () => {
     expect(table.getByText('Liza')).toBeInTheDocument()
     expect(table.getByText(/6\.000,00/)).toBeInTheDocument()
     expect(table.getByText('60.0%')).toBeInTheDocument()
+  })
+
+  it('shows attributed spend per member', { timeout: 15000 }, async () => {
+    membersData = [member(), member({ id: 'm2', name: 'Liza', displayOrder: 1, incomeSharePct: 0.4 })]
+    spendingData = [
+      { memberId: 'm1', name: 'Chris', spent: 320 },
+      { memberId: 'm2', name: 'Liza', spent: 180 },
+    ]
+
+    renderPage()
+
+    const table = within(await screen.findByRole('table', {}, { timeout: 5000 }))
+    expect(table.getByText(/320,00/)).toBeInTheDocument()
+    expect(table.getByText(/180,00/)).toBeInTheDocument()
   })
 
   it('adds a member with a savings account', { timeout: 15000 }, async () => {

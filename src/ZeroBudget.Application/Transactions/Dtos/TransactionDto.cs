@@ -29,6 +29,10 @@ public class TransactionDto
     public Guid? TransferAccountId { get; set; }
     public string? TransferAccountName { get; set; }
 
+    /// <summary>The household member this whole transaction is attributed to, if any.</summary>
+    public Guid? MemberId { get; set; }
+    public string? MemberName { get; set; }
+
     /// <summary>True when the transaction is split across budget lines.</summary>
     public bool IsSplit { get; set; }
 
@@ -41,6 +45,8 @@ public class TransactionSplitDto
     public Guid Id { get; set; }
     public Guid? BudgetItemId { get; set; }
     public string? BudgetItemName { get; set; }
+    public Guid? MemberId { get; set; }
+    public string? MemberName { get; set; }
     public decimal Amount { get; set; }
 }
 
@@ -63,6 +69,8 @@ public static class TransactionMapping
         AccountName = t.Account?.Name,
         TransferAccountId = t.TransferAccountId,
         TransferAccountName = t.TransferAccount?.Name,
+        MemberId = t.MemberId,
+        MemberName = t.Member?.Name,
         IsSplit = t.Splits.Count > 0,
         Splits = t.Splits
             .Select(s => new TransactionSplitDto
@@ -70,6 +78,8 @@ public static class TransactionMapping
                 Id = s.Id,
                 BudgetItemId = s.BudgetItemId,
                 BudgetItemName = s.BudgetItem?.Name,
+                MemberId = s.MemberId,
+                MemberName = s.Member?.Name,
                 Amount = s.Amount,
             })
             .ToList(),

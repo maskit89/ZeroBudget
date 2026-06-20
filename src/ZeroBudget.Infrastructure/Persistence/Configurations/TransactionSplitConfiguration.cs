@@ -27,7 +27,15 @@ public class TransactionSplitConfiguration : IEntityTypeConfiguration<Transactio
             .HasForeignKey(s => s.BudgetItemId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // Per-slice member attribution (a shared purchase split across people).
+        // SetNull mirrors the budget-line FK; members are soft-archived anyway.
+        builder.HasOne(s => s.Member)
+            .WithMany()
+            .HasForeignKey(s => s.MemberId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasIndex(s => s.TransactionId);
         builder.HasIndex(s => s.BudgetItemId);
+        builder.HasIndex(s => s.MemberId);
     }
 }

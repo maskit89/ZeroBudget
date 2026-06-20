@@ -15,4 +15,5 @@ public record UpdateTransactionCommand(
     string Payee,
     decimal Amount,
     TransactionType Type,
-    Guid? AccountId = null) : IRequest<TransactionDto>;
+    Guid? AccountId = null,
+    Guid? MemberId = null) : IRequest<TransactionDto>;

@@ -63,6 +63,22 @@ public class CreateTransactionCommandHandler : IRequestHandler<CreateTransaction
             }
         }
 
+        HouseholdMember? member = null;
+        if (request.MemberId is Guid memberId)
+        {
+            member = await _db.HouseholdMembers
+                .FirstOrDefaultAsync(m => m.Id == memberId, cancellationToken);
+
+            if (member is null)
+            {
+                throw new NotFoundException($"Household member {memberId} was not found.");
+            }
+            if (member.OwnerId != userId)
+            {
+                throw new ForbiddenAccessException();
+            }
+        }
+
         // Manual entries are in the budget's base currency for that month (no FX).
         var month = await _db.BudgetMonths
             .AsNoTracking()
@@ -86,6 +102,8 @@ public class CreateTransactionCommandHandler : IRequestHandler<CreateTransaction
             BudgetItemId = item?.Id,
             Account = account,
             AccountId = account?.Id,
+            Member = member,
+            MemberId = member?.Id,
         };
 
         _db.Transactions.Add(transaction);

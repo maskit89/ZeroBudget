@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import type { AccountDto, BudgetMonthDto, TransactionDto } from '../types'
+import type { AccountDto, BudgetMonthDto, HouseholdMemberDto, TransactionDto } from '../types'
 
 const { mockGet, mockPut, mockPost, mockDelete } = vi.hoisted(() => ({
   mockGet: vi.fn(),
@@ -47,8 +47,16 @@ function tx(): TransactionDto {
     exchangeRate: 1, baseAmount: 12.5, type: 0, bankReference: null,
     budgetItemId: null, budgetItemName: null, accountId: null, accountName: null,
     transferAccountId: null, transferAccountName: null,
+    memberId: null, memberName: null,
     isSplit: false, splits: [],
   }
+}
+
+function membersFixture(): HouseholdMemberDto[] {
+  return [
+    { id: 'mem-chris', name: 'Chris', netMonthlyIncome: 4000, personalSavingsAccountId: null, displayOrder: 0, isArchived: false, incomeSharePct: 0.5 },
+    { id: 'mem-liza', name: 'Liza', netMonthlyIncome: 4000, personalSavingsAccountId: null, displayOrder: 1, isArchived: false, incomeSharePct: 0.5 },
+  ]
 }
 
 function accountsFixture(): AccountDto[] {
@@ -58,10 +66,15 @@ function accountsFixture(): AccountDto[] {
   ]
 }
 
-function mockLoad(transactions: TransactionDto[], accounts: AccountDto[] = []) {
+function mockLoad(
+  transactions: TransactionDto[],
+  accounts: AccountDto[] = [],
+  members: HouseholdMemberDto[] = [],
+) {
   mockGet.mockImplementation((url: string) => {
     if (url === '/transactions') return Promise.resolve({ data: transactions })
     if (url === '/accounts') return Promise.resolve({ data: accounts })
+    if (url === '/members') return Promise.resolve({ data: members })
     return Promise.resolve({ data: budget() })
   })
 }
@@ -186,6 +199,35 @@ describe('TransactionsPage manual sheet', () => {
     expect(mockPost).not.toHaveBeenCalled()
   })
 
+  it('attributes a new transaction to a household member', { timeout: 15000 }, async () => {
+    mockLoad([], [], membersFixture())
+    mockPost.mockResolvedValue({
+      data: { ...tx(), payee: 'Pharmacy', memberId: 'mem-chris', memberName: 'Chris' },
+    })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await user.type(await screen.findByLabelText('Transaction payee', {}, { timeout: 5000 }), 'Pharmacy')
+    await user.type(screen.getByLabelText('Transaction amount'), '12,50')
+    // The member select appears once members have loaded.
+    await user.selectOptions(
+      await screen.findByLabelText('Transaction member', {}, { timeout: 5000 }),
+      'mem-chris',
+    )
+    await user.click(screen.getByRole('button', { name: 'Add transaction' }))
+
+    await waitFor(() =>
+      expect(mockPost).toHaveBeenCalledWith(
+        '/transactions',
+        expect.objectContaining({ payee: 'Pharmacy', memberId: 'mem-chris' }),
+      ),
+    )
+    // The attributed member shows under the payee in the table.
+    const table = within(await screen.findByRole('table', {}, { timeout: 5000 }))
+    expect(table.getByText('Chris')).toBeInTheDocument()
+  })
+
   it('rejects a non-positive amount without calling the API', { timeout: 15000 }, async () => {
     mockLoad([])
     const user = userEvent.setup()
@@ -271,8 +313,8 @@ describe('TransactionsPage manual sheet', () => {
     await waitFor(() =>
       expect(mockPut).toHaveBeenCalledWith('/transactions/t1/splits', {
         allocations: [
-          { budgetItemId: 'i-rent', amount: 70 },
-          { budgetItemId: 'i-food', amount: 30 },
+          { budgetItemId: 'i-rent', amount: 70, memberId: null },
+          { budgetItemId: 'i-food', amount: 30, memberId: null },
         ],
       }),
     )

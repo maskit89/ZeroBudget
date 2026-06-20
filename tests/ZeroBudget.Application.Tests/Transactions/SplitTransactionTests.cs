@@ -98,6 +98,51 @@ public class SplitTransactionTests
     }
 
     [Fact]
+    public async Task Split_AttributesSlicesToMembers()
+    {
+        await using var db = NewContext();
+        var s = Seed(db);
+        var chris = new HouseholdMember { OwnerId = "user-1", Name = "Chris" };
+        var liza = new HouseholdMember { OwnerId = "user-1", Name = "Liza" };
+        db.HouseholdMembers.AddRange(chris, liza);
+        await db.SaveChangesAsync();
+        var tx = SeedExpense(db, 100m);
+
+        var handler = new SplitTransactionCommandHandler(db, new CurrentUserStub("user-1"));
+        // A shared purchase on one budget line, divided across two people (the Visa case).
+        var dto = await handler.Handle(new SplitTransactionCommand(tx.Id, new List<SplitAllocationInput>
+        {
+            new(s.Groceries.Id, 60m, chris.Id),
+            new(s.Groceries.Id, 40m, liza.Id),
+        }), CancellationToken.None);
+
+        dto.Splits.Should().HaveCount(2);
+        dto.Splits.Select(x => x.MemberName).Should().BeEquivalentTo(new[] { "Chris", "Liza" });
+        dto.Splits.Single(x => x.MemberName == "Chris").Amount.Should().Be(60m);
+        dto.Splits.Single(x => x.MemberName == "Liza").Amount.Should().Be(40m);
+    }
+
+    [Fact]
+    public async Task Split_Throws_WhenSliceMemberNotOwned()
+    {
+        await using var db = NewContext();
+        var s = Seed(db);
+        var stranger = new HouseholdMember { OwnerId = "user-2", Name = "Stranger" };
+        db.HouseholdMembers.Add(stranger);
+        await db.SaveChangesAsync();
+        var tx = SeedExpense(db, 100m);
+
+        var handler = new SplitTransactionCommandHandler(db, new CurrentUserStub("user-1"));
+        var act = () => handler.Handle(new SplitTransactionCommand(tx.Id, new List<SplitAllocationInput>
+        {
+            new(s.Groceries.Id, 60m, stranger.Id), // another user's member
+            new(s.Household.Id, 40m),
+        }), CancellationToken.None);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
     public async Task Split_RollsUpIntoEachLineActual()
     {
         await using var db = NewContext();

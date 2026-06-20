@@ -3,7 +3,7 @@ import { AppShell } from '../components/AppShell'
 import { Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
 import { MembersIcon } from '../components/icons'
 import { api } from '../lib/api'
-import type { AccountDto, HouseholdMemberDto } from '../types'
+import type { AccountDto, HouseholdMemberDto, MemberSpendingDto } from '../types'
 import { formatMoney, fromAmount, parseMinor, toAmount, toEditString } from '../lib/money'
 
 const CURRENCY = 'EUR'
@@ -22,6 +22,7 @@ function sharePct(share: number): string {
 export function MembersPage() {
   const [members, setMembers] = useState<HouseholdMemberDto[]>([])
   const [accounts, setAccounts] = useState<AccountDto[]>([])
+  const [spending, setSpending] = useState<MemberSpendingDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
@@ -49,11 +50,13 @@ export function MembersPage() {
     Promise.all([
       api.get<HouseholdMemberDto[]>('/members'),
       api.get<AccountDto[]>('/accounts').catch(() => ({ data: [] })),
+      api.get<MemberSpendingDto[]>('/members/spending').catch(() => ({ data: [] })),
     ])
-      .then(([m, acc]) => {
+      .then(([m, acc, spend]) => {
         if (cancelled) return
         setMembers(m.data)
         setAccounts(Array.isArray(acc?.data) ? acc.data : [])
+        setSpending(Array.isArray(spend?.data) ? spend.data : [])
       })
       .catch(() => !cancelled && setError('Could not load household members.'))
       .finally(() => !cancelled && setLoading(false))
@@ -65,6 +68,10 @@ export function MembersPage() {
   function accountName(id: string | null): string {
     if (!id) return '—'
     return accounts.find((a) => a.id === id)?.name ?? '—'
+  }
+
+  function memberSpent(id: string): number {
+    return spending.find((s) => s.memberId === id)?.spent ?? 0
   }
 
   const addMember = useCallback(async () => {
@@ -229,6 +236,7 @@ export function MembersPage() {
                 <th className="px-4 py-2 font-medium">Member</th>
                 <th className="px-4 py-2 text-right font-medium">Net monthly income</th>
                 <th className="px-4 py-2 text-right font-medium">Income share</th>
+                <th className="px-4 py-2 text-right font-medium">Spent</th>
                 <th className="px-4 py-2 font-medium">Savings</th>
                 <th className="px-4 py-2" />
               </tr>
@@ -260,6 +268,9 @@ export function MembersPage() {
                           />
                         </td>
                         <td className="px-4 py-2.5 text-right tabular-nums text-slate-400">{sharePct(m.incomeSharePct)}</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-slate-400">
+                          {formatMoney(fromAmount(memberSpent(m.id)), CURRENCY)}
+                        </td>
                         <td className="px-4 py-2">
                           <select
                             value={eSavings}
@@ -304,6 +315,9 @@ export function MembersPage() {
                           {formatMoney(fromAmount(m.netMonthlyIncome), CURRENCY)}
                         </td>
                         <td className="px-4 py-2.5 text-right tabular-nums text-slate-500">{sharePct(m.incomeSharePct)}</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">
+                          {formatMoney(fromAmount(memberSpent(m.id)), CURRENCY)}
+                        </td>
                         <td className="px-4 py-2.5 text-slate-500">{accountName(m.personalSavingsAccountId)}</td>
                         <td className="px-4 py-2.5 text-right">
                           <div className="flex justify-end gap-1">
