@@ -93,12 +93,25 @@ function accountReconciliation() {
 }
 
 // Stub every /api call so the SPA renders content without a backend.
+// Two not-yet-imported rows so the import review table renders (checkboxes, per-row
+// category/member selects, bulk controls) for axe to scan.
+function importPreview() {
+  return {
+    totalEntries: 3, newCount: 2, skippedDuplicates: 1, credits: 0, debits: 2,
+    items: [
+      { reference: 'hsbc:a#0', date: '2026-06-17', payee: 'AUTOMARKET', amount: 35, currency: 'EUR', isCredit: false, suggestedBudgetItemId: null, suggestedBudgetItemName: 'Rent' },
+      { reference: 'hsbc:b#0', date: '2026-06-15', payee: 'WOLT', amount: 80.9, currency: 'EUR', isCredit: false, suggestedBudgetItemId: null, suggestedBudgetItemName: null },
+    ],
+  }
+}
+
 async function mockApi(route: Route) {
   const path = new URL(route.request().url()).pathname.replace(/^\/api/, '')
   const json = (body: unknown) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
 
   if (path === '/features') return json(FLAGS)
+  if (path === '/import/preview') return json(importPreview())
   if (path === '/budget/current') return json(budgetMonth(2026, 6))
   if (/^\/budget\/\d+\/\d+$/.test(path)) {
     const [, , y, m] = path.split('/')
@@ -133,7 +146,7 @@ async function expectNoViolations(page: Page) {
   expect(violations, summary).toEqual([])
 }
 
-const AUTHED_ROUTES = ['/', '/transactions', '/accounts', '/funds', '/members', '/allocation', '/reports', '/help']
+const AUTHED_ROUTES = ['/', '/transactions', '/accounts', '/funds', '/members', '/allocation', '/reports', '/import', '/help']
 
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`a11y — ${theme}`, () => {
@@ -145,6 +158,23 @@ for (const theme of ['light', 'dark'] as const) {
         await expectNoViolations(page)
       })
     }
+
+    test('import review table has no WCAG A/AA violations', async ({ page }) => {
+      await authedSetup(page, theme)
+      await page.goto('/import')
+      await page.getByRole('heading', { level: 1 }).first().waitFor()
+      await page.getByLabel('Statement file').setInputFiles({
+        name: 'tx.csv', mimeType: 'text/csv', buffer: Buffer.from('19/06/2026,SHOP,-5.00'),
+      })
+      await page.getByRole('button', { name: 'Review transactions' }).click()
+      await page.getByText('AUTOMARKET').waitFor() // the review table is up
+      await expectNoViolations(page)
+
+      // Expand a row's split editor and re-scan (selects, amount inputs, remaining hint).
+      await page.getByRole('button', { name: 'Split AUTOMARKET on 2026-06-17' }).click()
+      await page.getByLabel('Split line 1 amount for AUTOMARKET').waitFor()
+      await expectNoViolations(page)
+    })
 
     test('login has no WCAG A/AA violations', async ({ page }) => {
       // Signed out: no token, so the login page renders.

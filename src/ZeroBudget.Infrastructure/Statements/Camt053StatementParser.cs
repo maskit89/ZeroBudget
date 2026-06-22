@@ -14,6 +14,8 @@ namespace ZeroBudget.Infrastructure.Statements;
 /// </summary>
 public class Camt053StatementParser : IStatementParser
 {
+    public StatementFormat Format => StatementFormat.Camt053;
+
     public ParsedStatement Parse(string content)
     {
         XDocument doc;

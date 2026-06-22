@@ -10,6 +10,7 @@ import { FundsPage } from './pages/FundsPage'
 import { MembersPage } from './pages/MembersPage'
 import { AllocationPage } from './pages/AllocationPage'
 import { ReportsPage } from './pages/ReportsPage'
+import { ImportPage } from './pages/ImportPage'
 import { HelpPage } from './pages/HelpPage'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -89,6 +90,16 @@ export default function App() {
           element={
             <RequireAuth>
               <ReportsPage />
+            </RequireAuth>
+          }
+        />
+      )}
+      {features.camtImport && (
+        <Route
+          path="/import"
+          element={
+            <RequireAuth>
+              <ImportPage />
             </RequireAuth>
           }
         />

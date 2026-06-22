@@ -13,18 +13,18 @@ public class ImportStatementCommandHandler : IRequestHandler<ImportStatementComm
 {
     private readonly IApplicationDbContext _db;
     private readonly ICurrentUser _currentUser;
-    private readonly IStatementParser _parser;
+    private readonly IReadOnlyCollection<IStatementParser> _parsers;
     private readonly IExchangeRateProvider _exchangeRates;
 
     public ImportStatementCommandHandler(
         IApplicationDbContext db,
         ICurrentUser currentUser,
-        IStatementParser parser,
+        IEnumerable<IStatementParser> parsers,
         IExchangeRateProvider exchangeRates)
     {
         _db = db;
         _currentUser = currentUser;
-        _parser = parser;
+        _parsers = parsers.ToList();
         _exchangeRates = exchangeRates;
     }
 
@@ -49,7 +49,9 @@ public class ImportStatementCommandHandler : IRequestHandler<ImportStatementComm
             }
         }
 
-        var statement = _parser.Parse(request.Content);
+        var parser = _parsers.FirstOrDefault(p => p.Format == request.Format)
+            ?? throw new NotFoundException($"No statement parser is registered for format '{request.Format}'.");
+        var statement = parser.Parse(request.Content);
 
         // Pre-load this user's existing references so re-importing the same
         // statement is idempotent (we never create a duplicate Transaction).

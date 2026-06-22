@@ -1,4 +1,8 @@
 import axios from 'axios'
+import type { CommitImportItem, ImportPreviewResult, ImportStatementResult } from '../types'
+
+/** Wire value of StatementFormat on the server. */
+export type StatementFormat = 'HsbcCsv' | 'Camt053'
 
 const TOKEN_KEY = 'zbb.token'
 
@@ -34,3 +38,42 @@ api.interceptors.response.use(
     return Promise.reject(error)
   },
 )
+
+/** Upload a bank statement file to an import endpoint, optionally stamping an account. */
+async function postStatement(
+  path: string,
+  file: File,
+  accountId?: string,
+): Promise<ImportStatementResult> {
+  const form = new FormData()
+  form.append('file', file)
+  if (accountId) form.append('accountId', accountId)
+  const { data } = await api.post<ImportStatementResult>(path, form)
+  return data
+}
+
+/** Import an HSBC personal-banking transaction-history CSV (one-shot, no review). */
+export const importHsbcCsv = (file: File, accountId?: string) =>
+  postStatement('/import/hsbc-csv', file, accountId)
+
+/** Import a CAMT.053 SEPA statement (XML) (one-shot, no review). */
+export const importCamt053 = (file: File, accountId?: string) =>
+  postStatement('/import/camt053', file, accountId)
+
+/** Parse a statement and get the not-yet-imported rows to review — nothing is saved yet. */
+export async function previewImport(file: File, format: StatementFormat): Promise<ImportPreviewResult> {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('format', format)
+  const { data } = await api.post<ImportPreviewResult>('/import/preview', form)
+  return data
+}
+
+/** Persist the reviewed rows. Idempotent — already-imported rows are skipped server-side. */
+export async function commitImport(
+  accountId: string | null,
+  items: CommitImportItem[],
+): Promise<ImportStatementResult> {
+  const { data } = await api.post<ImportStatementResult>('/import/commit', { accountId, items })
+  return data
+}

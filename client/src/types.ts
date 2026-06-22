@@ -114,6 +114,61 @@ export interface AccountDto {
   displayOrder: number
 }
 
+/** A not-yet-imported transaction returned by the import preview, for review before commit. */
+export interface ImportCandidate {
+  /** Stable idempotency key from the parser; echoed back on commit. */
+  reference: string
+  date: string
+  payee: string
+  amount: number
+  currency: string
+  isCredit: boolean
+  suggestedBudgetItemId: string | null
+  suggestedBudgetItemName: string | null
+}
+
+/** The de-duplicated candidate rows plus the counts the review UI shows. */
+export interface ImportPreviewResult {
+  totalEntries: number
+  newCount: number
+  skippedDuplicates: number
+  credits: number
+  debits: number
+  items: ImportCandidate[]
+}
+
+/** One slice of a split import row sent to the commit endpoint. */
+export interface CommitImportSplit {
+  budgetItemId: string
+  amount: number
+  memberId: string | null
+}
+
+/** One reviewed row sent to the commit endpoint. */
+export interface CommitImportItem {
+  reference: string
+  date: string
+  payee: string
+  amount: number
+  currency: string
+  isCredit: boolean
+  budgetItemId: string | null
+  memberId: string | null
+  /** When set (two or more slices summing to `amount`), the row is imported as a split. */
+  splits?: CommitImportSplit[] | null
+}
+
+/** Summary returned by a statement import (CAMT.053 or HSBC CSV). */
+export interface ImportStatementResult {
+  totalEntries: number
+  imported: number
+  skippedDuplicates: number
+  credits: number
+  debits: number
+  iban: string | null
+  autoCategorized: number
+}
+
 export interface AccountReconciliationDto {
   accountId: string
   accountName: string

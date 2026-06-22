@@ -3,6 +3,7 @@ using Xunit;
 using ZeroBudget.Application.Common.Exceptions;
 using ZeroBudget.Application.Common.Interfaces;
 using ZeroBudget.Application.Imports.Commands.ImportStatement;
+using ZeroBudget.Application.Imports.Models;
 using ZeroBudget.Application.Tests.TestDoubles;
 using ZeroBudget.Domain.Entities;
 using ZeroBudget.Domain.Enums;
@@ -26,7 +27,9 @@ public class ImportStatementHandlerTests
             .Options);
 
     private static ImportStatementCommandHandler NewHandler(ApplicationDbContext db, string userId) =>
-        new(db, new CurrentUserStub(userId), new Camt053StatementParser(), new FakeExchangeRateProvider());
+        new(db, new CurrentUserStub(userId),
+            new IStatementParser[] { new Camt053StatementParser(), new HsbcCsvStatementParser() },
+            new FakeExchangeRateProvider());
 
     [Fact]
     public async Task Handle_ImportsAllEntries_WithCorrectSummary()
@@ -114,6 +117,59 @@ public class ImportStatementHandlerTests
                 new ImportStatementCommand(Camt053Samples.ThreeEntries, foreign.Id), CancellationToken.None));
 
         Assert.Equal(0, await db.Transactions.CountAsync()); // nothing imported
+    }
+
+    // --- HSBC CSV format (no native bank reference; dedup relies on a synthesized one) ------
+
+    private static ImportStatementCommand HsbcCommand(string content) =>
+        new(content, AccountId: null, StatementFormat.HsbcCsv);
+
+    [Fact]
+    public async Task Handle_HsbcCsv_ImportsAllRows_AndSplitsCreditsFromDebits()
+    {
+        await using var db = NewContext();
+
+        var result = await NewHandler(db, "user-1").Handle(
+            HsbcCommand(HsbcCsvSamples.Mixed), CancellationToken.None);
+
+        Assert.Equal(6, result.Imported);
+        Assert.Equal(1, result.Credits); // the lone E-BANKING PAYMENT
+        Assert.Equal(5, result.Debits);
+        Assert.Equal(6, await db.Transactions.CountAsync());
+    }
+
+    [Fact]
+    public async Task Handle_HsbcCsv_ReImportingSameFile_IsIdempotent()
+    {
+        await using var db = NewContext();
+        var handler = NewHandler(db, "user-1");
+
+        await handler.Handle(HsbcCommand(HsbcCsvSamples.Mixed), CancellationToken.None);
+        var second = await handler.Handle(HsbcCommand(HsbcCsvSamples.Mixed), CancellationToken.None);
+
+        Assert.Equal(0, second.Imported);
+        Assert.Equal(6, second.SkippedDuplicates);
+        Assert.Equal(6, await db.Transactions.CountAsync()); // still only 6 — no duplicates
+    }
+
+    [Fact]
+    public async Task Handle_HsbcCsv_KeepsGenuinelyRepeatedIdenticalCharges()
+    {
+        await using var db = NewContext();
+        var handler = NewHandler(db, "user-1");
+
+        // Four identical same-day charges must all import...
+        var first = await handler.Handle(
+            HsbcCommand(HsbcCsvSamples.FourIdenticalCharges), CancellationToken.None);
+        Assert.Equal(4, first.Imported);
+        Assert.Equal(4, await db.Transactions.CountAsync());
+
+        // ...but re-importing the very same four is still a no-op.
+        var second = await handler.Handle(
+            HsbcCommand(HsbcCsvSamples.FourIdenticalCharges), CancellationToken.None);
+        Assert.Equal(0, second.Imported);
+        Assert.Equal(4, second.SkippedDuplicates);
+        Assert.Equal(4, await db.Transactions.CountAsync());
     }
 
     [Fact]
