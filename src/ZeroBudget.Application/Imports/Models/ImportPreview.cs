@@ -13,7 +13,8 @@ public record ImportCandidate(
     string Currency,
     bool IsCredit,
     Guid? SuggestedBudgetItemId,
-    string? SuggestedBudgetItemName);
+    string? SuggestedBudgetItemName,
+    bool LikelyTransfer);
 
 /// <summary>
 /// The result of previewing an import: the de-duplicated candidate rows plus the counts the

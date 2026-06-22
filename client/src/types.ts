@@ -125,6 +125,8 @@ export interface ImportCandidate {
   isCredit: boolean
   suggestedBudgetItemId: string | null
   suggestedBudgetItemName: string | null
+  /** Heuristic hint that this row is a transfer between the user's own accounts, not income/spending. */
+  likelyTransfer: boolean
 }
 
 /** The de-duplicated candidate rows plus the counts the review UI shows. */
@@ -156,6 +158,8 @@ export interface CommitImportItem {
   memberId: string | null
   /** When set (two or more slices summing to `amount`), the row is imported as a split. */
   splits?: CommitImportSplit[] | null
+  /** When set, the row is imported as a transfer between the import account and this counterparty. */
+  transferAccountId?: string | null
 }
 
 /** Summary returned by a statement import (CAMT.053 or HSBC CSV). */
@@ -167,6 +171,7 @@ export interface ImportStatementResult {
   debits: number
   iban: string | null
   autoCategorized: number
+  transfers: number
 }
 
 export interface AccountReconciliationDto {

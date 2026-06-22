@@ -23,7 +23,10 @@ public record CommitImportItem(
     bool IsCredit,
     Guid? BudgetItemId,
     Guid? MemberId,
-    IReadOnlyList<CommitImportSplit>? Splits = null);
+    IReadOnlyList<CommitImportSplit>? Splits = null,
+    // When set, the row is imported as a transfer between the import account and this counterparty
+    // account (direction follows IsCredit) instead of an income/expense — see the commit handler.
+    Guid? TransferAccountId = null);
 
 /// <summary>
 /// Persists the rows the user kept after reviewing an import. Idempotent: any row whose

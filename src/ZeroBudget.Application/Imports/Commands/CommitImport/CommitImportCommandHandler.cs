@@ -41,6 +41,19 @@ public class CommitImportCommandHandler : IRequestHandler<CommitImportCommand, I
         await EnsureAllOwnedAsync(
             _db.HouseholdMembers.Where(m => m.OwnerId == userId),
             request.Items.SelectMany(MemberIds), cancellationToken);
+        await EnsureAllOwnedAsync(
+            _db.Accounts.Where(a => a.OwnerId == userId),
+            request.Items.Select(i => i.TransferAccountId), cancellationToken);
+
+        // A transfer moves money between the import account and a counterparty, so we must know
+        // which account the statement belongs to.
+        if (request.AccountId is null && request.Items.Any(i => i.TransferAccountId is not null))
+        {
+            throw new ValidationException(new Dictionary<string, string[]>
+            {
+                ["AccountId"] = new[] { "Choose the account this import belongs to before marking rows as transfers." },
+            });
+        }
 
         // Idempotency: never re-create a row we already have (double-submit, overlap, retry).
         var existing = await _db.Transactions
@@ -49,7 +62,7 @@ public class CommitImportCommandHandler : IRequestHandler<CommitImportCommand, I
             .ToListAsync(cancellationToken);
         var seen = new HashSet<string>(existing, StringComparer.Ordinal);
 
-        int imported = 0, skipped = 0, credits = 0, debits = 0;
+        int imported = 0, skipped = 0, credits = 0, debits = 0, transfers = 0;
         var created = new List<Transaction>();
         var touchedItemIds = new HashSet<Guid>();
 
@@ -58,6 +71,44 @@ public class CommitImportCommandHandler : IRequestHandler<CommitImportCommand, I
             if (!string.IsNullOrEmpty(item.Reference) && !seen.Add(item.Reference))
             {
                 skipped++;
+                continue;
+            }
+
+            // Transfer rows move money between accounts — no budget line, member or split.
+            if (item.TransferAccountId is Guid counterparty)
+            {
+                var importAccountId = request.AccountId!.Value; // guaranteed by the pre-loop check
+                if (counterparty == importAccountId)
+                {
+                    throw new ValidationException(new Dictionary<string, string[]>
+                    {
+                        ["Items"] = new[]
+                        {
+                            $"The transfer '{item.Payee}' must move to a different account from the one being imported.",
+                        },
+                    });
+                }
+                // A credit moved money INTO the import account (from the counterparty); a debit, OUT.
+                var (source, dest) = item.IsCredit
+                    ? (counterparty, importAccountId)
+                    : (importAccountId, counterparty);
+                var transfer = new Transaction
+                {
+                    OwnerId = userId,
+                    Amount = item.Amount,
+                    Currency = CurrencyCode.From(item.Currency),
+                    ExchangeRate = 1m,
+                    Type = TransactionType.Transfer,
+                    Date = item.Date,
+                    Payee = Truncate(item.Payee, 200),
+                    BankReference = string.IsNullOrEmpty(item.Reference) ? null : item.Reference,
+                    AccountId = source,
+                    TransferAccountId = dest,
+                };
+                _db.Transactions.Add(transfer);
+                created.Add(transfer);
+                imported++;
+                transfers++;
                 continue;
             }
 
@@ -141,7 +192,8 @@ public class CommitImportCommandHandler : IRequestHandler<CommitImportCommand, I
             Credits: credits,
             Debits: debits,
             Iban: null,
-            AutoCategorized: 0);
+            AutoCategorized: 0,
+            Transfers: transfers);
     }
 
     private async Task EnsureAccountOwnedAsync(Guid? accountId, string userId, CancellationToken ct)
