@@ -64,6 +64,9 @@ internal static class Program
                     TransactionSeeder.Verbose = options.ContainsKey("verbose");
                     return await TransactionSeeder.RunAsync(conn, email, file,
                         commit: options.ContainsKey("commit"));
+                case "members":
+                    return await MemberAttributor.RunAsync(conn, email, file,
+                        commit: options.ContainsKey("commit"));
                 default:
                     Console.WriteLine("Usage: ZeroBudget.Importer <verb> [args] [--file <path>] [--email <e>] [--conn <cs>]");
                     Console.WriteLine("  dump <sheet> [startRow] [endRow]   Print non-empty cells of a sheet.");
@@ -72,6 +75,7 @@ internal static class Program
                     Console.WriteLine("  import [--commit] [--reset]        Reconcile, then (with --commit) write reference data.");
                     Console.WriteLine("  budget [--commit]                  Create the 12 budget months (needs reference data).");
                     Console.WriteLine("  transactions [--commit]            Import the 12 months of ledger rows + Visa (needs budget).");
+                    Console.WriteLine("  members [--commit]                 Back-fill member attribution onto Visa tx from the per-person columns.");
                     return verb == "help" ? 0 : 1;
             }
         }
