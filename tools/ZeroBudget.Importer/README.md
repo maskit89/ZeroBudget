@@ -209,7 +209,17 @@ dotnet run --project tools/ZeroBudget.Importer -- status
 dotnet run --project tools/ZeroBudget.Importer -- import --commit --reset
 dotnet run --project tools/ZeroBudget.Importer -- budget --commit
 dotnet run --project tools/ZeroBudget.Importer -- transactions --commit
+
+# optional step 4: tag the Visa transactions with who spent what (per-person columns)
+dotnet run --project tools/ZeroBudget.Importer -- members --commit
 ```
+
+**Step 4 (`members`)** back-fills household-member attribution onto the already-imported Visa
+transactions from the sheet's per-person columns (D = Liz, E = Chris; Marisa isn't a household
+member, so her share is left unattributed). A charge wholly one person's gets a whole-transaction
+member tag; a shared charge becomes per-member split slices that still sum to the total — so
+account balances and budget actuals are unchanged. It needs the `AddTransactionMember` migration
+applied (it auto-applies when the app runs). Safe to re-run (it resets its own tags first).
 
 Useful flags: `--file <path>` (which workbook), `--email <addr>` (whose data — defaults to the
 household owner), `--conn <string>` (which database), and `--verbose` (per-month detail when a
@@ -224,14 +234,16 @@ always get a clean, identical result.
 
 | File | Job |
 | --- | --- |
-| `Program.cs` | reads the command word (`dump`, `reconcile`, `import`, `budget`, `transactions`) |
+| `Program.cs` | reads the command word (`dump`, `reconcile`, `import`, `budget`, `transactions`, `members`) |
 | `Workbook.cs` | opens the Excel file *even while it's open in Excel* |
 | `ReferenceReader.cs` / `BudgetReader.cs` / `Ledger.cs` | read the sheets into plain data |
+| `VisaShareReader.cs` | reads the Visa per-person columns (D = Liz, E = Chris, F = Marisa) for step 4 |
 | `Model.cs` | the plain data shapes (account, member, fund, transaction…) |
 | `ReconcileReport.cs` | the "mark my homework vs the sheet" report for step 1 |
 | `ImportRunner.cs` | writes step 1 (accounts, members, funds) |
 | `BudgetSeeder.cs` | writes step 2 (the 12 budget months) |
 | `TransactionSeeder.cs` | writes step 3 (the 425 transactions) + reconciles |
+| `MemberAttributor.cs` | writes step 4 (member attribution onto the Visa transactions) |
 | `ImporterHost.cs` / `DbCommands.cs` | the database plumbing |
 
 The whole tool is **left out of the solution build** on purpose — it’s a one-off helper, not
