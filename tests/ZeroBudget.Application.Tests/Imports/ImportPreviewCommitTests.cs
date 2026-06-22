@@ -86,6 +86,22 @@ public class ImportPreviewCommitTests
             : new CommitImportItem(c.Reference, c.Date, c.Payee, c.Amount, c.Currency, c.IsCredit, null, null))
         .ToList();
 
+    private static Account SeedAccount(ApplicationDbContext db, string ownerId, string name)
+    {
+        var account = new Account { OwnerId = ownerId, Name = name, Type = AccountType.Current };
+        db.Accounts.Add(account);
+        db.SaveChanges();
+        return account;
+    }
+
+    private static List<CommitImportItem> ToCommitItemsAsTransfer(
+        ImportPreviewResult preview, string payee, Guid transferAccountId) =>
+        preview.Items.Select(c => c.Payee == payee
+            ? new CommitImportItem(c.Reference, c.Date, c.Payee, c.Amount, c.Currency, c.IsCredit, null, null,
+                Splits: null, TransferAccountId: transferAccountId)
+            : new CommitImportItem(c.Reference, c.Date, c.Payee, c.Amount, c.Currency, c.IsCredit, null, null))
+        .ToList();
+
     private static List<CommitImportItem> ToCommitItems(
         ImportPreviewResult preview, string? assignPayee = null, Guid? budgetItemId = null, Guid? memberId = null) =>
         preview.Items.Select(c => new CommitImportItem(
@@ -284,6 +300,101 @@ public class ImportPreviewCommitTests
 
         await FluentActions.Invoking(() => NewCommit(db, "user-1").Handle(
                 new CommitImportCommand(null, items), CancellationToken.None))
+            .Should().ThrowAsync<ForbiddenAccessException>();
+        (await db.Transactions.CountAsync()).Should().Be(0);
+    }
+
+    // --- Transfers ------------------------------------------------------------
+
+    [Fact]
+    public async Task Preview_FlagsLikelyTransfers()
+    {
+        await using var db = NewContext();
+
+        var result = await NewPreview(db, "user-1").Handle(Preview(), CancellationToken.None);
+
+        result.Items.Single(i => i.Payee == "E-BANKING PAYMENT").LikelyTransfer.Should().BeTrue();
+        result.Items.Single(i => i.Payee == "4 PILLARS").LikelyTransfer.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Commit_Transfer_Credit_MovesMoneyIntoTheImportAccount()
+    {
+        await using var db = NewContext();
+        var card = SeedAccount(db, "user-1", "HSBC card");
+        var savings = SeedAccount(db, "user-1", "Savings");
+        var preview = await NewPreview(db, "user-1").Handle(Preview(), CancellationToken.None);
+        // E-BANKING PAYMENT is the credit (money in) — moved from Savings into the card.
+        var items = ToCommitItemsAsTransfer(preview, "E-BANKING PAYMENT", savings.Id);
+
+        var result = await NewCommit(db, "user-1").Handle(
+            new CommitImportCommand(card.Id, items), CancellationToken.None);
+
+        result.Transfers.Should().Be(1);
+        var transfer = await db.Transactions.SingleAsync(t => t.Payee == "E-BANKING PAYMENT");
+        transfer.Type.Should().Be(TransactionType.Transfer);
+        transfer.AccountId.Should().Be(savings.Id);          // source = counterparty (credit)
+        transfer.TransferAccountId.Should().Be(card.Id);     // destination = import account
+        transfer.BudgetItemId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Commit_Transfer_Debit_MovesMoneyOutOfTheImportAccount()
+    {
+        await using var db = NewContext();
+        var card = SeedAccount(db, "user-1", "HSBC card");
+        var savings = SeedAccount(db, "user-1", "Savings");
+        var preview = await NewPreview(db, "user-1").Handle(Preview(), CancellationToken.None);
+        // AUTOMARKET is a debit (money out) — treat it as a move from the card to Savings.
+        var items = ToCommitItemsAsTransfer(preview, "AUTOMARKET SER STATION", savings.Id);
+
+        await NewCommit(db, "user-1").Handle(new CommitImportCommand(card.Id, items), CancellationToken.None);
+
+        var transfer = await db.Transactions.SingleAsync(t => t.Payee == "AUTOMARKET SER STATION");
+        transfer.Type.Should().Be(TransactionType.Transfer);
+        transfer.AccountId.Should().Be(card.Id);             // source = import account (debit)
+        transfer.TransferAccountId.Should().Be(savings.Id);  // destination = counterparty
+    }
+
+    [Fact]
+    public async Task Commit_Transfer_RequiresAnImportAccount()
+    {
+        await using var db = NewContext();
+        var savings = SeedAccount(db, "user-1", "Savings");
+        var preview = await NewPreview(db, "user-1").Handle(Preview(), CancellationToken.None);
+        var items = ToCommitItemsAsTransfer(preview, "E-BANKING PAYMENT", savings.Id);
+
+        await FluentActions.Invoking(() => NewCommit(db, "user-1").Handle(
+                new CommitImportCommand(null, items), CancellationToken.None))
+            .Should().ThrowAsync<ValidationException>();
+        (await db.Transactions.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Commit_Transfer_RejectsSameAccountOnBothLegs()
+    {
+        await using var db = NewContext();
+        var card = SeedAccount(db, "user-1", "HSBC card");
+        var preview = await NewPreview(db, "user-1").Handle(Preview(), CancellationToken.None);
+        var items = ToCommitItemsAsTransfer(preview, "E-BANKING PAYMENT", card.Id); // counterparty == import
+
+        await FluentActions.Invoking(() => NewCommit(db, "user-1").Handle(
+                new CommitImportCommand(card.Id, items), CancellationToken.None))
+            .Should().ThrowAsync<ValidationException>();
+        (await db.Transactions.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Commit_Transfer_RejectsCounterpartyOwnedByAnotherUser()
+    {
+        await using var db = NewContext();
+        var card = SeedAccount(db, "user-1", "HSBC card");
+        var foreign = SeedAccount(db, "user-2", "Their account");
+        var preview = await NewPreview(db, "user-1").Handle(Preview(), CancellationToken.None);
+        var items = ToCommitItemsAsTransfer(preview, "E-BANKING PAYMENT", foreign.Id);
+
+        await FluentActions.Invoking(() => NewCommit(db, "user-1").Handle(
+                new CommitImportCommand(card.Id, items), CancellationToken.None))
             .Should().ThrowAsync<ForbiddenAccessException>();
         (await db.Transactions.CountAsync()).Should().Be(0);
     }

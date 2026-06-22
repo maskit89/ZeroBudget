@@ -21,4 +21,5 @@ public record ImportStatementResult(
     int Credits,
     int Debits,
     string? Iban,
-    int AutoCategorized = 0);
+    int AutoCategorized = 0,
+    int Transfers = 0);

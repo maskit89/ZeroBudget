@@ -29,6 +29,7 @@ import { AuthProvider } from '../auth/AuthContext'
 
 const accounts: AccountDto[] = [
   { id: 'acc1', name: 'HSBC Current', type: 0, currency: 'EUR', openingBalance: 0, currentBalance: 0, displayOrder: 0 },
+  { id: 'acc2', name: 'Joint Savings', type: 1, currency: 'EUR', openingBalance: 0, currentBalance: 0, displayOrder: 1 },
 ]
 const members: HouseholdMemberDto[] = [
   { id: 'm1', name: 'Chris', netMonthlyIncome: 0, personalSavingsAccountId: null, displayOrder: 0, isArchived: false, incomeSharePct: 1 } as unknown as HouseholdMemberDto,
@@ -49,14 +50,25 @@ function preview(): ImportPreviewResult {
   return {
     totalEntries: 3, newCount: 2, skippedDuplicates: 1, credits: 0, debits: 2,
     items: [
-      { reference: 'hsbc:a#0', date: '2026-06-17', payee: 'AUTOMARKET', amount: 35, currency: 'EUR', isCredit: false, suggestedBudgetItemId: null, suggestedBudgetItemName: 'Groceries' },
-      { reference: 'hsbc:b#0', date: '2026-06-15', payee: 'WOLT', amount: 80.9, currency: 'EUR', isCredit: false, suggestedBudgetItemId: null, suggestedBudgetItemName: null },
+      { reference: 'hsbc:a#0', date: '2026-06-17', payee: 'AUTOMARKET', amount: 35, currency: 'EUR', isCredit: false, suggestedBudgetItemId: null, suggestedBudgetItemName: 'Groceries', likelyTransfer: false },
+      { reference: 'hsbc:b#0', date: '2026-06-15', payee: 'WOLT', amount: 80.9, currency: 'EUR', isCredit: false, suggestedBudgetItemId: null, suggestedBudgetItemName: null, likelyTransfer: false },
+    ],
+  }
+}
+
+// A preview that includes a credit flagged as a likely transfer (e.g. an e-banking top-up).
+function previewWithTransfer(): ImportPreviewResult {
+  return {
+    totalEntries: 2, newCount: 2, skippedDuplicates: 0, credits: 1, debits: 1,
+    items: [
+      { reference: 'hsbc:e#0', date: '2026-06-16', payee: 'E-BANKING PAYMENT', amount: 234.24, currency: 'EUR', isCredit: true, suggestedBudgetItemId: null, suggestedBudgetItemName: null, likelyTransfer: true },
+      { reference: 'hsbc:a#0', date: '2026-06-17', payee: 'AUTOMARKET', amount: 35, currency: 'EUR', isCredit: false, suggestedBudgetItemId: null, suggestedBudgetItemName: 'Groceries', likelyTransfer: false },
     ],
   }
 }
 
 function committed(): ImportStatementResult {
-  return { totalEntries: 2, imported: 2, skippedDuplicates: 0, credits: 0, debits: 2, iban: null, autoCategorized: 0 }
+  return { totalEntries: 2, imported: 2, skippedDuplicates: 0, credits: 0, debits: 2, iban: null, autoCategorized: 0, transfers: 0 }
 }
 
 function renderPage() {
@@ -182,8 +194,48 @@ describe('ImportPage', () => {
     await user.click(screen.getByRole('button', { name: 'Split AUTOMARKET on 2026-06-17' }))
     await user.type(screen.getByLabelText('Split line 1 amount for AUTOMARKET'), '20') // 20 of 35 → 15 left
 
-    expect(screen.getByText('Finish or clear the highlighted splits before importing.')).toBeInTheDocument()
+    expect(screen.getByText(/Finish the highlighted rows first/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Import 2 transactions' })).toBeDisabled()
+    expect(mockCommit).not.toHaveBeenCalled()
+  })
+
+  it('marks a flagged row as a transfer and commits it with the counterparty', { timeout: 15000 }, async () => {
+    mockPreview.mockResolvedValue(previewWithTransfer())
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.selectOptions(await screen.findByLabelText(/Add to account/), 'acc1')
+    await user.upload(screen.getByLabelText('Statement file'), csv())
+    await user.click(screen.getByRole('button', { name: 'Review transactions' }))
+    await screen.findByText('E-BANKING PAYMENT')
+
+    expect(screen.getByText('Looks like a transfer')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Mark E-BANKING PAYMENT on 2026-06-16 as a transfer' }))
+    await user.selectOptions(screen.getByLabelText('Transfer account for E-BANKING PAYMENT on 2026-06-16'), 'acc2')
+
+    await user.click(screen.getByRole('button', { name: 'Import 2 transactions' }))
+
+    await waitFor(() => expect(mockCommit).toHaveBeenCalledTimes(1))
+    const [accountArg, items] = mockCommit.mock.calls[0]
+    expect(accountArg).toBe('acc1')
+    const transfer = items.find((i: { payee: string }) => i.payee === 'E-BANKING PAYMENT')
+    expect(transfer).toEqual(expect.objectContaining({ transferAccountId: 'acc2', budgetItemId: null, memberId: null }))
+  })
+
+  it('blocks import while a transfer has no counterparty chosen', { timeout: 15000 }, async () => {
+    mockPreview.mockResolvedValue(previewWithTransfer())
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.selectOptions(await screen.findByLabelText(/Add to account/), 'acc1')
+    await user.upload(screen.getByLabelText('Statement file'), csv())
+    await user.click(screen.getByRole('button', { name: 'Review transactions' }))
+    await screen.findByText('E-BANKING PAYMENT')
+    await user.click(screen.getByRole('button', { name: 'Mark E-BANKING PAYMENT on 2026-06-16 as a transfer' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Import 2 transactions' })).toBeDisabled(),
+    )
     expect(mockCommit).not.toHaveBeenCalled()
   })
 

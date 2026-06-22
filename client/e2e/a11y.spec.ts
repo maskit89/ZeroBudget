@@ -99,8 +99,8 @@ function importPreview() {
   return {
     totalEntries: 3, newCount: 2, skippedDuplicates: 1, credits: 0, debits: 2,
     items: [
-      { reference: 'hsbc:a#0', date: '2026-06-17', payee: 'AUTOMARKET', amount: 35, currency: 'EUR', isCredit: false, suggestedBudgetItemId: null, suggestedBudgetItemName: 'Rent' },
-      { reference: 'hsbc:b#0', date: '2026-06-15', payee: 'WOLT', amount: 80.9, currency: 'EUR', isCredit: false, suggestedBudgetItemId: null, suggestedBudgetItemName: null },
+      { reference: 'hsbc:a#0', date: '2026-06-17', payee: 'AUTOMARKET', amount: 35, currency: 'EUR', isCredit: false, suggestedBudgetItemId: null, suggestedBudgetItemName: 'Rent', likelyTransfer: false },
+      { reference: 'hsbc:b#0', date: '2026-06-15', payee: 'WOLT', amount: 80.9, currency: 'EUR', isCredit: false, suggestedBudgetItemId: null, suggestedBudgetItemName: null, likelyTransfer: true },
     ],
   }
 }
@@ -163,6 +163,8 @@ for (const theme of ['light', 'dark'] as const) {
       await authedSetup(page, theme)
       await page.goto('/import')
       await page.getByRole('heading', { level: 1 }).first().waitFor()
+      // Choose an account so transfer marking is available.
+      await page.getByLabel(/Add to account/).selectOption('acc0')
       await page.getByLabel('Statement file').setInputFiles({
         name: 'tx.csv', mimeType: 'text/csv', buffer: Buffer.from('19/06/2026,SHOP,-5.00'),
       })
@@ -173,6 +175,11 @@ for (const theme of ['light', 'dark'] as const) {
       // Expand a row's split editor and re-scan (selects, amount inputs, remaining hint).
       await page.getByRole('button', { name: 'Split AUTOMARKET on 2026-06-17' }).click()
       await page.getByLabel('Split line 1 amount for AUTOMARKET').waitFor()
+      await expectNoViolations(page)
+
+      // Mark the flagged row as a transfer and re-scan (badge + counterparty picker).
+      await page.getByRole('button', { name: 'Mark WOLT on 2026-06-15 as a transfer' }).click()
+      await page.getByLabel('Transfer account for WOLT on 2026-06-15').waitFor()
       await expectNoViolations(page)
     })
 
