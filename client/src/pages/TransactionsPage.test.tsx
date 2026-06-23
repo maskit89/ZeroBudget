@@ -351,4 +351,27 @@ describe('TransactionsPage manual sheet', () => {
     await waitFor(() => expect(screen.queryByText('Shell')).not.toBeInTheDocument())
     expect(screen.getByText('Tesco')).toBeInTheDocument()
   })
+
+  it('filters the list by type (external transactions vs transfers)', { timeout: 15000 }, async () => {
+    mockLoad([
+      tx(), // Tesco — external expense (type 0)
+      { ...tx(), id: 't2', payee: 'Move to savings', type: 2, accountName: 'Everyday', transferAccountName: 'Savings' },
+    ])
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await screen.findByText('Tesco', {}, { timeout: 5000 })
+    expect(screen.getByText('Move to savings')).toBeInTheDocument()
+
+    // Transfers only — the external transaction drops out.
+    await user.click(screen.getByRole('button', { name: 'Transfers' }))
+    await waitFor(() => expect(screen.queryByText('Tesco')).not.toBeInTheDocument())
+    expect(screen.getByText('Move to savings')).toBeInTheDocument()
+
+    // Transactions only — the transfer drops out.
+    await user.click(screen.getByRole('button', { name: 'Transactions' }))
+    await waitFor(() => expect(screen.queryByText('Move to savings')).not.toBeInTheDocument())
+    expect(screen.getByText('Tesco')).toBeInTheDocument()
+  })
 })
