@@ -1,0 +1,94 @@
+name: Deploy
+
+# Deploys to the production VPS when code lands on main (i.e. after a PR merge).
+# Enable branch protection with the CI checks required so only green code reaches
+# main; this workflow also rebuilds the release, so a broken build never ships.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Never let two deploys run at once.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      # Framework-dependent win-x64 publish. The .NET Hosting Bundle on the VPS
+      # supplies the runtime + ASP.NET Core Module; publish emits the ANCM web.config.
+      - name: Publish API
+        run: >
+          dotnet publish src/ZeroBudget.Api/ZeroBudget.Api.csproj
+          -c Release -r win-x64 --no-self-contained -o publish/api
+
+      - name: Build SPA
+        working-directory: client
+        run: |
+          npm ci
+          npm run build
+
+      - name: Assemble release package
+        run: |
+          mkdir -p release/api release/web
+          cp -r publish/api/. release/api/
+          cp -r client/dist/. release/web/
+          cp deploy/web/web.config release/web/web.config
+          cp deploy/Deploy.ps1 release/Deploy.ps1
+          cd release && zip -qr ../release.zip . && cd ..
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: release.zip
+          retention-days: 7
+
+  deploy:
+    name: deploy to VPS
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production   # optional: add required reviewers in repo settings
+    steps:
+      - name: Download release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release
+
+      - name: Copy release to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          source: release.zip
+          target: C:/deploy/incoming
+
+      - name: Extract and deploy on VPS
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          script: |
+            powershell -NoProfile -ExecutionPolicy Bypass -Command "Remove-Item C:\deploy\staging\* -Recurse -Force -ErrorAction SilentlyContinue; Expand-Archive -Path C:\deploy\incoming\release.zip -DestinationPath C:\deploy\staging -Force"
+            powershell -NoProfile -ExecutionPolicy Bypass -File C:\deploy\staging\Deploy.ps1

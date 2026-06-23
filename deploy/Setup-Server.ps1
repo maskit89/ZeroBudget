@@ -1,0 +1,142 @@
+<#
+.SYNOPSIS
+    One-time bootstrap of a fresh Windows Server VPS to host ZeroBudget natively
+    (IIS + ASP.NET Core Module + SQL Server Express + OpenSSH for CI/CD).
+
+.DESCRIPTION
+    Idempotent: safe to re-run. Installs IIS + the modules the app needs
+    (URL Rewrite, ARR, .NET Hosting Bundle), enables OpenSSH Server for the
+    GitHub Actions SSH deploy, creates the two app pools + sites, the on-disk
+    folder layout, and the firewall rules.
+
+    Run as Administrator in an elevated PowerShell session over RDP:
+        powershell -ExecutionPolicy Bypass -File .\Setup-Server.ps1
+
+    NOT covered here (do these separately, see docs/deployment/README.md):
+      * Install SQL Server Express + run Setup-Database.sql
+      * Drop your real appsettings.Production.json into the API folder
+      * Generate the SSH deploy key and add the public half to the server
+      * TLS via win-acme, and the public DNS A-record
+#>
+[CmdletBinding()]
+param(
+    [string]$Domain      = 'your-domain.example',
+    [string]$WebRoot     = 'C:\inetpub\zerobudget\web',
+    [string]$ApiRoot     = 'C:\inetpub\zerobudget\api',
+    [string]$DeployRoot  = 'C:\deploy',
+    [int]   $ApiPort     = 5000,
+
+    # External installers. URL Rewrite + ARR links are the long-stable Microsoft
+    # download URLs. Verify the Hosting Bundle URL is the latest .NET 10 build.
+    [string]$UrlRewriteUrl    = 'https://download.microsoft.com/download/1/2/8/128E2E22-C1B9-44A4-BE2A-5859ED1D4592/rewrite_amd64_en-US.msi',
+    [string]$ArrUrl           = 'https://download.microsoft.com/download/E/9/8/E9849D6A-020E-47E4-9FD0-A023E99B54EB/requestRouter_amd64.msi',
+    [string]$HostingBundleUrl = 'https://builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/10.0.0/dotnet-hosting-10.0.0-win.exe'
+)
+
+$ErrorActionPreference = 'Stop'
+function Info($m) { Write-Host "==> $m" -ForegroundColor Cyan }
+
+# --- 1. IIS role + features -------------------------------------------------
+Info 'Installing IIS roles and features'
+Enable-WindowsOptionalFeature -Online -NoRestart -All -FeatureName `
+    IIS-WebServerRole, IIS-WebServer, IIS-CommonHttpFeatures, `
+    IIS-StaticContent, IIS-DefaultDocument, IIS-HttpErrors, `
+    IIS-HttpRedirect, IIS-ApplicationDevelopment, `
+    IIS-HttpCompressionStatic, IIS-HttpCompressionDynamic, `
+    IIS-Security, IIS-RequestFiltering, `
+    IIS-ManagementConsole, IIS-ManagementScriptingTools | Out-Null
+
+# --- 2. Helper: download + silently install an MSI/EXE ----------------------
+function Install-Package {
+    param([string]$Name, [string]$Url, [string]$SilentArgs)
+    Info "Installing $Name"
+    $ext  = if ($Url -match '\.msi($|\?)') { 'msi' } else { 'exe' }
+    $file = Join-Path $env:TEMP ("zb_{0}.{1}" -f ($Name -replace '\W', ''), $ext)
+    Invoke-WebRequest -Uri $Url -OutFile $file -UseBasicParsing
+    if ($ext -eq 'msi') {
+        Start-Process msiexec.exe -ArgumentList "/i `"$file`" /quiet /norestart" -Wait
+    } else {
+        Start-Process $file -ArgumentList $SilentArgs -Wait
+    }
+    Remove-Item $file -Force -ErrorAction SilentlyContinue
+}
+
+Install-Package -Name 'UrlRewrite'      -Url $UrlRewriteUrl
+Install-Package -Name 'ARR'             -Url $ArrUrl
+# The .NET Hosting Bundle ships the ASP.NET Core Module + runtime that IIS needs.
+Install-Package -Name 'HostingBundle'   -Url $HostingBundleUrl -SilentArgs '/install /quiet /norestart'
+Info 'Resetting IIS so the Hosting Bundle / ANCM is picked up'
+net stop was /y 2>$null | Out-Null
+iisreset /restart | Out-Null
+
+# --- 3. Enable ARR server-level reverse proxy -------------------------------
+Info 'Enabling ARR proxy at the server level'
+Import-Module WebAdministration
+Set-WebConfigurationProperty -PSPath 'MACHINE/WEBROOT/APPHOST' `
+    -Filter 'system.webServer/proxy' -Name 'enabled' -Value 'True'
+
+# --- 4. Folder layout -------------------------------------------------------
+Info 'Creating folder layout'
+foreach ($d in @($WebRoot, $ApiRoot, $DeployRoot, "$DeployRoot\incoming", "$DeployRoot\staging")) {
+    New-Item -ItemType Directory -Force -Path $d | Out-Null
+}
+
+# --- 5. App pools (both "No Managed Code" — .NET Core doesn't load the CLR) --
+Info 'Creating app pools'
+foreach ($pool in @('ZeroBudget-Web', 'ZeroBudget-Api')) {
+    if (-not (Test-Path "IIS:\AppPools\$pool")) { New-WebAppPool -Name $pool | Out-Null }
+    Set-ItemProperty "IIS:\AppPools\$pool" -Name managedRuntimeVersion -Value ''
+    Set-ItemProperty "IIS:\AppPools\$pool" -Name startMode -Value 'AlwaysRunning'
+}
+
+# --- 6. Sites ---------------------------------------------------------------
+Info 'Creating IIS sites'
+# Front site: public, serves the SPA + reverse-proxies /api.
+if (-not (Get-Website -Name 'ZeroBudget' -ErrorAction SilentlyContinue)) {
+    New-Website -Name 'ZeroBudget' -PhysicalPath $WebRoot -ApplicationPool 'ZeroBudget-Web' `
+        -HostHeader $Domain -Port 80 | Out-Null
+} else {
+    Set-ItemProperty 'IIS:\Sites\ZeroBudget' -Name physicalPath -Value $WebRoot
+}
+# Remove the stock Default Web Site so it doesn't squat on port 80.
+if (Get-Website -Name 'Default Web Site' -ErrorAction SilentlyContinue) {
+    Remove-Website -Name 'Default Web Site'
+}
+
+# API site: internal only, bound to localhost:$ApiPort, hosted via ANCM.
+if (-not (Get-Website -Name 'ZeroBudget-Api' -ErrorAction SilentlyContinue)) {
+    New-Website -Name 'ZeroBudget-Api' -PhysicalPath $ApiRoot -ApplicationPool 'ZeroBudget-Api' `
+        -IPAddress '127.0.0.1' -Port $ApiPort | Out-Null
+} else {
+    Set-ItemProperty 'IIS:\Sites\ZeroBudget-Api' -Name physicalPath -Value $ApiRoot
+}
+
+# --- 7. OpenSSH Server (used by the GitHub Actions deploy) ------------------
+Info 'Installing and starting OpenSSH Server'
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0 | Out-Null
+Set-Service -Name sshd -StartupType Automatic
+Start-Service sshd
+# Make PowerShell the default SSH shell so the deploy commands behave predictably.
+New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell `
+    -Value 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' `
+    -PropertyType String -Force | Out-Null
+
+# --- 8. Firewall ------------------------------------------------------------
+Info 'Opening firewall ports (80, 443, 22)'
+foreach ($p in @(80, 443, 22)) {
+    $name = "ZeroBudget-TCP-$p"
+    if (-not (Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue)) {
+        New-NetFirewallRule -DisplayName $name -Direction Inbound -Action Allow `
+            -Protocol TCP -LocalPort $p | Out-Null
+    }
+}
+
+Info 'Server setup complete.'
+Write-Host @"
+
+Next steps (see docs/deployment/README.md):
+  1. Install SQL Server Express, then run:  sqlcmd -S .\SQLEXPRESS -E -i Setup-Database.sql
+  2. Copy appsettings.Production.json.example -> $ApiRoot\appsettings.Production.json and fill in secrets.
+  3. Add your CI public key to C:\ProgramData\ssh\administrators_authorized_keys.
+  4. Point DNS A-record '$Domain' at this VPS, then run win-acme (wacs.exe) for TLS.
+"@ -ForegroundColor Green

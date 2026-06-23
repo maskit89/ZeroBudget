@@ -25,6 +25,9 @@ builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
 
+// Liveness probe (no DB dependency) consumed by the deploy pipeline's smoke test.
+builder.Services.AddHealthChecks();
+
 // Feature toggles for the beyond-EveryDollar features (all default ON).
 builder.Services.Configure<FeatureFlags>(builder.Configuration.GetSection(FeatureFlags.SectionName));
 
@@ -62,32 +65,60 @@ var app = builder.Build();
 // --- HTTP pipeline ----------------------------------------------------------
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+// Apply any pending EF Core migrations on startup so the configured SQL Server
+// schema is always current — in Development against LocalDB, and in Production
+// against the SQL Server service on the VPS right after a deploy. Migrations are
+// additive and idempotent: they never drop existing data.
+await ApplyMigrationsAsync(app);
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    await ApplyMigrationsAsync(app);
 }
-else
-{
-    // Only force HTTPS outside Development so the Vite dev-server proxy (http) works.
-    app.UseHttpsRedirection();
-}
+
+// NOTE: in Production, HTTPS is terminated at the IIS reverse proxy and the API is
+// reached over plain HTTP on localhost. Forcing an HTTPS redirect here would break
+// those proxied /api calls, so edge HTTPS (and the http->https redirect) is left to
+// IIS. In Development the Vite proxy likewise talks to the API over http.
 
 app.UseCors(SpaCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+// Liveness endpoint: returns 200 once the app is up. The deploy script polls
+// http://localhost:5000/health to verify a new build before completing.
+app.MapHealthChecks("/health");
+
 app.Run();
 
-// Applies any pending EF Core migrations on startup in Development so a fresh
-// clone "just runs" against the configured SQL Server without a manual step.
+// Applies any pending EF Core migrations on startup. Retries briefly so the API
+// doesn't fail to boot while the SQL Server service is still coming up (e.g. right
+// after a VPS reboot). Migrations are additive and never drop existing data.
 static async Task ApplyMigrationsAsync(WebApplication app)
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await db.Database.MigrateAsync();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    const int maxAttempts = 10;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            await db.Database.MigrateAsync();
+            logger.LogInformation("Database migrations applied (attempt {Attempt}).", attempt);
+            return;
+        }
+        catch (Exception ex) when (attempt < maxAttempts)
+        {
+            logger.LogWarning(ex,
+                "Migration attempt {Attempt}/{Max} failed; SQL Server may still be starting. Retrying in 3s...",
+                attempt, maxAttempts);
+            await Task.Delay(TimeSpan.FromSeconds(3));
+        }
+    }
 }
 
 // Exposed so the integration/unit test host can reference the entry point if needed.
