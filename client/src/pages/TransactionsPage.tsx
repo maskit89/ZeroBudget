@@ -48,6 +48,8 @@ export function TransactionsPage() {
   // Filters (client-side — the per-user list is small).
   const [search, setSearch] = useState('')
   const [unassignedOnly, setUnassignedOnly] = useState(false)
+  // External spending/income vs internal account-to-account transfers.
+  const [typeFilter, setTypeFilter] = useState<'all' | 'transactions' | 'transfers'>('all')
 
   // Inline edit state.
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -301,12 +303,17 @@ export function TransactionsPage() {
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return transactions.filter(
-      (t) =>
+    return transactions.filter((t) => {
+      const isTransfer = t.type === TransactionType.Transfer
+      const matchesType =
+        typeFilter === 'all' || (typeFilter === 'transfers' ? isTransfer : !isTransfer)
+      return (
+        matchesType &&
         (!unassignedOnly || t.budgetItemId === null) &&
-        (q === '' || (t.payee ?? '').toLowerCase().includes(q)),
-    )
-  }, [transactions, search, unassignedOnly])
+        (q === '' || (t.payee ?? '').toLowerCase().includes(q))
+      )
+    })
+  }, [transactions, search, unassignedOnly, typeFilter])
 
   return (
     <AppShell active="transactions">
@@ -556,6 +563,16 @@ export function TransactionsPage() {
                 aria-label="Search transactions"
                 onChange={(e) => setSearch(e.target.value)}
                 className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+              <SegmentedControl
+                ariaLabel="Filter by type"
+                value={typeFilter}
+                onChange={setTypeFilter}
+                options={[
+                  { value: 'all', label: 'All' },
+                  { value: 'transactions', label: 'Transactions' },
+                  { value: 'transfers', label: 'Transfers' },
+                ]}
               />
               <label className="flex items-center gap-2 text-sm text-slate-600">
                 <input
