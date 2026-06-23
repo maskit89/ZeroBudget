@@ -20,6 +20,10 @@ public class BudgetCategoryConfiguration : IEntityTypeConfiguration<BudgetCatego
             .HasConversion<int>()
             .HasDefaultValue(Domain.Enums.CategoryKind.Expense);
 
+        // Existing categories are real obligations; only the allocation-output ones opt out.
+        builder.Property(c => c.ExcludeFromAllocation)
+            .HasDefaultValue(false);
+
         builder.Ignore(c => c.TotalPlanned);
         builder.Ignore(c => c.TotalActual);
 

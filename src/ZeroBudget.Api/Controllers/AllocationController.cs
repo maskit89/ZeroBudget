@@ -48,7 +48,8 @@ public class AllocationController : ControllerBase
             .Select(r => new AllocationRuleSpec(r.Order, r.Type, r.Split, r.FixedAmountPerMember))
             .ToList();
         var result = await _mediator.Send(
-            new UpsertAllocationProfileCommand(request.Id, request.Name, request.SourceAccountId, rules), ct);
+            new UpsertAllocationProfileCommand(
+                request.Id, request.Name, request.SourceAccountId, rules, request.BalanceLeanPercent), ct);
         return Ok(result);
     }
 
@@ -79,7 +80,8 @@ public record UpsertAllocationProfileRequest(
     Guid? Id,
     string Name,
     Guid? SourceAccountId,
-    List<AllocationRuleSpecRequest> Rules);
+    List<AllocationRuleSpecRequest> Rules,
+    int BalanceLeanPercent = 25);
 
 /// <summary>One rule in the allocation waterfall.</summary>
 public record AllocationRuleSpecRequest(

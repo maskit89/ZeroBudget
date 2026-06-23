@@ -8,6 +8,10 @@ public class AllocationProfileDto
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public Guid? SourceAccountId { get; set; }
+
+    /// <summary>How hard a balance-tilt savings split leans toward equalising balances (0–100).</summary>
+    public int BalanceLeanPercent { get; set; }
+
     public IReadOnlyList<AllocationRuleDto> Rules { get; set; } = Array.Empty<AllocationRuleDto>();
 }
 
@@ -27,6 +31,7 @@ public static class AllocationProfileMapping
         Id = p.Id,
         Name = p.Name,
         SourceAccountId = p.SourceAccountId,
+        BalanceLeanPercent = p.BalanceLeanPercent,
         Rules = p.Rules
             .OrderBy(r => r.Order)
             .Select(r => new AllocationRuleDto

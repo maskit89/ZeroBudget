@@ -19,6 +19,10 @@ public class AllocationProfileConfiguration : IEntityTypeConfiguration<Allocatio
             .IsRequired()
             .HasMaxLength(120);
 
+        // Gentle lean by default for existing profiles.
+        builder.Property(p => p.BalanceLeanPercent)
+            .HasDefaultValue(25);
+
         builder.HasIndex(p => p.OwnerId);
 
         builder.HasMany(p => p.Rules)

@@ -36,6 +36,10 @@ public class MemberAllocationDto
     public string Name { get; set; } = string.Empty;
     public decimal NetIncome { get; set; }
     public decimal Residual { get; set; }
+
+    /// <summary>The member's savings-account balance before this month's allocation (for the balance-tilt view).</summary>
+    public decimal SavingsBalance { get; set; }
+
     public Guid? SavingsAccountId { get; set; }
 }
 
@@ -64,6 +68,7 @@ public static class AllocationResultMapping
                 Name = m.Name,
                 NetIncome = m.NetIncome,
                 Residual = m.Residual,
+                SavingsBalance = m.SavingsBalance,
                 SavingsAccountId = m.SavingsAccountId,
             })
             .ToList(),

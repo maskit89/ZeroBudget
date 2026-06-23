@@ -86,6 +86,7 @@ internal static class BudgetSeeder
                 {
                     Name = cat.Name,
                     Kind = cat.Kind,
+                    ExcludeFromAllocation = cat.ExcludeFromAllocation,
                     DisplayOrder = ci,
                     Items = cat.Lines.Select((line, li) => new BudgetItem
                     {
@@ -120,8 +121,11 @@ internal static class BudgetSeeder
         var pocket = new CategoryPlan("Pocket Money", CategoryKind.Expense,
             members.Select(m => new LinePlan(m.Name, budget.PocketPerMember, null)).ToList());
 
+        // Personal Savings is the allocation engine's *output* (the surplus), not a shared cost,
+        // so it's flagged out of the allocation obligations to avoid double-counting the surplus.
         var savings = new CategoryPlan("Personal Savings", CategoryKind.Expense,
-            members.Select(m => new LinePlan(m.Name, budget.SurplusByMember.GetValueOrDefault(m.Name), null)).ToList());
+            members.Select(m => new LinePlan(m.Name, budget.SurplusByMember.GetValueOrDefault(m.Name), null)).ToList(),
+            ExcludeFromAllocation: true);
 
         var yearly = FundCategory("Yearly Funds", reference, FundKind.Annual, fundIdByName, missing);
         var monthly = FundCategory("Monthly Commitments", reference, FundKind.Commitment, fundIdByName, missing);
@@ -203,6 +207,6 @@ internal static class BudgetSeeder
         }
     }
 
-    private sealed record CategoryPlan(string Name, CategoryKind Kind, IReadOnlyList<LinePlan> Lines);
+    private sealed record CategoryPlan(string Name, CategoryKind Kind, IReadOnlyList<LinePlan> Lines, bool ExcludeFromAllocation = false);
     private sealed record LinePlan(string Name, decimal Planned, Guid? FundId);
 }
