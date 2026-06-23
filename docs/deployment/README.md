@@ -29,6 +29,8 @@ The React client already calls the same-origin `/api` prefix, so the proxy needs
 | `deploy/Deploy.ps1` | VPS, every deploy | `app_offline` swap + robocopy + pool recycle + `/health` smoke test |
 | `deploy/Export-DevData.ps1` | dev machine, once | LocalDB → `.bacpac` |
 | `deploy/Import-ToServer.ps1` | VPS, once | `.bacpac` → SQL Server |
+| `deploy/Backup-Database.ps1` | VPS | timestamped `.bak` + retention pruning |
+| `deploy/Register-BackupTask.ps1` | VPS, once | register the daily backup as a Scheduled Task (runs as SYSTEM) |
 | `.github/workflows/deploy.yml` | GitHub Actions | build → SSH-push → deploy on merge to `main` |
 | `src/ZeroBudget.Api/appsettings.Production.json.example` | template | copy to the server, fill in secrets (gitignored) |
 
@@ -122,11 +124,24 @@ Recommended: **branch protection** on `main` requiring the existing `backend` / 
 
 ---
 
+## Backups
+
+After SQL Server is installed, register the daily backup (runs as SYSTEM, prunes to 14 days):
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Register-BackupTask.ps1
+# verify:  Start-ScheduledTask -TaskName ZeroBudget-DbBackup ; Get-ChildItem C:\deploy\backups
+```
+`.bak` files land in `C:\deploy\backups`. Run `Register-BackupTask.ps1` again to change the time/retention. If the task can't back up, the SYSTEM account lacks rights on the instance — grant it (or re-run the task as your SQL admin).
+
 ## Rollback
 
-Re-run a previous successful **Deploy** workflow from the Actions tab (it re-pushes that commit's artifact), or check out the previous commit and `workflow_dispatch`. Take a DB backup before any deploy that includes a migration:
+Re-run a previous successful **Deploy** workflow from the Actions tab (it re-pushes that commit's artifact), or check out the previous commit and `workflow_dispatch`. Take an ad-hoc backup before any deploy that includes a migration:
 ```powershell
-sqlcmd -S .\SQLEXPRESS -E -Q "BACKUP DATABASE [ZeroBudget] TO DISK='C:\deploy\backups\ZeroBudget_$(Get-Date -f yyyyMMdd_HHmm).bak'"
+powershell -File C:\deploy\Backup-Database.ps1
+```
+Restore a `.bak` if needed:
+```powershell
+sqlcmd -S .\SQLEXPRESS -E -Q "RESTORE DATABASE [ZeroBudget] FROM DISK='C:\deploy\backups\ZeroBudget_<stamp>.bak' WITH REPLACE"
 ```
 
 ## Troubleshooting
