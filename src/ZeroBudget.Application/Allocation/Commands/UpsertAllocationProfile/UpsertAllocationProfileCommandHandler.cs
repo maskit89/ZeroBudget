@@ -40,6 +40,7 @@ public class UpsertAllocationProfileCommandHandler
 
             profile.Name = request.Name.Trim();
             profile.SourceAccountId = request.SourceAccountId;
+            profile.BalanceLeanPercent = request.BalanceLeanPercent;
             // Rules are replaced wholesale.
             _db.AllocationRules.RemoveRange(profile.Rules);
             profile.Rules.Clear();
@@ -51,6 +52,7 @@ public class UpsertAllocationProfileCommandHandler
                 OwnerId = userId,
                 Name = request.Name.Trim(),
                 SourceAccountId = request.SourceAccountId,
+                BalanceLeanPercent = request.BalanceLeanPercent,
             };
             _db.AllocationProfiles.Add(profile);
         }

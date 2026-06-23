@@ -57,6 +57,61 @@ public class IncomeAllocatorTests
     }
 
     [Fact]
+    public void BalanceTilt_LeansSavingsTowardTheLowerBalance_ButBothStillSave()
+    {
+        // Chris earns more but has the lower savings balance; Liza is ahead by ~10.4k.
+        var members = new List<AllocationMember>
+        {
+            new(Chris, "Chris", 4411.64m, null, SavingsBalance: 35631.96m),
+            new(Liza, "Liza", 3999.97m, null, SavingsBalance: 46033.38m),
+        };
+        var rules = new List<AllocationRuleInput>
+        {
+            new(0, AllocationRuleType.FundEnvelopes, SplitMethod.Equal, 0m, ResolvedTotal: 3641m),
+            new(1, AllocationRuleType.FundSinkingFunds, SplitMethod.Equal, 0m, ResolvedTotal: 2164m),
+            new(2, AllocationRuleType.FixedPerMember, SplitMethod.Equal, FixedAmountPerMember: 250m, ResolvedTotal: 0m),
+            new(3, AllocationRuleType.SplitRemainderToMembers, SplitMethod.BalanceTilt, 0m, 0m),
+        };
+
+        var result = IncomeAllocator.Compute(members, rules, balanceLeanPercent: 25);
+        var chris = result.Members.Single(m => m.MemberId == Chris);
+        var liza = result.Members.Single(m => m.MemberId == Liza);
+
+        // The whole 2106.61 remainder is preserved, just tilted toward Chris (the lower balance).
+        (chris.Residual + liza.Residual).Should().Be(2106.61m);
+        chris.Residual.Should().Be(1316.63m);
+        liza.Residual.Should().Be(789.98m);
+
+        // Gentle: both still save, and the gap between the two balances narrows.
+        liza.Residual.Should().BeGreaterThan(0m);
+        chris.Residual.Should().BeGreaterThan(liza.Residual);
+        (chris.SavingsBalance + chris.Residual).Should().BeLessThan(liza.SavingsBalance + liza.Residual);
+    }
+
+    [Fact]
+    public void BalanceTilt_AtFullLean_PoursEverythingIntoTheLowerAccount()
+    {
+        var members = new List<AllocationMember>
+        {
+            new(Chris, "Chris", 4411.64m, null, SavingsBalance: 35631.96m),
+            new(Liza, "Liza", 3999.97m, null, SavingsBalance: 46033.38m),
+        };
+        var rules = new List<AllocationRuleInput>
+        {
+            new(0, AllocationRuleType.FundEnvelopes, SplitMethod.Equal, 0m, ResolvedTotal: 3641m),
+            new(1, AllocationRuleType.FundSinkingFunds, SplitMethod.Equal, 0m, ResolvedTotal: 2164m),
+            new(2, AllocationRuleType.FixedPerMember, SplitMethod.Equal, FixedAmountPerMember: 250m, ResolvedTotal: 0m),
+            new(3, AllocationRuleType.SplitRemainderToMembers, SplitMethod.BalanceTilt, 0m, 0m),
+        };
+
+        var result = IncomeAllocator.Compute(members, rules, balanceLeanPercent: 100);
+
+        // The ~10.4k gap dwarfs the remainder, so at full lean Chris takes all of it.
+        result.Members.Single(m => m.MemberId == Chris).Residual.Should().Be(2106.61m);
+        result.Members.Single(m => m.MemberId == Liza).Residual.Should().Be(0m);
+    }
+
+    [Fact]
     public void ByIncomeRatio_Split_SumsExactly_ToTheTotal()
     {
         var rules = new List<AllocationRuleInput>

@@ -16,12 +16,12 @@ interface RuleSpec {
   fixedAmountPerMember: number
 }
 
-function standardRules(split: number, pocketAmount: number): RuleSpec[] {
+function standardRules(costSplit: number, pocketAmount: number, savingsSplit: number): RuleSpec[] {
   return [
-    { order: 0, type: AllocationRuleType.FundEnvelopes, split, fixedAmountPerMember: 0 },
-    { order: 1, type: AllocationRuleType.FundSinkingFunds, split, fixedAmountPerMember: 0 },
+    { order: 0, type: AllocationRuleType.FundEnvelopes, split: costSplit, fixedAmountPerMember: 0 },
+    { order: 1, type: AllocationRuleType.FundSinkingFunds, split: costSplit, fixedAmountPerMember: 0 },
     { order: 2, type: AllocationRuleType.FixedPerMember, split: SplitMethod.Equal, fixedAmountPerMember: pocketAmount },
-    { order: 3, type: AllocationRuleType.SplitRemainderToMembers, split: SplitMethod.Equal, fixedAmountPerMember: 0 },
+    { order: 3, type: AllocationRuleType.SplitRemainderToMembers, split: savingsSplit, fixedAmountPerMember: 0 },
   ]
 }
 
@@ -42,6 +42,8 @@ export function AllocationPage() {
   const [sourceAccountId, setSourceAccountId] = useState('')
   const [pocket, setPocket] = useState('')
   const [split, setSplit] = useState<number>(SplitMethod.Equal)
+  const [savingsSplit, setSavingsSplit] = useState<number>(SplitMethod.BalanceTilt)
+  const [lean, setLean] = useState('25')
 
   const loadPreview = useCallback(async (year: number, month: number) => {
     try {
@@ -74,6 +76,9 @@ export function AllocationPage() {
           setPocket(pocketRule ? toEditString(fromAmount(pocketRule.fixedAmountPerMember)) : '')
           const fundRule = p.rules.find((r) => r.type === AllocationRuleType.FundEnvelopes)
           setSplit(fundRule?.split ?? SplitMethod.Equal)
+          const savingsRule = p.rules.find((r) => r.type === AllocationRuleType.SplitRemainderToMembers)
+          setSavingsSplit(savingsRule?.split ?? SplitMethod.BalanceTilt)
+          setLean(String(p.balanceLeanPercent ?? 25))
           await loadPreview(year, month)
         }
       })
@@ -91,6 +96,11 @@ export function AllocationPage() {
       setError('Enter a valid pocket-money amount.')
       return
     }
+    const leanValue = lean.trim() === '' ? 25 : Number.parseInt(lean, 10)
+    if (Number.isNaN(leanValue) || leanValue < 0 || leanValue > 100) {
+      setError('Balance lean must be a whole number between 0 and 100.')
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -98,7 +108,8 @@ export function AllocationPage() {
         id: profile?.id ?? null,
         name: profile?.name ?? 'Household allocation',
         sourceAccountId: sourceAccountId || null,
-        rules: standardRules(split, toAmount(pocketAmount as number)),
+        balanceLeanPercent: leanValue,
+        rules: standardRules(split, toAmount(pocketAmount as number), savingsSplit),
       })
       setProfile(data)
       await loadPreview(period.year, period.month)
@@ -107,7 +118,7 @@ export function AllocationPage() {
     } finally {
       setBusy(false)
     }
-  }, [pocket, split, sourceAccountId, profile, period, loadPreview])
+  }, [pocket, lean, split, savingsSplit, sourceAccountId, profile, period, loadPreview])
 
   const commit = useCallback(async () => {
     setBusy(true)
@@ -187,6 +198,33 @@ export function AllocationPage() {
                   ]}
                 />
               </div>
+              <div className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+                Send savings to
+                <SegmentedControl
+                  value={String(savingsSplit)}
+                  ariaLabel="Savings split method"
+                  onChange={(v) => setSavingsSplit(Number(v))}
+                  options={[
+                    { value: String(SplitMethod.BalanceTilt), label: 'Balance' },
+                    { value: String(SplitMethod.Equal), label: 'Equally' },
+                    { value: String(SplitMethod.ByIncomeRatio), label: 'By income' },
+                  ]}
+                />
+              </div>
+              {savingsSplit === SplitMethod.BalanceTilt && (
+                <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+                  Balance lean (0–100)
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={lean}
+                    placeholder="25"
+                    aria-label="Balance lean percent"
+                    onChange={(e) => setLean(e.target.value)}
+                    className="w-24 text-right tabular-nums"
+                  />
+                </label>
+              )}
               <Button onClick={saveProfile} disabled={busy} aria-label="Save allocation settings">
                 {profile ? 'Save' : 'Set up'}
               </Button>
@@ -264,7 +302,7 @@ export function AllocationPage() {
                   <div key={m.memberId} className="rounded-xl border border-slate-200/70 p-3">
                     <p className="text-sm font-semibold text-slate-800">{m.name}</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      Net {formatMoney(fromAmount(m.netIncome), CURRENCY)} → saves
+                      Savings {formatMoney(fromAmount(m.savingsBalance), CURRENCY)} → saves
                     </p>
                     <p
                       className={`text-xl font-bold tabular-nums ${
@@ -272,6 +310,9 @@ export function AllocationPage() {
                       }`}
                     >
                       {formatMoney(fromAmount(m.residual), CURRENCY)}
+                    </p>
+                    <p className="text-xs tabular-nums text-slate-500">
+                      New balance {formatMoney(fromAmount(m.savingsBalance + m.residual), CURRENCY)}
                     </p>
                     {!m.savingsAccountId && (
                       <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">

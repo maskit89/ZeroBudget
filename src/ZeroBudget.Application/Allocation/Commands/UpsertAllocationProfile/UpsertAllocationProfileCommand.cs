@@ -9,6 +9,7 @@ public record UpsertAllocationProfileCommand(
     Guid? Id,
     string Name,
     Guid? SourceAccountId,
-    IReadOnlyList<AllocationRuleSpec> Rules) : IRequest<AllocationProfileDto>;
+    IReadOnlyList<AllocationRuleSpec> Rules,
+    int BalanceLeanPercent = 25) : IRequest<AllocationProfileDto>;
 
 public record AllocationRuleSpec(int Order, AllocationRuleType Type, SplitMethod Split, decimal FixedAmountPerMember);

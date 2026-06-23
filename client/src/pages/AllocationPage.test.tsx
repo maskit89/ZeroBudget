@@ -28,11 +28,12 @@ function profile(): AllocationProfileDto {
     id: 'p1',
     name: 'Household allocation',
     sourceAccountId: 'acc0',
+    balanceLeanPercent: 25,
     rules: [
       { id: 'r0', order: 0, type: 0, split: 0, fixedAmountPerMember: 0 },
       { id: 'r1', order: 1, type: 1, split: 0, fixedAmountPerMember: 0 },
       { id: 'r2', order: 2, type: 2, split: 0, fixedAmountPerMember: 250 },
-      { id: 'r3', order: 3, type: 3, split: 0, fixedAmountPerMember: 0 },
+      { id: 'r3', order: 3, type: 3, split: 2, fixedAmountPerMember: 0 },
     ],
   }
 }
@@ -50,8 +51,8 @@ function preview(transfersCreated = 0): AllocationResultDto {
       { type: 3, total: 2106.61, perMember: [{ memberId: 'm1', name: 'Chris', amount: 1259.14 }, { memberId: 'm2', name: 'Liza', amount: 847.47 }] },
     ],
     members: [
-      { memberId: 'm1', name: 'Chris', netIncome: 4411.64, residual: 1259.14, savingsAccountId: 'acc1' },
-      { memberId: 'm2', name: 'Liza', netIncome: 3999.97, residual: 847.47, savingsAccountId: 'acc2' },
+      { memberId: 'm1', name: 'Chris', netIncome: 4411.64, residual: 1259.14, savingsBalance: 35631.96, savingsAccountId: 'acc1' },
+      { memberId: 'm2', name: 'Liza', netIncome: 3999.97, residual: 847.47, savingsBalance: 46033.38, savingsAccountId: 'acc2' },
     ],
   }
 }

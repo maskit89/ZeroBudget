@@ -18,6 +18,13 @@ public class BudgetCategory : BaseEntity
     /// <summary>Whether this group holds income sources or planned expenses.</summary>
     public CategoryKind Kind { get; set; } = CategoryKind.Expense;
 
+    /// <summary>
+    /// When true, the income-allocation engine ignores this category's planned amounts as a
+    /// shared obligation. Used for categories that represent an allocation *output* rather than
+    /// a cost (e.g. "Personal Savings"), so the surplus isn't subtracted from the pool twice.
+    /// </summary>
+    public bool ExcludeFromAllocation { get; set; }
+
     public int DisplayOrder { get; set; }
 
     public ICollection<BudgetItem> Items { get; set; } = new List<BudgetItem>();

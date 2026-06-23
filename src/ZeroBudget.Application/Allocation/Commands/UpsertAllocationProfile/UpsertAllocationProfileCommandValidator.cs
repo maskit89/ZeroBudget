@@ -12,6 +12,10 @@ public class UpsertAllocationProfileCommandValidator : AbstractValidator<UpsertA
             .NotEmpty().WithMessage("An allocation profile needs a name.")
             .MaximumLength(120);
 
+        RuleFor(x => x.BalanceLeanPercent)
+            .InclusiveBetween(0, 100)
+            .WithMessage("Balance lean must be between 0 and 100.");
+
         RuleForEach(x => x.Rules).ChildRules(r =>
         {
             r.RuleFor(x => x.Type).IsInEnum();

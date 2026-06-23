@@ -30,9 +30,9 @@ public class AllocationTests
             .UseInMemoryDatabase($"zbb-alloc-{Guid.NewGuid()}")
             .Options);
 
-    private static Account SeedAccount(ApplicationDbContext db, string owner, string name)
+    private static Account SeedAccount(ApplicationDbContext db, string owner, string name, decimal opening = 0m)
     {
-        var a = new Account { OwnerId = owner, Name = name, Type = AccountType.Current, Currency = CurrencyCode.Eur };
+        var a = new Account { OwnerId = owner, Name = name, Type = AccountType.Current, Currency = CurrencyCode.Eur, OpeningBalance = opening };
         db.Accounts.Add(a);
         db.SaveChanges();
         return a;
@@ -108,6 +108,57 @@ public class AllocationTests
         result.FundsTotal.Should().Be(2164m);
         result.Members.Single(m => m.Name == "Chris").Residual.Should().Be(1259.14m);
         result.Members.Single(m => m.Name == "Liza").Residual.Should().Be(847.47m);
+    }
+
+    [Fact]
+    public async Task Preview_ExcludesFlaggedCategories_AndTiltsSurplusToTheLowerBalance()
+    {
+        await using var db = NewContext();
+        var user = new CurrentUserStub("user-1");
+        var chrisSavings = SeedAccount(db, "user-1", "Chris Savings", opening: 35631.96m);
+        var lizaSavings = SeedAccount(db, "user-1", "Liza Savings", opening: 46033.38m);
+        SeedMember(db, "user-1", "Chris", 4411.64m, 0, chrisSavings.Id);
+        SeedMember(db, "user-1", "Liza", 3999.97m, 1, lizaSavings.Id);
+
+        // Real costs (3641 + 2164) plus a "Personal Savings" category that is the allocation
+        // *output* — flagged out so it isn't double-counted as an obligation.
+        db.BudgetMonths.Add(new BudgetMonth
+        {
+            OwnerId = "user-1", Year = 2026, Month = 6, BaseCurrency = CurrencyCode.Eur,
+            Categories = new List<BudgetCategory>
+            {
+                new() { Name = "Living", Kind = CategoryKind.Expense, Items = new List<BudgetItem> { new() { Name = "Living", PlannedAmount = 3641m } } },
+                new() { Name = "Funds", Kind = CategoryKind.Fund, Items = new List<BudgetItem> { new() { Name = "Funds", FundId = Guid.NewGuid(), PlannedAmount = 2164m } } },
+                new() { Name = "Personal Savings", Kind = CategoryKind.Expense, ExcludeFromAllocation = true, Items = new List<BudgetItem> { new() { Name = "Surplus", PlannedAmount = 9999m } } },
+            },
+        });
+        db.SaveChanges();
+
+        var rules = new List<AllocationRuleSpec>
+        {
+            new(0, AllocationRuleType.FundEnvelopes, SplitMethod.Equal, 0m),
+            new(1, AllocationRuleType.FundSinkingFunds, SplitMethod.Equal, 0m),
+            new(2, AllocationRuleType.FixedPerMember, SplitMethod.Equal, 250m),
+            new(3, AllocationRuleType.SplitRemainderToMembers, SplitMethod.BalanceTilt, 0m),
+        };
+        await new UpsertAllocationProfileCommandHandler(db, user)
+            .Handle(new UpsertAllocationProfileCommand(null, "P", null, rules, BalanceLeanPercent: 25), CancellationToken.None);
+
+        var result = await new PreviewIncomeAllocationQueryHandler(db, user)
+            .Handle(new PreviewIncomeAllocationQuery(2026, 6), CancellationToken.None);
+
+        // The flagged 9999 category is ignored, so obligations are just the real costs.
+        result.EnvelopesTotal.Should().Be(3641m);
+        result.FundsTotal.Should().Be(2164m);
+
+        var chris = result.Members.Single(m => m.Name == "Chris");
+        var liza = result.Members.Single(m => m.Name == "Liza");
+        chris.SavingsBalance.Should().Be(35631.96m);
+        liza.SavingsBalance.Should().Be(46033.38m);
+        // Whole surplus preserved (2106.61) and tilted toward Chris's lower balance.
+        (chris.Residual + liza.Residual).Should().Be(2106.61m);
+        chris.Residual.Should().Be(1316.63m);
+        liza.Residual.Should().Be(789.98m);
     }
 
     [Fact]

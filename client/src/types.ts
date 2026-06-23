@@ -329,11 +329,12 @@ export const ALLOCATION_RULE_LABELS: Record<number, string> = {
 }
 
 // Matches Domain.Enums.SplitMethod (serialized as a number).
-export const SplitMethod = { Equal: 0, ByIncomeRatio: 1 } as const
+export const SplitMethod = { Equal: 0, ByIncomeRatio: 1, BalanceTilt: 2 } as const
 
 export const SPLIT_METHOD_LABELS: Record<number, string> = {
   0: 'Split equally',
   1: 'By income',
+  2: 'Balance-aware',
 }
 
 export interface AllocationRuleDto {
@@ -348,6 +349,8 @@ export interface AllocationProfileDto {
   id: string
   name: string
   sourceAccountId: string | null
+  /** How hard a balance-aware savings split leans toward equalising balances (0–100). */
+  balanceLeanPercent: number
   rules: AllocationRuleDto[]
 }
 
@@ -368,6 +371,8 @@ export interface MemberAllocationDto {
   name: string
   netIncome: number
   residual: number
+  /** Savings-account balance before this month's allocation (for the balance-aware view). */
+  savingsBalance: number
   savingsAccountId: string | null
 }
 
