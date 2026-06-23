@@ -52,6 +52,11 @@ interface ReviewRow {
   memberId: string
   /** Null = a single-category row; an array = split across these lines. */
   splits: SplitDraft[] | null
+  /** Heuristic hint from the preview. */
+  likelyTransfer: boolean
+  /** When true, the row is a transfer to/from `transferAccountId` instead of income/spending. */
+  isTransfer: boolean
+  transferAccountId: string
 }
 
 /** Pull a human message out of an axios error (ProblemDetails `title`, or a 400 `error`). */
@@ -143,8 +148,18 @@ export function ImportPage() {
 
   const expenseGroups = useMemo(() => buildItemOptions(month, TransactionType.Expense), [month])
   const includedCount = useMemo(() => rows.filter((r) => r.include).length, [rows])
-  const splitsIncomplete = useMemo(
-    () => rows.some((r) => r.include && r.splits && !splitInfo(r).valid),
+  const importAccount = accounts.find((a) => a.id === accountId) ?? null
+  const otherAccounts = accounts.filter((a) => a.id !== accountId)
+  // A transfer needs an import account plus another account to move to/from.
+  const canTransfer = !!accountId && otherAccounts.length > 0
+  // Block the import while a split doesn't add up, or a transfer hasn't picked a counterparty.
+  const reviewIncomplete = useMemo(
+    () =>
+      rows.some(
+        (r) =>
+          r.include &&
+          ((r.splits && !splitInfo(r).valid) || (r.isTransfer && !r.transferAccountId)),
+      ),
     [rows],
   )
 
@@ -168,6 +183,9 @@ export function ImportPage() {
           budgetItemId: resolveSuggestion(c, month),
           memberId: '',
           splits: null,
+          likelyTransfer: c.likelyTransfer,
+          isTransfer: false,
+          transferAccountId: '',
         })),
       )
       setSplitOpen(null)
@@ -187,12 +205,23 @@ export function ImportPage() {
     setRows((rs) => rs.map((r) => ({ ...r, include })))
   }
 
-  // Bulk actions apply to the included, non-split rows (split rows are attributed per slice).
+  // Bulk actions apply to included rows that are plain (not split, not a transfer).
   function applyMemberToIncluded() {
-    setRows((rs) => rs.map((r) => (r.include && !r.splits ? { ...r, memberId: bulkMember } : r)))
+    setRows((rs) => rs.map((r) => (r.include && !r.splits && !r.isTransfer ? { ...r, memberId: bulkMember } : r)))
   }
   function applyCategoryToIncluded() {
-    setRows((rs) => rs.map((r) => (r.include && !r.splits && !r.isCredit ? { ...r, budgetItemId: bulkCategory } : r)))
+    setRows((rs) =>
+      rs.map((r) => (r.include && !r.splits && !r.isTransfer && !r.isCredit ? { ...r, budgetItemId: bulkCategory } : r)),
+    )
+  }
+
+  // --- per-row transfer mode ---
+  function startTransfer(index: number) {
+    setSplitOpen(null)
+    setRows((rs) => rs.map((r, i) => (i === index ? { ...r, isTransfer: true, splits: null } : r)))
+  }
+  function clearTransfer(index: number) {
+    setRows((rs) => rs.map((r, i) => (i === index ? { ...r, isTransfer: false, transferAccountId: '' } : r)))
   }
 
   // --- per-row split editing ---
@@ -253,6 +282,9 @@ export function ImportPage() {
           amount: r.amount,
           currency: r.currency,
           isCredit: r.isCredit,
+        }
+        if (r.isTransfer) {
+          return { ...base, budgetItemId: null, memberId: null, transferAccountId: r.transferAccountId }
         }
         if (r.splits) {
           return {
@@ -380,8 +412,19 @@ export function ImportPage() {
             {preview.newCount === 1 ? '' : 's'} to review
             {preview.skippedDuplicates > 0 &&
               ` — ${preview.skippedDuplicates} already imported (skipped)`}
-            . Categorise them (split a row to spread it across lines), untick any you don't want, then import.
+            . Categorise them (split a row, or mark a transfer), untick any you don't want, then import.
           </p>
+          {importAccount && (
+            <p className="-mt-3 text-xs text-slate-500">
+              Importing into <span className="font-medium text-slate-700">{importAccount.name}</span>.
+            </p>
+          )}
+          {!accountId && rows.some((r) => r.likelyTransfer) && (
+            <p className="-mt-3 text-xs text-amber-700 dark:text-amber-400">
+              Some rows look like transfers between your accounts. Re-import with an account selected (on the
+              previous step) to record them as transfers.
+            </p>
+          )}
 
           {/* Bulk actions over the currently-included rows. */}
           <Card className="flex flex-wrap items-end gap-4 p-4">
@@ -454,7 +497,14 @@ export function ImportPage() {
                           />
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 tabular-nums text-slate-500">{r.date}</td>
-                        <td className="px-3 py-2 font-medium text-slate-700">{r.payee}</td>
+                        <td className="px-3 py-2 font-medium text-slate-700">
+                          {r.payee}
+                          {r.likelyTransfer && !r.isTransfer && (
+                            <span className="block text-xs font-normal text-amber-700 dark:text-amber-400">
+                              Looks like a transfer
+                            </span>
+                          )}
+                        </td>
                         <td
                           className={`whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums ${
                             r.isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700'
@@ -464,7 +514,34 @@ export function ImportPage() {
                           {formatMoney(fromAmount(r.amount), r.currency)}
                         </td>
                         <td className="px-3 py-2">
-                          {r.splits ? (
+                          {r.isTransfer ? (
+                            <div className="flex items-center gap-2">
+                              <Badge tone="brand">Transfer</Badge>
+                              <span className="text-xs text-slate-500">{r.isCredit ? 'from' : 'to'}</span>
+                              <Select
+                                aria-label={`Transfer account for ${r.payee} on ${r.date}`}
+                                value={r.transferAccountId}
+                                disabled={!r.include}
+                                onChange={(e) => updateRow(index, { transferAccountId: e.target.value })}
+                                className="w-44"
+                              >
+                                <option value="">Choose account…</option>
+                                {otherAccounts.map((a) => (
+                                  <option key={a.id} value={a.id}>
+                                    {a.name}
+                                  </option>
+                                ))}
+                              </Select>
+                              <button
+                                type="button"
+                                onClick={() => clearTransfer(index)}
+                                aria-label={`Cancel transfer for ${r.payee} on ${r.date}`}
+                                className="text-xs font-medium text-brand-700 hover:underline dark:text-brand-200"
+                              >
+                                Undo
+                              </button>
+                            </div>
+                          ) : r.splits ? (
                             <div className="flex flex-col gap-0.5">
                               <div className="flex items-center gap-2">
                                 <Badge tone={info.valid ? 'violet' : 'amber'}>Split · {r.splits.length}</Badge>
@@ -503,11 +580,24 @@ export function ImportPage() {
                               >
                                 Split
                               </button>
+                              {canTransfer && (
+                                <button
+                                  type="button"
+                                  onClick={() => startTransfer(index)}
+                                  disabled={!r.include}
+                                  aria-label={`Mark ${r.payee} on ${r.date} as a transfer`}
+                                  className="text-xs font-medium text-brand-700 hover:underline disabled:opacity-40 dark:text-brand-200"
+                                >
+                                  Transfer
+                                </button>
+                              )}
                             </div>
                           )}
                         </td>
                         <td className="px-3 py-2">
-                          {r.splits ? (
+                          {r.isTransfer ? (
+                            <span className="text-xs text-slate-500">—</span>
+                          ) : r.splits ? (
                             <span className="text-xs text-slate-500">Per line</span>
                           ) : (
                             <Select
@@ -665,14 +755,14 @@ export function ImportPage() {
             </table>
           </Card>
 
-          {splitsIncomplete && (
+          {reviewIncomplete && (
             <p className="text-sm text-rose-600 dark:text-rose-400">
-              Finish or clear the highlighted splits before importing.
+              Finish the highlighted rows first — splits must add up, and transfers need an account.
             </p>
           )}
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={onCommit} disabled={busy || includedCount === 0 || splitsIncomplete}>
+            <Button onClick={onCommit} disabled={busy || includedCount === 0 || reviewIncomplete}>
               {busy ? 'Importing…' : `Import ${includedCount} transaction${includedCount === 1 ? '' : 's'}`}
             </Button>
             <Button variant="ghost" onClick={reset} disabled={busy}>
@@ -691,11 +781,12 @@ export function ImportPage() {
             {result.imported} transaction{result.imported === 1 ? '' : 's'} added
             {result.skippedDuplicates > 0 && `, ${result.skippedDuplicates} skipped`}.
           </p>
-          <dl className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <dl className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             <Stat label="Imported" value={result.imported} />
             <Stat label="Skipped" value={result.skippedDuplicates} />
             <Stat label="Money in" value={result.credits} />
             <Stat label="Money out" value={result.debits} />
+            <Stat label="Transfers" value={result.transfers} />
           </dl>
           <div className="mt-6">
             <Button onClick={reset}>Import another file</Button>

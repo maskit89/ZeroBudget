@@ -70,7 +70,8 @@ public class PreviewImportCommandHandler : IRequestHandler<PreviewImportCommand,
                 Currency: e.Currency,
                 IsCredit: e.IsCredit,
                 SuggestedBudgetItemId: suggestedId,
-                SuggestedBudgetItemName: suggestedName);
+                SuggestedBudgetItemName: suggestedName,
+                LikelyTransfer: TransferHeuristic.IsLikelyTransfer(e.Payee));
         }).ToList();
 
         return new ImportPreviewResult(

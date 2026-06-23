@@ -31,6 +31,17 @@ public class CommitImportCommandValidator : AbstractValidator<CommitImportComman
                 slice.RuleFor(s => s.Amount)
                     .GreaterThan(0).WithMessage("Each split line needs an amount greater than zero.");
             }).When(i => i.Splits is not null);
+
+            // A transfer is its own thing — it can't also be split across budget lines.
+            item.RuleFor(i => i)
+                .Must(i => i.Splits is null || i.Splits.Count == 0)
+                .When(i => i.TransferAccountId is not null)
+                .WithMessage("A transfer can't also be split.");
         });
+
+        // Transfers need to know which account the statement belongs to.
+        RuleFor(x => x)
+            .Must(c => c.AccountId is not null || c.Items.All(i => i.TransferAccountId is null))
+            .WithMessage("Choose the account this import belongs to before marking rows as transfers.");
     }
 }
