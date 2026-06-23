@@ -311,7 +311,7 @@ export function AllocationPage() {
                     >
                       {formatMoney(fromAmount(m.residual), CURRENCY)}
                     </p>
-                    <p className="text-xs tabular-nums text-slate-400">
+                    <p className="text-xs tabular-nums text-slate-500">
                       New balance {formatMoney(fromAmount(m.savingsBalance + m.residual), CURRENCY)}
                     </p>
                     {!m.savingsAccountId && (
