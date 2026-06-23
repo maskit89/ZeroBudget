@@ -105,12 +105,31 @@ function importPreview() {
   }
 }
 
+// A representative transaction list so the Transactions table renders every state for axe:
+// an assigned expense, an unassigned one (the inline assign <select>), a split, a transfer,
+// and an income — exercising the badges, dropdowns and row action buttons.
+function transactions() {
+  const base = { currency: 'EUR', exchangeRate: 1, bankReference: null, transferAccountId: null, transferAccountName: null, memberId: null, memberName: null }
+  return [
+    { ...base, id: 't1', date: '2026-06-20', payee: 'Welbees Supermarket', amount: 64.5, baseAmount: 64.5, type: 0, budgetItemId: 'i-rent', budgetItemName: 'Rent', accountId: 'acc0', accountName: 'Joint Current', isSplit: false, splits: [] },
+    { ...base, id: 't2', date: '2026-06-19', payee: 'Unknown Shop', amount: 12, baseAmount: 12, type: 0, budgetItemId: null, budgetItemName: null, accountId: 'acc0', accountName: 'Joint Current', isSplit: false, splits: [] },
+    { ...base, id: 't3', date: '2026-06-18', payee: 'Grocer + Pharmacy', amount: 50, baseAmount: 50, type: 0, budgetItemId: null, budgetItemName: null, accountId: 'acc0', accountName: 'Joint Current', isSplit: true,
+      splits: [
+        { id: 's1', budgetItemId: 'i-rent', budgetItemName: 'Rent', memberId: null, memberName: null, amount: 30 },
+        { id: 's2', budgetItemId: 'i-car', budgetItemName: 'Car', memberId: null, memberName: null, amount: 20 },
+      ] },
+    { ...base, id: 't4', date: '2026-06-17', payee: 'Move to savings', amount: 200, baseAmount: 200, type: 2, budgetItemId: null, budgetItemName: null, accountId: 'acc0', accountName: 'Joint Current', transferAccountId: 'acc1', transferAccountName: 'Savings Joint', isSplit: false, splits: [] },
+    { ...base, id: 't5', date: '2026-06-16', payee: 'Acme Payroll', amount: 3000, baseAmount: 3000, type: 1, budgetItemId: 'i-pay', budgetItemName: 'Take-home Pay', accountId: 'acc0', accountName: 'Joint Current', isSplit: false, splits: [] },
+  ]
+}
+
 async function mockApi(route: Route) {
   const path = new URL(route.request().url()).pathname.replace(/^\/api/, '')
   const json = (body: unknown) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
 
   if (path === '/features') return json(FLAGS)
+  if (path === '/transactions') return json(transactions())
   if (path === '/import/preview') return json(importPreview())
   if (path === '/budget/current') return json(budgetMonth(2026, 6))
   if (/^\/budget\/\d+\/\d+$/.test(path)) {
