@@ -115,7 +115,7 @@ public class FxRateResolverTests
 
         // The sample has one GBP entry (London Cab, 45.50, 2026-06-03) + two EUR.
         var handler = new ImportStatementCommandHandler(
-            db, new CurrentUserStub("user-1"), new Camt053StatementParser(), new FakeExchangeRateProvider(1.10m));
+            db, new CurrentUserStub("user-1"), new[] { new Camt053StatementParser() }, new FakeExchangeRateProvider(1.10m));
 
         await handler.Handle(new ImportStatementCommand(Camt053Samples.ThreeEntries), CancellationToken.None);
 

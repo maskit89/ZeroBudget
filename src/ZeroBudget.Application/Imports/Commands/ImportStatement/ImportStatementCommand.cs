@@ -1,13 +1,17 @@
 using MediatR;
+using ZeroBudget.Application.Imports.Models;
 
 namespace ZeroBudget.Application.Imports.Commands.ImportStatement;
 
 /// <summary>
-/// Imports a CAMT.053 bank statement for the current user. When an
-/// <paramref name="AccountId"/> is given, every imported transaction is stamped with
-/// that account so its balance reflects the statement.
+/// Imports a bank statement for the current user. <paramref name="Format"/> selects the
+/// parser (CAMT.053 XML or HSBC CSV). When an <paramref name="AccountId"/> is given, every
+/// imported transaction is stamped with that account so its balance reflects the statement.
 /// </summary>
-public record ImportStatementCommand(string Content, Guid? AccountId = null) : IRequest<ImportStatementResult>;
+public record ImportStatementCommand(
+    string Content,
+    Guid? AccountId = null,
+    StatementFormat Format = StatementFormat.Camt053) : IRequest<ImportStatementResult>;
 
 /// <summary>Summary of what an import did.</summary>
 public record ImportStatementResult(

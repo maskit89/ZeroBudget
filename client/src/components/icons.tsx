@@ -43,6 +43,17 @@ export function LogoMark({ className = 'h-8 w-8' }: { className?: string }) {
   )
 }
 
+/** Import — a downward arrow dropping into an open tray. */
+export function ImportIcon({ className }: { className?: string }) {
+  return (
+    <Base className={className}>
+      <path d="M12 3v10" />
+      <path d="M8 9l4 4 4-4" />
+      <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+    </Base>
+  )
+}
+
 /** Dashboard / budget — a four-pane grid. */
 export function DashboardIcon({ className }: { className?: string }) {
   return (

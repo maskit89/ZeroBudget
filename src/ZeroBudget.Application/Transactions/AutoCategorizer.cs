@@ -35,29 +35,7 @@ public static partial class AutoCategorizer
         // yet, but be defensive).
         var candidateIds = candidates.Select(t => t.Id).ToHashSet();
 
-        // Load this user's already-categorized transactions, most recent first, and
-        // index them by normalized description → the line they were assigned to. We
-        // normalize in memory so the match is case- and whitespace-insensitive.
-        var prior = await db.Transactions
-            .AsNoTracking()
-            .Where(t => t.OwnerId == ownerId
-                        && t.BudgetItemId != null
-                        && !candidateIds.Contains(t.Id))
-            .OrderByDescending(t => t.Date)
-            .ThenByDescending(t => t.Id)
-            .Select(t => new { t.Payee, t.BudgetItemId })
-            .ToListAsync(cancellationToken);
-
-        var lineByDescription = new Dictionary<string, Guid>();
-        foreach (var p in prior)
-        {
-            var key = NormalizeDescription(p.Payee);
-            // First write wins — the list is ordered most-recent-first.
-            if (key.Length > 0 && !lineByDescription.ContainsKey(key))
-            {
-                lineByDescription[key] = p.BudgetItemId!.Value;
-            }
-        }
+        var lineByDescription = await BuildSuggestionsAsync(db, ownerId, candidateIds, cancellationToken);
         if (lineByDescription.Count == 0)
         {
             return 0;
@@ -89,6 +67,44 @@ public static partial class AutoCategorizer
 
         return assigned;
     }
+
+    /// <summary>
+    /// Build the payee → budget-line suggestion index from the user's already-categorized
+    /// transactions (most recent assignment wins). Used both by <see cref="ApplyAsync"/> and by
+    /// the statement-import preview to suggest a line for each candidate before anything is saved.
+    /// The key is the normalized payee (see <see cref="NormalizeKey"/>).
+    /// </summary>
+    public static async Task<Dictionary<string, Guid>> BuildSuggestionsAsync(
+        IApplicationDbContext db,
+        string ownerId,
+        IReadOnlySet<Guid> excludeTransactionIds,
+        CancellationToken cancellationToken)
+    {
+        // Most recent first, so the first write per description wins.
+        var prior = await db.Transactions
+            .AsNoTracking()
+            .Where(t => t.OwnerId == ownerId
+                        && t.BudgetItemId != null
+                        && !excludeTransactionIds.Contains(t.Id))
+            .OrderByDescending(t => t.Date)
+            .ThenByDescending(t => t.Id)
+            .Select(t => new { t.Payee, t.BudgetItemId })
+            .ToListAsync(cancellationToken);
+
+        var lineByDescription = new Dictionary<string, Guid>();
+        foreach (var p in prior)
+        {
+            var key = NormalizeDescription(p.Payee);
+            if (key.Length > 0 && !lineByDescription.ContainsKey(key))
+            {
+                lineByDescription[key] = p.BudgetItemId!.Value;
+            }
+        }
+        return lineByDescription;
+    }
+
+    /// <summary>Public access to the normalization used for suggestion keys.</summary>
+    public static string NormalizeKey(string? description) => NormalizeDescription(description);
 
     /// <summary>
     /// Normalize a description into a stable match key: trimmed, lower-cased, with

@@ -1,7 +1,9 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, SegmentedControl, Select } from '../components/ui'
-import { TransactionsIcon } from '../components/icons'
+import { ImportIcon, TransactionsIcon } from '../components/icons'
+import { useFeatures } from '../features/FeatureContext'
 import { api } from '../lib/api'
 import type { AccountDto, BudgetMonthDto, HouseholdMemberDto, TransactionDto } from '../types'
 import { TransactionType } from '../types'
@@ -13,6 +15,7 @@ function today(): string {
 }
 
 export function TransactionsPage() {
+  const features = useFeatures()
   const [transactions, setTransactions] = useState<TransactionDto[]>([])
   const [month, setMonth] = useState<BudgetMonthDto | null>(null)
   const [accounts, setAccounts] = useState<AccountDto[]>([])
@@ -310,6 +313,17 @@ export function TransactionsPage() {
         <PageHeader
           title="Transactions"
           subtitle="Add what you’ve spent (or received) by hand, then assign each to a budget line — its spending rolls up into that line."
+          actions={
+            features.camtImport && (
+              <Link
+                to="/import"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-surface px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                <ImportIcon className="h-4 w-4" />
+                Import
+              </Link>
+            )
+          }
         />
 
         {error && <ErrorBanner>{error}</ErrorBanner>}
@@ -527,7 +541,7 @@ export function TransactionsPage() {
           <EmptyState
             icon={<TransactionsIcon className="h-6 w-6" />}
             title="No transactions yet"
-            description="Add one above, or import a CAMT.053 statement from the Budget page."
+            description="Add one above, or use Import to bring in a bank statement."
           />
         )}
 

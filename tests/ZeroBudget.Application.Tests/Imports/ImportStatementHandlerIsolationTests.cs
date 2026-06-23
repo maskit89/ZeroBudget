@@ -43,7 +43,7 @@ public class ImportStatementHandlerIsolationTests
         var parser = Substitute.For<IStatementParser>();
         parser.Parse(Arg.Any<string>()).Returns(TwoEntries());
 
-        var handler = new ImportStatementCommandHandler(db, currentUser, parser, new FakeExchangeRateProvider());
+        var handler = new ImportStatementCommandHandler(db, currentUser, new[] { parser }, new FakeExchangeRateProvider());
 
         var result = await handler.Handle(new ImportStatementCommand("<xml/>"), CancellationToken.None);
 
@@ -70,7 +70,7 @@ public class ImportStatementHandlerIsolationTests
 
         var parser = Substitute.For<IStatementParser>();
 
-        var handler = new ImportStatementCommandHandler(db, currentUser, parser, new FakeExchangeRateProvider());
+        var handler = new ImportStatementCommandHandler(db, currentUser, new[] { parser }, new FakeExchangeRateProvider());
 
         var act = () => handler.Handle(new ImportStatementCommand("<xml/>"), CancellationToken.None);
 

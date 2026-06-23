@@ -8,6 +8,9 @@ namespace ZeroBudget.Application.Common.Interfaces;
 /// </summary>
 public interface IStatementParser
 {
+    /// <summary>The document format this parser handles; used to select it for a given import.</summary>
+    StatementFormat Format { get; }
+
     /// <summary>Parse statement content. Throws <see cref="Exceptions.StatementParseException"/> on malformed input.</summary>
     ParsedStatement Parse(string content);
 }

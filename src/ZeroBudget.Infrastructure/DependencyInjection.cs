@@ -33,8 +33,10 @@ public static class DependencyInjection
         // Expose the context to the Application layer through its abstraction.
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
-        // Statement import (CAMT.053) format adapter.
+        // Statement import format adapters. The handler resolves them all and selects by
+        // StatementFormat, so each new bank format is just another registration here.
         services.AddScoped<IStatementParser, Camt053StatementParser>();
+        services.AddScoped<IStatementParser, HsbcCsvStatementParser>();
 
         // FX rates via the free, key-less Frankfurter (ECB) API.
         services.AddHttpClient<IExchangeRateProvider, FrankfurterExchangeRateProvider>(client =>
