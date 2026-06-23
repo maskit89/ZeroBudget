@@ -67,6 +67,18 @@ internal static class Program
                 case "members":
                     return await MemberAttributor.RunAsync(conn, email, file,
                         commit: options.ContainsKey("commit"));
+                case "convert-living":
+                {
+                    var from = options.GetValueOrDefault("from", $"{DateTime.Now:yyyy-MM}");
+                    var parts = from.Split('-');
+                    if (parts.Length != 2 || !int.TryParse(parts[0], out var fy) || !int.TryParse(parts[1], out var fm))
+                    {
+                        Console.Error.WriteLine("--from must be YYYY-MM (e.g. 2026-06).");
+                        return 1;
+                    }
+                    return await DbCommands.ConvertLivingCostsToFunds(conn, email, fy, fm,
+                        commit: options.ContainsKey("commit"));
+                }
                 default:
                     Console.WriteLine("Usage: ZeroBudget.Importer <verb> [args] [--file <path>] [--email <e>] [--conn <cs>]");
                     Console.WriteLine("  dump <sheet> [startRow] [endRow]   Print non-empty cells of a sheet.");
@@ -76,6 +88,7 @@ internal static class Program
                     Console.WriteLine("  budget [--commit]                  Create the 12 budget months (needs reference data).");
                     Console.WriteLine("  transactions [--commit]            Import the 12 months of ledger rows + Visa (needs budget).");
                     Console.WriteLine("  members [--commit]                 Back-fill member attribution onto Visa tx from the per-person columns.");
+                    Console.WriteLine("  convert-living [--from YYYY-MM] [--commit]  Turn 'Living Costs' into accumulating funds from that month on.");
                     return verb == "help" ? 0 : 1;
             }
         }
