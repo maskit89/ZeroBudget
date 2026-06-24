@@ -76,7 +76,7 @@ powershell -File .\Export-DevData.ps1          # -> deploy\ZeroBudget.bacpac
 Copy `ZeroBudget.bacpac` to the VPS, then on the **VPS** — import **before** the grant (import creates the DB):
 ```powershell
 powershell -File .\Import-ToServer.ps1 -BacpacPath C:\deploy\ZeroBudget.bacpac
-sqlcmd -S .\SQLEXPRESS -E -i .\Setup-Database.sql   # re-run to grant on the new DB
+powershell -ExecutionPolicy Bypass -File .\Bootstrap.ps1   # skips SQL install; grants on the new DB
 ```
 
 ### Adding a domain + TLS (later)

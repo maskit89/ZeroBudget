@@ -25,13 +25,22 @@ $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
 $file  = Join-Path $BackupDir "$($Database)_$stamp.bak"
 
 # WITH CHECKSUM verifies page integrity. COMPRESSION is intentionally omitted -
-# SQL Server Express does not support backup compression.
-$tsql = "BACKUP DATABASE [$Database] TO DISK = N'$file' WITH CHECKSUM, STATS = 10; " +
-        "RESTORE VERIFYONLY FROM DISK = N'$file' WITH CHECKSUM;"
-
+# SQL Server Express does not support backup compression. Run via System.Data.SqlClient
+# (shared memory) so no sqlcmd tool is required on the server.
 Write-Host "Backing up [$Database] -> $file" -ForegroundColor Cyan
-sqlcmd -S $Server -E -b -Q $tsql
-if ($LASTEXITCODE -ne 0) { throw "Backup failed (sqlcmd exit code $LASTEXITCODE)." }
+Add-Type -AssemblyName System.Data
+$cn = New-Object System.Data.SqlClient.SqlConnection
+$cn.ConnectionString = "Server=$Server;Database=master;Integrated Security=True;TrustServerCertificate=True"
+$cn.Open()
+try {
+    foreach ($q in @(
+        "BACKUP DATABASE [$Database] TO DISK = N'$file' WITH CHECKSUM, STATS = 10;",
+        "RESTORE VERIFYONLY FROM DISK = N'$file' WITH CHECKSUM;"
+    )) {
+        $cmd = $cn.CreateCommand(); $cmd.CommandText = $q; $cmd.CommandTimeout = 0
+        [void]$cmd.ExecuteNonQuery()
+    }
+} finally { $cn.Close() }
 
 # Prune old backups.
 $cutoff = (Get-Date).AddDays(-$RetentionDays)

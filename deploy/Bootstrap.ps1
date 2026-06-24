@@ -37,13 +37,39 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Data    # use System.Data.SqlClient (no sqlcmd needed)
 function Step($m) { Write-Host "`n===== $m =====" -ForegroundColor Cyan }
 
+# Connection string to the local instance as the current Windows identity (the
+# installing admin is a SQL sysadmin). Connects via Shared Memory, which Express
+# enables by default even with TCP off -- so the sqlcmd tool is not required.
+function Get-MasterCs([int]$Timeout = 15) {
+    "Server=$SqlInstance;Database=master;Integrated Security=True;TrustServerCertificate=True;Connect Timeout=$Timeout"
+}
+
 function Test-Sql {
-    $old = $ErrorActionPreference; $ErrorActionPreference = 'SilentlyContinue'
-    try   { sqlcmd -S $SqlInstance -E -b -Q 'SELECT 1' 1>$null 2>$null; return ($LASTEXITCODE -eq 0) }
-    catch { return $false }
-    finally { $ErrorActionPreference = $old }
+    try {
+        $cn = New-Object System.Data.SqlClient.SqlConnection
+        $cn.ConnectionString = (Get-MasterCs 5)
+        $cn.Open(); $cn.Close(); return $true
+    } catch { return $false }
+}
+
+# Run a .sql file by splitting on GO batch separators and executing each batch on
+# one connection (so USE/context changes carry across batches).
+function Invoke-SqlScript {
+    param([string]$ScriptPath)
+    $batches = [regex]::Split((Get-Content -Path $ScriptPath -Raw), '(?im)^\s*GO\s*$')
+    $cn = New-Object System.Data.SqlClient.SqlConnection
+    $cn.ConnectionString = (Get-MasterCs 30)
+    $cn.Open()
+    try {
+        foreach ($b in $batches) {
+            if ($b.Trim().Length -eq 0) { continue }
+            $cmd = $cn.CreateCommand(); $cmd.CommandText = $b; $cmd.CommandTimeout = 120
+            [void]$cmd.ExecuteNonQuery()
+        }
+    } finally { $cn.Close() }
 }
 
 # --- 1. IIS + modules + OpenSSH + pools/sites/firewall ----------------------
@@ -71,8 +97,7 @@ if (Test-Sql) {
 
 # --- 3. Database + app-pool grant ------------------------------------------
 Step 'Database + app-pool grant (Setup-Database.sql)'
-sqlcmd -S $SqlInstance -E -b -i "$PSScriptRoot\Setup-Database.sql"
-if ($LASTEXITCODE -ne 0) { throw "Setup-Database.sql failed (exit $LASTEXITCODE)." }
+Invoke-SqlScript -ScriptPath "$PSScriptRoot\Setup-Database.sql"
 
 # --- 4. Production secrets file (generated once; never overwritten) ----------
 Step 'Production secrets (appsettings.Production.json)'
