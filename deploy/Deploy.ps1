@@ -33,6 +33,13 @@ $ErrorActionPreference = 'Stop'
 Import-Module WebAdministration
 function Info($m) { Write-Host "==> $m" -ForegroundColor Cyan }
 
+# Restart-WebAppPool fails if the pool is stopped ("you have to start stopped
+# object before restarting it"), so start-if-stopped, restart-if-running.
+function Restart-Pool($name) {
+    if ((Get-WebAppPoolState -Name $name).Value -eq 'Started') { Restart-WebAppPool -Name $name }
+    else { Start-WebAppPool -Name $name }
+}
+
 $apiSrc = Join-Path $StagingDir 'api'
 $webSrc = Join-Path $StagingDir 'web'
 if (-not (Test-Path $apiSrc)) { throw "Missing API payload at $apiSrc" }
@@ -59,8 +66,8 @@ if ($LASTEXITCODE -ge 8) { throw "robocopy(web) failed with code $LASTEXITCODE" 
 # --- 3. Bring it back online ------------------------------------------------
 Info 'Bringing API online and recycling pools'
 Remove-Item $offline -Force -ErrorAction SilentlyContinue
-Restart-WebAppPool -Name $ApiPool
-Restart-WebAppPool -Name $WebPool
+Restart-Pool $ApiPool
+Restart-Pool $WebPool
 
 # --- 4. Smoke test ----------------------------------------------------------
 Info "Health-checking $HealthUrl"
