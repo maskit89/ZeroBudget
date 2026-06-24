@@ -12,6 +12,7 @@ src/ZeroBudget.Api/appsettings.Production.json
 
 # Database export artifacts produced by the data-migration scripts
 *.bacpac
+*.bak
 
 # User-specific files
 *.rsuser
