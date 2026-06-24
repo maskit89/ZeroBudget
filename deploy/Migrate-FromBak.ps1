@@ -39,7 +39,7 @@ function Read-Sql([string]$query) {
         $cmd = $cn.CreateCommand(); $cmd.CommandText = $query; $cmd.CommandTimeout = 0
         $dt = New-Object System.Data.DataTable
         (New-Object System.Data.SqlClient.SqlDataAdapter $cmd).Fill($dt) | Out-Null
-        return $dt
+        return ,$dt   # comma-wrap: stop PowerShell unrolling the DataTable into DataRows
     } finally { $cn.Close() }
 }
 
@@ -50,9 +50,9 @@ if ((Get-WebAppPoolState $ApiPool -ErrorAction SilentlyContinue).Value -eq 'Star
 }
 
 # --- 2. Work out where to put the restored files + the backup's logical names
-$dataDir = [string](Read-Sql "SELECT CAST(SERVERPROPERTY('InstanceDefaultDataPath') AS nvarchar(4000)) AS p").Rows[0].p
+$dataDir = [string]((Read-Sql "SELECT CAST(SERVERPROPERTY('InstanceDefaultDataPath') AS nvarchar(4000)) AS p").Rows[0].p)
 if ([string]::IsNullOrWhiteSpace($dataDir)) {
-    $master = [string](Read-Sql "SELECT physical_name FROM sys.master_files WHERE database_id=1 AND type=0").Rows[0].physical_name
+    $master = [string]((Read-Sql "SELECT physical_name FROM sys.master_files WHERE database_id=1 AND type=0").Rows[0].physical_name)
     $dataDir = (Split-Path $master -Parent) + '\'
 }
 Info "Restoring into $dataDir"
@@ -91,7 +91,7 @@ try {
 Info "Starting app pool $ApiPool"
 Start-WebAppPool $ApiPool
 
-$rows = [int](Read-Sql "SELECT COUNT(*) AS c FROM [$Database].dbo.Transactions").Rows[0].c
+$rows = [int]((Read-Sql "SELECT COUNT(*) AS c FROM [$Database].dbo.Transactions").Rows[0].c)
 Info "Transactions in restored DB: $rows"
 
 Info "Health-checking $HealthUrl"
