@@ -203,3 +203,21 @@ export function MoonIcon({ className }: { className?: string }) {
     </Base>
   )
 }
+
+/** Check — a tick, for completed steps. */
+export function CheckIcon({ className }: { className?: string }) {
+  return (
+    <Base className={className}>
+      <path d="M5 12.5l4.5 4.5L19 7" />
+    </Base>
+  )
+}
+
+/** Chevron down — used to collapse the getting-started panel. */
+export function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <Base className={className}>
+      <path d="M6 9l6 6 6-6" />
+    </Base>
+  )
+}

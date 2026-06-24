@@ -47,6 +47,7 @@ export function AppShell({
 
       {/* Sidebar: a fixed drawer that slides in on mobile, pinned on desktop. */}
       <aside
+        data-tour="sidebar"
         className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-surface transition-transform duration-200 ease-out lg:translate-x-0 ${
           navOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
@@ -82,6 +83,7 @@ export function AppShell({
             <ThemeToggle />
             <Link
               to="/help"
+              data-tour="help"
               aria-label="Help & guide"
               title="Help & guide"
               className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-600"

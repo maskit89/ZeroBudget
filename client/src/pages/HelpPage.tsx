@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { AppShell } from '../components/AppShell'
-import { Card, PageHeader } from '../components/ui'
+import { Button, Card, PageHeader } from '../components/ui'
+import { useOnboarding } from '../onboarding/OnboardingContext'
 
 const GUIDE_URL = 'https://github.com/maskit89/ZeroBudget/blob/main/docs/USER_GUIDE.md'
 
@@ -14,6 +15,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export function HelpPage() {
+  const { replay } = useOnboarding()
   return (
     <AppShell>
       <PageHeader
@@ -31,6 +33,11 @@ export function HelpPage() {
             </a>
             .
           </>
+        }
+        actions={
+          <Button variant="secondary" size="sm" onClick={replay}>
+            Replay welcome tour
+          </Button>
         }
       />
 
