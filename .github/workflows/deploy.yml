@@ -72,23 +72,35 @@ jobs:
         with:
           name: release
 
+      # Native OpenSSH (SFTP-based), NOT appleboy/scp-action: drone-scp pipes tar
+      # through the remote shell, which fails against Windows OpenSSH + a PowerShell
+      # default shell. Native scp/ssh use the SFTP subsystem and a single command,
+      # which is shell-independent and works on Windows.
+      - name: Write SSH key
+        env:
+          KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
       - name: Copy release to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_SSH_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_SSH_PORT }}
-          source: release.zip
-          target: C:/deploy/incoming
+        env:
+          PORT: ${{ secrets.VPS_SSH_PORT }}
+          USER: ${{ secrets.VPS_SSH_USER }}
+          HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          scp -i ~/.ssh/deploy_key -P "$PORT" \
+            -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            release.zip "$USER@$HOST:C:/deploy/incoming/release.zip"
 
       - name: Extract and deploy on VPS
-        uses: appleboy/ssh-action@v1.2.2
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_SSH_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_SSH_PORT }}
-          script: |
-            powershell -NoProfile -ExecutionPolicy Bypass -Command "Remove-Item C:\deploy\staging\* -Recurse -Force -ErrorAction SilentlyContinue; Expand-Archive -Path C:\deploy\incoming\release.zip -DestinationPath C:\deploy\staging -Force"
-            powershell -NoProfile -ExecutionPolicy Bypass -File C:\deploy\staging\Deploy.ps1
+        env:
+          PORT: ${{ secrets.VPS_SSH_PORT }}
+          USER: ${{ secrets.VPS_SSH_USER }}
+          HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$PORT" \
+            -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            "$USER@$HOST" \
+            'powershell -NoProfile -ExecutionPolicy Bypass -Command "Remove-Item C:\deploy\staging\* -Recurse -Force -ErrorAction SilentlyContinue; Expand-Archive -Path C:\deploy\incoming\release.zip -DestinationPath C:\deploy\staging -Force; & C:\deploy\staging\Deploy.ps1"'
