@@ -20,7 +20,7 @@ public class GetAccountsQueryHandler : IRequestHandler<GetAccountsQuery, IReadOn
     public async Task<IReadOnlyList<AccountDto>> Handle(
         GetAccountsQuery request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var accounts = await _db.Accounts

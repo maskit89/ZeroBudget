@@ -19,7 +19,7 @@ public class SetBudgetItemActualCommandHandler : IRequestHandler<SetBudgetItemAc
 
     public async Task<BudgetMonthDto> Handle(SetBudgetItemActualCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var item = await _db.BudgetItems

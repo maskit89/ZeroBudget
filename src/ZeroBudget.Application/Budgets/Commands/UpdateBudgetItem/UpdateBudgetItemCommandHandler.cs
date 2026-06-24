@@ -19,7 +19,7 @@ public class UpdateBudgetItemCommandHandler : IRequestHandler<UpdateBudgetItemCo
 
     public async Task<BudgetMonthDto> Handle(UpdateBudgetItemCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         // Load the line together with its owning category + month so we can both

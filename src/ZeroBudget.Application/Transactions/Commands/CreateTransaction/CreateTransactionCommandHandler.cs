@@ -23,7 +23,7 @@ public class CreateTransactionCommandHandler : IRequestHandler<CreateTransaction
 
     public async Task<TransactionDto> Handle(CreateTransactionCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         BudgetItem? item = null;

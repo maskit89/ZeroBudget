@@ -29,7 +29,7 @@ public class CommitImportCommandHandler : IRequestHandler<CommitImportCommand, I
 
     public async Task<ImportStatementResult> Handle(CommitImportCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         // Validate every foreign key the caller is asking us to attach belongs to them —

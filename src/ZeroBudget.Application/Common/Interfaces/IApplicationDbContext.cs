@@ -18,6 +18,7 @@ public interface IApplicationDbContext
     DbSet<Account> Accounts { get; }
     DbSet<SinkingFund> SinkingFunds { get; }
     DbSet<HouseholdMember> HouseholdMembers { get; }
+    DbSet<HouseholdMembership> HouseholdMemberships { get; }
     DbSet<AllocationProfile> AllocationProfiles { get; }
     DbSet<AllocationRule> AllocationRules { get; }
 

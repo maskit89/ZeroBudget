@@ -1,4 +1,5 @@
 using MediatR;
+using ZeroBudget.Application.Common.Security;
 using ZeroBudget.Application.Transactions.Dtos;
 
 namespace ZeroBudget.Application.Transactions.Commands.SplitTransaction;
@@ -10,6 +11,7 @@ namespace ZeroBudget.Application.Transactions.Commands.SplitTransaction;
 /// across income lines). The whole-transaction assignment is replaced by the
 /// slices, and each target line switches to transaction tracking.
 /// </summary>
+[AllowLimited]
 public record SplitTransactionCommand(
     Guid TransactionId,
     IReadOnlyList<SplitAllocationInput> Allocations) : IRequest<TransactionDto>;

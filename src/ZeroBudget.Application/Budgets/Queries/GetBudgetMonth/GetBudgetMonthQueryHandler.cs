@@ -19,7 +19,7 @@ public class GetBudgetMonthQueryHandler : IRequestHandler<GetBudgetMonthQuery, B
 
     public async Task<BudgetMonthDto> Handle(GetBudgetMonthQuery request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         // Ownership is enforced in the query itself: the OwnerId predicate means a

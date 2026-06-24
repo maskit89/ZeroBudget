@@ -18,8 +18,10 @@ const string SpaCorsPolicy = "SpaCors";
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// HTTP-context-backed implementation of the Application's ICurrentUser.
+// HTTP-context-backed implementation of the Application's ICurrentUser. The per-request
+// HouseholdContext is populated by HouseholdResolutionMiddleware and read back by CurrentUser.
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<HouseholdContext>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
 builder.Services.AddControllers();
@@ -71,6 +73,9 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 // additive and idempotent: they never drop existing data.
 await ApplyMigrationsAsync(app);
 
+// Ensure every existing login owns an Owner membership for their household (idempotent).
+await BackfillMembershipsAsync(app);
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -85,6 +90,10 @@ if (app.Environment.IsDevelopment())
 app.UseCors(SpaCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
+
+// After authentication, resolve which household (and at what role) the caller belongs to.
+app.UseMiddleware<HouseholdResolutionMiddleware>();
+
 app.MapControllers();
 
 // Liveness endpoint: returns 200 once the app is up. The deploy script polls
@@ -118,6 +127,24 @@ static async Task ApplyMigrationsAsync(WebApplication app)
                 attempt, maxAttempts);
             await Task.Delay(TimeSpan.FromSeconds(3));
         }
+    }
+}
+
+// Seeds an Owner membership for any existing login that lacks one, so pre-existing single-user
+// budgets become an owner-headed household. Idempotent and non-fatal: a failure here must not
+// stop the API from serving (the resolution middleware falls back to self-owned households).
+static async Task BackfillMembershipsAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        await MembershipSeeder.BackfillOwnerMembershipsAsync(db);
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Owner-membership backfill failed; continuing startup.");
     }
 }
 

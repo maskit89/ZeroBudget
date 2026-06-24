@@ -19,7 +19,7 @@ public class ReorderBudgetCategoriesCommandHandler : IRequestHandler<ReorderBudg
 
     public async Task<BudgetMonthDto> Handle(ReorderBudgetCategoriesCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var month = await _db.BudgetMonths

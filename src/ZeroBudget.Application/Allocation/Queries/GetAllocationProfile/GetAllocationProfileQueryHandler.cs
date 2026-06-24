@@ -19,7 +19,7 @@ public class GetAllocationProfileQueryHandler : IRequestHandler<GetAllocationPro
 
     public async Task<AllocationProfileDto?> Handle(GetAllocationProfileQuery request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var profile = await _db.AllocationProfiles

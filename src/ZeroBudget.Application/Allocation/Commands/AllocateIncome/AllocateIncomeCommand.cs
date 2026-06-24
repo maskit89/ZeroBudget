@@ -1,5 +1,6 @@
 using MediatR;
 using ZeroBudget.Application.Allocation.Dtos;
+using ZeroBudget.Application.Common.Security;
 
 namespace ZeroBudget.Application.Allocation.Commands.AllocateIncome;
 
@@ -8,5 +9,6 @@ namespace ZeroBudget.Application.Allocation.Commands.AllocateIncome;
 /// savings as a transfer. Idempotent — re-running replaces the month's prior allocation
 /// transfers. Returns the computed result with the number of transfers created.
 /// </summary>
+[AllowLimited]
 public record AllocateIncomeCommand(int Year, int Month, Guid? ProfileId = null)
     : IRequest<AllocationResultDto>;

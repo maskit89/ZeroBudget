@@ -1,4 +1,5 @@
 using MediatR;
+using ZeroBudget.Application.Common.Security;
 using ZeroBudget.Application.Transactions.Dtos;
 using ZeroBudget.Domain.Enums;
 
@@ -9,6 +10,7 @@ namespace ZeroBudget.Application.Transactions.Commands.CreateTransaction;
 /// base currency). Optionally assigns it to a budget line — which switches that
 /// line to transaction tracking — and/or to an account. Returns the created transaction.
 /// </summary>
+[AllowLimited]
 public record CreateTransactionCommand(
     DateOnly Date,
     string Payee,

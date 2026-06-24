@@ -21,7 +21,7 @@ public class AssignTransactionCommandHandler : IRequestHandler<AssignTransaction
 
     public async Task<TransactionDto> Handle(AssignTransactionCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var transaction = await _db.Transactions

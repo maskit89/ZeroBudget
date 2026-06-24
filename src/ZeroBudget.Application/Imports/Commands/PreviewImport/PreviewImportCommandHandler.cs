@@ -25,7 +25,7 @@ public class PreviewImportCommandHandler : IRequestHandler<PreviewImportCommand,
 
     public async Task<ImportPreviewResult> Handle(PreviewImportCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var parser = _parsers.FirstOrDefault(p => p.Format == request.Format)

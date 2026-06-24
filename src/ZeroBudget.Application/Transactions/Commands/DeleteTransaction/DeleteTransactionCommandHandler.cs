@@ -18,7 +18,7 @@ public class DeleteTransactionCommandHandler : IRequestHandler<DeleteTransaction
 
     public async Task Handle(DeleteTransactionCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var transaction = await _db.Transactions

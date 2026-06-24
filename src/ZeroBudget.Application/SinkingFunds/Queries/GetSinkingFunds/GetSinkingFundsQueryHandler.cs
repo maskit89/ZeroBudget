@@ -22,7 +22,7 @@ public class GetSinkingFundsQueryHandler
     public async Task<IReadOnlyList<SinkingFundDto>> Handle(
         GetSinkingFundsQuery request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var asOf = request.AsOf ?? DateOnly.FromDateTime(DateTime.UtcNow);

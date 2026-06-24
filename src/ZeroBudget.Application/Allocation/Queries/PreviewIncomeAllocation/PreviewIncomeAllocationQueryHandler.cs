@@ -20,7 +20,7 @@ public class PreviewIncomeAllocationQueryHandler
     public async Task<AllocationResultDto> Handle(
         PreviewIncomeAllocationQuery request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var plan = await AllocationPlanner.PlanAsync(

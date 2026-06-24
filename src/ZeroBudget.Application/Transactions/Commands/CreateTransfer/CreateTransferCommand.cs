@@ -1,4 +1,5 @@
 using MediatR;
+using ZeroBudget.Application.Common.Security;
 using ZeroBudget.Application.Transactions.Dtos;
 
 namespace ZeroBudget.Application.Transactions.Commands.CreateTransfer;
@@ -9,6 +10,7 @@ namespace ZeroBudget.Application.Transactions.Commands.CreateTransfer;
 /// <paramref name="FromAccountId"/>, destination = <paramref name="ToAccountId"/>) that
 /// is excluded from budget actuals. Returns the created transaction.
 /// </summary>
+[AllowLimited]
 public record CreateTransferCommand(
     DateOnly Date,
     decimal Amount,

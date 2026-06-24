@@ -21,7 +21,7 @@ public class AddBudgetItemCommandHandler : IRequestHandler<AddBudgetItemCommand,
 
     public async Task<BudgetMonthDto> Handle(AddBudgetItemCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         // Load the target category together with its items (to pick the next
