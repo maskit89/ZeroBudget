@@ -236,7 +236,7 @@ export function ReportsPage() {
                       const spentMinor = fromAmount(m.spent)
                       const net = incomeMinor - spentMinor
                       return (
-                        <tr key={m.month} className={m.hasBudget ? '' : 'text-slate-300'}>
+                        <tr key={m.month} className={m.hasBudget ? '' : 'text-slate-500'}>
                           <td className="py-1.5">{SHORT_MONTHS[m.month - 1]}</td>
                           <td className="py-1.5 text-right tabular-nums">
                             {m.hasBudget ? formatMoney(incomeMinor, currency) : '—'}
