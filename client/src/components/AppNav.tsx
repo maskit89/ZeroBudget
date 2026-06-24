@@ -1,9 +1,10 @@
 import type { ComponentType } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
 import { useFeatures } from '../features/FeatureContext'
-import { AccountsIcon, AllocationIcon, DashboardIcon, FundsIcon, MembersIcon, ReportsIcon, TransactionsIcon } from './icons'
+import { AccessIcon, AccountsIcon, AllocationIcon, DashboardIcon, FundsIcon, MembersIcon, ReportsIcon, TransactionsIcon } from './icons'
 
-export type NavKey = 'budget' | 'transactions' | 'accounts' | 'funds' | 'members' | 'allocation' | 'reports'
+export type NavKey = 'budget' | 'transactions' | 'accounts' | 'funds' | 'members' | 'allocation' | 'reports' | 'access'
 
 /**
  * The primary navigation, rendered as a vertical list inside the sidebar. The
@@ -19,6 +20,7 @@ export function AppNav({
   onNavigate?: () => void
 }) {
   const features = useFeatures()
+  const { canManageHousehold } = useAuth()
 
   const items: {
     key: NavKey
@@ -34,6 +36,7 @@ export function AppNav({
     { key: 'members', to: '/members', label: 'Members', icon: MembersIcon, show: features.householdAllocation },
     { key: 'allocation', to: '/allocation', label: 'Allocation', icon: AllocationIcon, show: features.householdAllocation },
     { key: 'reports', to: '/reports', label: 'Reports', icon: ReportsIcon, show: features.reports },
+    { key: 'access', to: '/access', label: 'Members & access', icon: AccessIcon, show: features.householdAccess && canManageHousehold },
   ]
 
   return (

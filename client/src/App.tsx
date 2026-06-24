@@ -3,6 +3,9 @@ import type { JSX } from 'react'
 import { useAuth } from './auth/AuthContext'
 import { useFeatures } from './features/FeatureContext'
 import { LoginPage } from './pages/LoginPage'
+import { AcceptInvitePage } from './pages/AcceptInvitePage'
+import { AccountPage } from './pages/AccountPage'
+import { HouseholdAccessPage } from './pages/HouseholdAccessPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { TransactionsPage } from './pages/TransactionsPage'
 import { AccountsPage } from './pages/AccountsPage'
@@ -30,6 +33,7 @@ export default function App() {
           path="/login"
           element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
         />
+        <Route path="/accept-invite" element={<AcceptInvitePage />} />
         <Route
           path="/"
           element={
@@ -96,6 +100,24 @@ export default function App() {
             }
           />
         )}
+        {features.householdAccess && (
+          <Route
+            path="/access"
+            element={
+              <RequireAuth>
+                <HouseholdAccessPage />
+              </RequireAuth>
+            }
+          />
+        )}
+        <Route
+          path="/account"
+          element={
+            <RequireAuth>
+              <AccountPage />
+            </RequireAuth>
+          }
+        />
         {features.camtImport && (
           <Route
             path="/import"
