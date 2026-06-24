@@ -123,6 +123,45 @@ function transactions() {
   ]
 }
 
+// A few months of trends so the Reports page renders its summary cards, the
+// income-vs-spending bars (incl. an overspent month) and the breakdown select.
+function budgetTrends() {
+  return {
+    points: [
+      { key: '2026-04', year: 2026, month: 4, income: 3000, incomeReceived: 2950, spent: 2400 },
+      { key: '2026-05', year: 2026, month: 5, income: 3000, incomeReceived: 3000, spent: 3200 },
+      { key: '2026-06', year: 2026, month: 6, income: 3000, incomeReceived: 3000, spent: 1300 },
+    ],
+    totalIncome: 9000,
+    totalIncomeReceived: 8950,
+    totalSpent: 6900,
+  }
+}
+
+// A full year with a mix of budgeted and not-yet-budgeted months, so the annual
+// table (incl. the muted "no budget" rows), totals, and the per-category average
+// bars all render for axe to scan.
+function annualSummary(year: number) {
+  const spentByMonth: Record<number, number> = { 4: 2400, 5: 3200, 6: 1300 }
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const month = i + 1
+    const hasBudget = month in spentByMonth
+    return { month, hasBudget, income: hasBudget ? 3000 : 0, spent: spentByMonth[month] ?? 0 }
+  })
+  return {
+    year,
+    months,
+    totalIncome: 9000,
+    totalSpent: 6900,
+    budgetedMonths: 3,
+    categories: [
+      { name: 'Housing', kind: 'Expense', averagePerMonth: 1100, total: 3300 },
+      { name: 'Groceries', kind: 'Expense', averagePerMonth: 400, total: 1200 },
+      { name: 'Car', kind: 'Fund', averagePerMonth: 200, total: 600 },
+    ],
+  }
+}
+
 async function mockApi(route: Route) {
   const path = new URL(route.request().url()).pathname.replace(/^\/api/, '')
   const json = (body: unknown) =>
@@ -144,8 +183,11 @@ async function mockApi(route: Route) {
   if (/^\/allocation\/preview\/\d+\/\d+$/.test(path)) return json(allocationPreview())
   if (path === '/budget/months') return json([])
   if (path === '/budget/templates') return json([])
-  if (path === '/reports/trends') return json({ points: [], totalIncome: 0, totalIncomeReceived: 0, totalSpent: 0 })
-  if (/^\/reports\/annual\/\d+$/.test(path)) return json({ year: 2026, months: [], totalIncome: 0, totalPlanned: 0, totalSpent: 0 })
+  if (path === '/reports/trends') return json(budgetTrends())
+  if (/^\/reports\/annual\/\d+$/.test(path)) {
+    const year = Number(path.split('/').pop())
+    return json(annualSummary(year))
+  }
   return json([]) // transactions, accounts, anything else → empty
 }
 
