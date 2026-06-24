@@ -1,7 +1,14 @@
+using System.Security.Claims;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ZeroBudget.Api.Contracts.Auth;
 using ZeroBudget.Application.Common.Interfaces;
+using ZeroBudget.Application.HouseholdAccess.Commands.AcceptInvite;
+using ZeroBudget.Domain.Entities;
+using ZeroBudget.Domain.Enums;
 using ZeroBudget.Infrastructure.Identity;
 using ZeroBudget.Infrastructure.Persistence;
 
@@ -14,18 +21,24 @@ public class AuthController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IJwtTokenGenerator _tokenGenerator;
     private readonly ApplicationDbContext _db;
+    private readonly ISender _mediator;
+    private readonly ICurrentUser _currentUser;
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
         IJwtTokenGenerator tokenGenerator,
-        ApplicationDbContext db)
+        ApplicationDbContext db,
+        ISender mediator,
+        ICurrentUser currentUser)
     {
         _userManager = userManager;
         _tokenGenerator = tokenGenerator;
         _db = db;
+        _mediator = mediator;
+        _currentUser = currentUser;
     }
 
-    /// <summary>Creates an account, seeds a starter budget and returns a JWT.</summary>
+    /// <summary>Creates an account, seeds a starter budget + owner membership, returns a JWT.</summary>
     [HttpPost("register")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -50,18 +63,29 @@ public class AuthController : ControllerBase
             return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
         }
 
-        // Give the new user something to look at on first login.
+        // The new user owns their own household, and gets a starter budget to look at.
         var now = DateTime.UtcNow;
+        _db.HouseholdMemberships.Add(new HouseholdMembership
+        {
+            OwnerId = user.Id,
+            UserId = user.Id,
+            Role = HouseholdRole.Owner,
+            Status = MembershipStatus.Active,
+            InvitedEmail = user.Email!,
+            DisplayName = user.DisplayName,
+            CreatedUtc = now,
+        });
+        await _db.SaveChangesAsync(ct);
         await BudgetSeeder.SeedDefaultMonthAsync(_db, user.Id, now.Year, now.Month, ct);
 
-        return Ok(BuildResponse(user));
+        return Ok(await BuildResponseAsync(user, ct));
     }
 
     /// <summary>Validates credentials and returns a JWT.</summary>
     [HttpPost("login")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Login(LoginRequest request)
+    public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
         if (user is null || !await _userManager.CheckPasswordAsync(user, request.Password))
@@ -70,12 +94,90 @@ public class AuthController : ControllerBase
             return Unauthorized(new { error = "Invalid email or password." });
         }
 
-        return Ok(BuildResponse(user));
+        return Ok(await BuildResponseAsync(user, ct));
     }
 
-    private AuthResponse BuildResponse(ApplicationUser user)
+    /// <summary>Redeems a one-time invite link, creates the login and returns a JWT.</summary>
+    [HttpPost("accept-invite")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AcceptInvite(AcceptInviteRequest request, CancellationToken ct)
     {
+        var result = await _mediator.Send(
+            new AcceptInviteCommand(request.Token, request.Password, request.DisplayName), ct);
+
+        var (token, expiresAt) = _tokenGenerator.Generate(result.UserId, result.Email);
+        return Ok(new AuthResponse(token, expiresAt, result.UserId, result.Email, result.Role, request.DisplayName));
+    }
+
+    /// <summary>Changes the authenticated login's own password.</summary>
+    [HttpPost("change-password")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+        }
+
+        return NoContent();
+    }
+
+    /// <summary>The authenticated login's identity, household and access level.</summary>
+    [HttpGet("me")]
+    [Authorize]
+    [ProducesResponseType(typeof(MeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Me()
+    {
+        var userId = _currentUser.UserId;
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        return Ok(new MeResponse(
+            userId,
+            user.Email!,
+            user.DisplayName,
+            _currentUser.Role ?? HouseholdRole.Owner,
+            _currentUser.OwnerId ?? userId,
+            _currentUser.MemberId));
+    }
+
+    private async Task<AuthResponse> BuildResponseAsync(ApplicationUser user, CancellationToken ct)
+    {
+        var role = await _db.HouseholdMemberships
+            .Where(m => m.UserId == user.Id && m.Status == MembershipStatus.Active)
+            .Select(m => (HouseholdRole?)m.Role)
+            .FirstOrDefaultAsync(ct) ?? HouseholdRole.Owner;
+
         var (token, expiresAt) = _tokenGenerator.Generate(user.Id, user.Email!);
-        return new AuthResponse(token, expiresAt, user.Id, user.Email!);
+        return new AuthResponse(token, expiresAt, user.Id, user.Email!, role, user.DisplayName);
     }
 }

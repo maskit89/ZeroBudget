@@ -1,0 +1,94 @@
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using ZeroBudget.Application.Common.Exceptions;
+using ZeroBudget.Application.Common.Interfaces;
+using ZeroBudget.Application.HouseholdAccess.Dtos;
+using ZeroBudget.Domain.Entities;
+using ZeroBudget.Domain.Enums;
+
+namespace ZeroBudget.Application.HouseholdAccess.Commands.InviteMember;
+
+public class InviteMemberCommandHandler : IRequestHandler<InviteMemberCommand, InviteResultDto>
+{
+    private readonly IApplicationDbContext _db;
+    private readonly ICurrentUser _currentUser;
+    private readonly IIdentityService _identity;
+
+    public InviteMemberCommandHandler(
+        IApplicationDbContext db, ICurrentUser currentUser, IIdentityService identity)
+    {
+        _db = db;
+        _currentUser = currentUser;
+        _identity = identity;
+    }
+
+    public async Task<InviteResultDto> Handle(InviteMemberCommand request, CancellationToken cancellationToken)
+    {
+        var ownerId = _currentUser.OwnerId
+            ?? throw new ForbiddenAccessException("No authenticated user on the request.");
+        var email = request.Email.Trim();
+
+        var alreadyInHousehold = await _db.HouseholdMemberships
+            .AnyAsync(m => m.OwnerId == ownerId && m.InvitedEmail == email, cancellationToken);
+        if (alreadyInHousehold)
+        {
+            throw Conflict("Email", "That email already has access to this household.");
+        }
+
+        if (request.MemberId is Guid memberId)
+        {
+            var memberInHousehold = await _db.HouseholdMembers
+                .AnyAsync(m => m.Id == memberId && m.OwnerId == ownerId, cancellationToken);
+            if (!memberInHousehold)
+            {
+                throw new NotFoundException($"Member {memberId} was not found.");
+            }
+        }
+
+        var membership = new HouseholdMembership
+        {
+            OwnerId = ownerId,
+            Role = request.Role,
+            InvitedEmail = email,
+            DisplayName = request.DisplayName,
+            MemberId = request.MemberId,
+            CreatedUtc = DateTime.UtcNow,
+        };
+
+        string? rawToken = null;
+        if (request.Method == InviteMethod.Direct)
+        {
+            if (await _identity.EmailExistsAsync(email))
+            {
+                throw Conflict("Email", "An account with that email already exists.");
+            }
+
+            var created = await _identity.CreateUserAsync(email, request.TempPassword!, request.DisplayName);
+            if (!created.Succeeded)
+            {
+                throw Conflict("Password", created.Errors);
+            }
+
+            membership.UserId = created.UserId;
+            membership.Status = MembershipStatus.Active;
+        }
+        else
+        {
+            rawToken = InviteToken.Generate();
+            membership.InviteTokenHash = InviteToken.Hash(rawToken);
+            membership.InviteExpiresUtc = DateTime.UtcNow.AddDays(7);
+            membership.Status = MembershipStatus.Invited;
+        }
+
+        _db.HouseholdMemberships.Add(membership);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return new InviteResultDto(membership.ToDto(_currentUser.UserId), rawToken);
+    }
+
+    private static ValidationException Conflict(string field, string message) =>
+        new(new Dictionary<string, string[]> { [field] = new[] { message } });
+
+    private static ValidationException Conflict(string field, IReadOnlyList<string> messages) =>
+        new(new Dictionary<string, string[]> { [field] = messages.ToArray() });
+}
