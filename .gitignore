@@ -6,6 +6,13 @@
 # dotenv files
 .env
 
+# Production secrets live ONLY on the server, never in git (template: *.example)
+appsettings.Production.json
+src/ZeroBudget.Api/appsettings.Production.json
+
+# Database export artifacts produced by the data-migration scripts
+*.bacpac
+
 # User-specific files
 *.rsuser
 *.suo
