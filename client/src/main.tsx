@@ -5,13 +5,16 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './auth/AuthContext'
 import { FeatureProvider } from './features/FeatureContext'
+import { OnboardingProvider } from './onboarding/OnboardingContext'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
         <FeatureProvider>
-          <App />
+          <OnboardingProvider>
+            <App />
+          </OnboardingProvider>
         </FeatureProvider>
       </AuthProvider>
     </BrowserRouter>

@@ -32,5 +32,8 @@ describe('HelpPage', () => {
 
     const guideLink = screen.getByRole('link', { name: /complete user guide/i })
     expect(guideLink).toHaveAttribute('href', expect.stringContaining('USER_GUIDE.md'))
+
+    // The welcome tour can always be replayed from here.
+    expect(screen.getByRole('button', { name: 'Replay welcome tour' })).toBeInTheDocument()
   })
 })

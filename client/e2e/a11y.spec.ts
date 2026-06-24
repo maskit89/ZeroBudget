@@ -149,12 +149,21 @@ async function mockApi(route: Route) {
   return json([]) // transactions, accounts, anything else → empty
 }
 
+const ONBOARDING_EMAIL = 'e2e@zerobudget.app'
+// A fully-completed onboarding record so the welcome/tour/checklist stay out of
+// the per-route scans (they're scanned on their own below).
+const ONBOARDING_DONE = JSON.stringify({ v: 1, welcomeSeen: true, tourDone: true, checklistDismissed: true })
+
 async function authedSetup(page: Page, theme: 'light' | 'dark') {
-  await page.addInitScript((t) => {
-    localStorage.setItem('zbb.theme', t as string)
-    localStorage.setItem('zbb.token', 'e2e-token')
-    localStorage.setItem('zbb.email', 'e2e@zerobudget.app')
-  }, theme)
+  await page.addInitScript(
+    ({ t, done }) => {
+      localStorage.setItem('zbb.theme', t)
+      localStorage.setItem('zbb.token', 'e2e-token')
+      localStorage.setItem('zbb.email', 'e2e@zerobudget.app')
+      localStorage.setItem('zbb.onboarding:e2e@zerobudget.app', done)
+    },
+    { t: theme, done: ONBOARDING_DONE },
+  )
   await page.route('**/api/**', mockApi)
 }
 
@@ -208,6 +217,42 @@ for (const theme of ['light', 'dark'] as const) {
       await page.route('**/api/**', mockApi)
       await page.goto('/login')
       await page.getByLabel('Email').waitFor()
+      await expectNoViolations(page)
+    })
+
+    test('onboarding welcome, tour and checklist have no WCAG A/AA violations', async ({ page }) => {
+      // A brand-new user (no onboarding record) so the welcome auto-opens.
+      await page.addInitScript(
+        ({ t, email }) => {
+          localStorage.setItem('zbb.theme', t)
+          localStorage.setItem('zbb.token', 'e2e-token')
+          localStorage.setItem('zbb.email', email)
+        },
+        { t: theme, email: ONBOARDING_EMAIL },
+      )
+      await page.route('**/api/**', mockApi)
+      await page.goto('/')
+
+      // Welcome dialog.
+      await page.getByRole('heading', { name: 'Welcome to ZeroBudget' }).waitFor()
+      await expectNoViolations(page)
+
+      // Spotlight tour — first step (a real element is spotlit).
+      await page.getByRole('button', { name: 'Take the tour' }).click()
+      const tour = page.getByRole('dialog')
+      await page.getByText('Step 1 of').waitFor()
+      await expectNoViolations(page)
+
+      // Advance to the final (centred) step and scan again.
+      await tour.getByRole('button', { name: 'Next' }).click()
+      await tour.getByRole('button', { name: 'Next' }).click()
+      await tour.getByRole('button', { name: 'Next' }).click()
+      await page.getByText('Step 4 of').waitFor()
+      await expectNoViolations(page)
+
+      // Finish → the getting-started checklist appears in the corner.
+      await tour.getByRole('button', { name: 'Finish' }).click()
+      await page.getByRole('region', { name: 'Getting started' }).waitFor()
       await expectNoViolations(page)
     })
   })

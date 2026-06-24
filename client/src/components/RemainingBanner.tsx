@@ -31,7 +31,10 @@ export function RemainingBanner({
       : { bar: 'bg-amber-800', ring: 'ring-amber-300', label: 'Still to assign' }
 
   return (
-    <div className={`rounded-2xl ${tone.bar} text-white shadow-lg ring-4 ${tone.ring} transition-colors`}>
+    <div
+      data-tour="remaining-banner"
+      className={`rounded-2xl ${tone.bar} text-white shadow-lg ring-4 ${tone.ring} transition-colors`}
+    >
       <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-medium uppercase tracking-wide text-white">

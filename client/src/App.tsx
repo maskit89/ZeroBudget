@@ -12,6 +12,7 @@ import { AllocationPage } from './pages/AllocationPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { ImportPage } from './pages/ImportPage'
 import { HelpPage } from './pages/HelpPage'
+import { Onboarding } from './onboarding/Onboarding'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { isAuthenticated } = useAuth()
@@ -23,96 +24,99 @@ export default function App() {
   const features = useFeatures()
 
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
-      />
-      <Route
-        path="/"
-        element={
-          <RequireAuth>
-            <DashboardPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/transactions"
-        element={
-          <RequireAuth>
-            <TransactionsPage />
-          </RequireAuth>
-        }
-      />
-      {features.accounts && (
+    <>
+      <Routes>
         <Route
-          path="/accounts"
+          path="/login"
+          element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+        />
+        <Route
+          path="/"
           element={
             <RequireAuth>
-              <AccountsPage />
+              <DashboardPage />
             </RequireAuth>
           }
         />
-      )}
-      {features.sinkingFunds && (
         <Route
-          path="/funds"
+          path="/transactions"
           element={
             <RequireAuth>
-              <FundsPage />
+              <TransactionsPage />
             </RequireAuth>
           }
         />
-      )}
-      {features.householdAllocation && (
+        {features.accounts && (
+          <Route
+            path="/accounts"
+            element={
+              <RequireAuth>
+                <AccountsPage />
+              </RequireAuth>
+            }
+          />
+        )}
+        {features.sinkingFunds && (
+          <Route
+            path="/funds"
+            element={
+              <RequireAuth>
+                <FundsPage />
+              </RequireAuth>
+            }
+          />
+        )}
+        {features.householdAllocation && (
+          <Route
+            path="/members"
+            element={
+              <RequireAuth>
+                <MembersPage />
+              </RequireAuth>
+            }
+          />
+        )}
+        {features.householdAllocation && (
+          <Route
+            path="/allocation"
+            element={
+              <RequireAuth>
+                <AllocationPage />
+              </RequireAuth>
+            }
+          />
+        )}
+        {features.reports && (
+          <Route
+            path="/reports"
+            element={
+              <RequireAuth>
+                <ReportsPage />
+              </RequireAuth>
+            }
+          />
+        )}
+        {features.camtImport && (
+          <Route
+            path="/import"
+            element={
+              <RequireAuth>
+                <ImportPage />
+              </RequireAuth>
+            }
+          />
+        )}
         <Route
-          path="/members"
+          path="/help"
           element={
             <RequireAuth>
-              <MembersPage />
+              <HelpPage />
             </RequireAuth>
           }
         />
-      )}
-      {features.householdAllocation && (
-        <Route
-          path="/allocation"
-          element={
-            <RequireAuth>
-              <AllocationPage />
-            </RequireAuth>
-          }
-        />
-      )}
-      {features.reports && (
-        <Route
-          path="/reports"
-          element={
-            <RequireAuth>
-              <ReportsPage />
-            </RequireAuth>
-          }
-        />
-      )}
-      {features.camtImport && (
-        <Route
-          path="/import"
-          element={
-            <RequireAuth>
-              <ImportPage />
-            </RequireAuth>
-          }
-        />
-      )}
-      <Route
-        path="/help"
-        element={
-          <RequireAuth>
-            <HelpPage />
-          </RequireAuth>
-        }
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      {isAuthenticated && <Onboarding />}
+    </>
   )
 }
