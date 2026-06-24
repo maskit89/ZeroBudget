@@ -20,7 +20,9 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Domain      = 'your-domain.example',
+    # Leave blank to bind the site to the server IP over HTTP (no domain needed).
+    # Pass a hostname later (and run win-acme) to add a domain + HTTPS.
+    [string]$Domain      = '',
     [string]$WebRoot     = 'C:\inetpub\zerobudget\web',
     [string]$ApiRoot     = 'C:\inetpub\zerobudget\api',
     [string]$DeployRoot  = 'C:\deploy',
@@ -81,7 +83,7 @@ foreach ($d in @($WebRoot, $ApiRoot, $DeployRoot, "$DeployRoot\incoming", "$Depl
     New-Item -ItemType Directory -Force -Path $d | Out-Null
 }
 
-# --- 5. App pools (both "No Managed Code" — .NET Core doesn't load the CLR) --
+# --- 5. App pools (both "No Managed Code" - .NET Core doesn't load the CLR) --
 Info 'Creating app pools'
 foreach ($pool in @('ZeroBudget-Web', 'ZeroBudget-Api')) {
     if (-not (Test-Path "IIS:\AppPools\$pool")) { New-WebAppPool -Name $pool | Out-Null }
@@ -91,10 +93,15 @@ foreach ($pool in @('ZeroBudget-Web', 'ZeroBudget-Api')) {
 
 # --- 6. Sites ---------------------------------------------------------------
 Info 'Creating IIS sites'
-# Front site: public, serves the SPA + reverse-proxies /api.
+# Front site: public, serves the SPA + reverse-proxies /api. With no -Domain it
+# binds to all hosts on :80 so it answers on the raw server IP.
 if (-not (Get-Website -Name 'ZeroBudget' -ErrorAction SilentlyContinue)) {
-    New-Website -Name 'ZeroBudget' -PhysicalPath $WebRoot -ApplicationPool 'ZeroBudget-Web' `
-        -HostHeader $Domain -Port 80 | Out-Null
+    if ([string]::IsNullOrWhiteSpace($Domain)) {
+        New-Website -Name 'ZeroBudget' -PhysicalPath $WebRoot -ApplicationPool 'ZeroBudget-Web' -Port 80 | Out-Null
+    } else {
+        New-Website -Name 'ZeroBudget' -PhysicalPath $WebRoot -ApplicationPool 'ZeroBudget-Web' `
+            -HostHeader $Domain -Port 80 | Out-Null
+    }
 } else {
     Set-ItemProperty 'IIS:\Sites\ZeroBudget' -Name physicalPath -Value $WebRoot
 }
@@ -132,11 +139,16 @@ foreach ($p in @(80, 443, 22)) {
 }
 
 Info 'Server setup complete.'
+$tlsNote = if ([string]::IsNullOrWhiteSpace($Domain)) {
+    "  4. (Later) point a domain at this VPS, re-run with -Domain, then run win-acme (wacs.exe) for HTTPS."
+} else {
+    "  4. Point DNS A-record '$Domain' at this VPS, then run win-acme (wacs.exe) for TLS."
+}
 Write-Host @"
 
 Next steps (see docs/deployment/README.md):
   1. Install SQL Server Express, then run:  sqlcmd -S .\SQLEXPRESS -E -i Setup-Database.sql
   2. Copy appsettings.Production.json.example -> $ApiRoot\appsettings.Production.json and fill in secrets.
   3. Add your CI public key to C:\ProgramData\ssh\administrators_authorized_keys.
-  4. Point DNS A-record '$Domain' at this VPS, then run win-acme (wacs.exe) for TLS.
+$tlsNote
 "@ -ForegroundColor Green

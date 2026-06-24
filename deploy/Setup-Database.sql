@@ -1,5 +1,5 @@
 /*
-    ZeroBudget — database + app-pool login bootstrap (idempotent).
+    ZeroBudget - database + app-pool login bootstrap (idempotent).
 
     Run AFTER installing SQL Server Express, e.g.:
         sqlcmd -S .\SQLEXPRESS -E -i Setup-Database.sql
@@ -10,7 +10,7 @@
 
     NOTE on data migration: if you are restoring household data from the dev
     machine, run Import-ToServer.ps1 FIRST (the BACPAC import creates the database),
-    then run this script — the CREATE DATABASE below is skipped if it already exists,
+    then run this script - the CREATE DATABASE below is skipped if it already exists,
     and only the login/grant is (re)applied.
 */
 
@@ -20,7 +20,7 @@ BEGIN
     CREATE DATABASE [ZeroBudget];
 END
 ELSE
-    PRINT 'Database ZeroBudget already exists — leaving data intact.';
+    PRINT 'Database ZeroBudget already exists - leaving data intact.';
 GO
 
 USE [master];

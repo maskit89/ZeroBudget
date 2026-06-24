@@ -23,6 +23,7 @@ The React client already calls the same-origin `/api` prefix, so the proxy needs
 
 | File | Runs where | Purpose |
 |------|-----------|---------|
+| `deploy/Bootstrap.ps1` | VPS, once | **one-shot bundler** — runs everything below (Setup-Server + SQL Express + Setup-Database + secrets + backup task) |
 | `deploy/Setup-Server.ps1` | VPS, once | IIS + URL Rewrite + ARR + .NET Hosting Bundle + OpenSSH + app pools/sites + firewall |
 | `deploy/Setup-Database.sql` | VPS, once | create DB (if absent) + grant the app-pool login `db_owner` |
 | `deploy/web/web.config` | shipped to the SPA site | the `/api` reverse-proxy + SPA-fallback rewrite rules |
@@ -38,59 +39,50 @@ The React client already calls the same-origin `/api` prefix, so the proxy needs
 
 ## One-time server setup (manual)
 
-> All commands run in an **elevated PowerShell** over RDP on the VPS.
+> Run in an **elevated PowerShell** over RDP on the VPS, from the extracted `deploy` folder.
 
-### 1. Bootstrap IIS + tooling
+### 1. Bootstrap everything (one command)
 ```powershell
-# From a copy of the repo's deploy/ folder (or just this script):
-powershell -ExecutionPolicy Bypass -File .\Setup-Server.ps1 -Domain "budget.yourdomain.com"
+powershell -ExecutionPolicy Bypass -File .\Bootstrap.ps1
 ```
-Verify the **.NET 10 Hosting Bundle** URL in the script is the latest build before running (Microsoft bumps the patch version). After it finishes, `dotnet --list-runtimes` should show `Microsoft.AspNetCore.App 10.x`.
+This runs IIS + module install, SQL Server Express install, the database + grant, writes `appsettings.Production.json` with an **auto-generated `Jwt:Key`**, and registers the daily backup task. It's **idempotent** — if a step fails (e.g. a stale download URL), fix it and re-run; completed steps are skipped.
 
-### 2. SQL Server
-Install **SQL Server Express** (Basic install is fine). Then:
-```powershell
-sqlcmd -S .\SQLEXPRESS -E -i .\Setup-Database.sql
-```
+Notes:
+- **No domain needed.** The site binds to the server IP over HTTP; the app will be reachable at `http://<vps-ip>` after the first deploy. (Add a domain + HTTPS later — see *Adding a domain + TLS* below.)
+- Verify the **.NET 10 Hosting Bundle** URL in `Setup-Server.ps1` is current before running (Microsoft bumps the patch version). After it finishes, `dotnet --list-runtimes` should show `Microsoft.AspNetCore.App 10.x`.
+- If the SQL auto-install link 404s, install **SQL Server Express** by hand (Basic) and re-run `Bootstrap.ps1`.
+- When it finishes, it prints your VPS IP and the exact GitHub-secret values to use.
 
-### 3. Server-only secrets
-Copy the template into the API folder and fill it in — this file is **never** deployed over (robocopy `/XF`) and is gitignored:
-```powershell
-Copy-Item .\appsettings.Production.json.example C:\inetpub\zerobudget\api\appsettings.Production.json
-notepad C:\inetpub\zerobudget\api\appsettings.Production.json
-```
-Generate a strong `Jwt:Key` (≥32 bytes):
-```powershell
-[Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }))
-```
+> Prefer to run the steps individually? Each script (`Setup-Server.ps1`, `Setup-Database.sql`, `Register-BackupTask.ps1`) still works standalone — `Bootstrap.ps1` just chains them.
 
-### 4. SSH deploy key
-On your machine, create a keypair dedicated to deploys:
-```bash
-ssh-keygen -t ed25519 -f zerobudget_deploy -C "github-actions"
+### 2. SSH deploy key
+On **your machine**, create a keypair dedicated to deploys:
+```powershell
+ssh-keygen -t ed25519 -f $HOME\.ssh\zerobudget_deploy -C "github-actions"
 ```
-On the VPS, append the **public** key to the admin authorized-keys file (note the ACL step — required for admin accounts):
+Copy the **public** half (`zerobudget_deploy.pub`) to the VPS, then there:
 ```powershell
 Add-Content C:\ProgramData\ssh\administrators_authorized_keys (Get-Content .\zerobudget_deploy.pub)
 icacls C:\ProgramData\ssh\administrators_authorized_keys /inheritance:r /grant "Administrators:F" /grant "SYSTEM:F"
 ```
-Test from your machine: `ssh -i zerobudget_deploy Administrator@<vps-ip>`.
+Test from your machine: `ssh -i $HOME\.ssh\zerobudget_deploy Administrator@<vps-ip>`.
 
-### 5. (Optional) migrate existing household data
-On the **dev machine**:
+### 3. (Optional) migrate existing household data
+Skip this for an empty start. To bring your dev data across, on the **dev machine**:
 ```powershell
 dotnet tool install -g microsoft.sqlpackage
-powershell -File .\Export-DevData.ps1          # → deploy\ZeroBudget.bacpac
+powershell -File .\Export-DevData.ps1          # -> deploy\ZeroBudget.bacpac
 ```
-Copy `ZeroBudget.bacpac` to the VPS, then on the **VPS** (before step 2's grant, since import creates the DB):
+Copy `ZeroBudget.bacpac` to the VPS, then on the **VPS** — import **before** the grant (import creates the DB):
 ```powershell
 powershell -File .\Import-ToServer.ps1 -BacpacPath C:\deploy\ZeroBudget.bacpac
 sqlcmd -S .\SQLEXPRESS -E -i .\Setup-Database.sql   # re-run to grant on the new DB
 ```
 
-### 6. DNS + TLS
-- Point a DNS **A record** at the VPS public IP.
-- Install free Let's Encrypt TLS with **win-acme** (`wacs.exe`): pick the `ZeroBudget` site; it creates the 443 binding **and** offers to add the HTTP→HTTPS redirect, and schedules auto-renewal. (This is the IIS-native equivalent of Caddy's auto-HTTPS.)
+### Adding a domain + TLS (later)
+Once you have a domain:
+- Point a DNS **A record** at the VPS public IP, then re-run `Setup-Server.ps1 -Domain "budget.yourdomain.com"` to bind the host header.
+- Install free Let's Encrypt TLS with **win-acme** (`wacs.exe`): pick the `ZeroBudget` site; it creates the 443 binding **and** offers the HTTP->HTTPS redirect, and schedules auto-renewal. (The IIS-native equivalent of Caddy's auto-HTTPS.)
 
 ---
 
@@ -102,7 +94,7 @@ Add these **Actions secrets** (Settings → Secrets and variables → Actions):
 |--------|-------|
 | `VPS_HOST` | VPS public IP or hostname |
 | `VPS_SSH_USER` | e.g. `Administrator` |
-| `VPS_SSH_KEY` | the **private** key from step 4 (full file contents) |
+| `VPS_SSH_KEY` | the **private** key from step 2 (full file contents) |
 | `VPS_SSH_PORT` | `22` (or your custom SSH port) |
 
 Recommended: **branch protection** on `main` requiring the existing `backend` / `frontend` / `a11y` CI checks, so only green code can merge and deploy. Optionally add a required reviewer on the `production` environment to gate the deploy job.

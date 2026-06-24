@@ -8,7 +8,7 @@
     Order of operations for a data-migrated install:
         1. Import-ToServer.ps1   (creates ZeroBudget with all data)
         2. Setup-Database.sql     (adds the app-pool login/grant on the new DB)
-        3. Deploy (API auto-migrate finds nothing pending — history is current)
+        3. Deploy (API auto-migrate finds nothing pending - history is current)
 
     Requires the free sqlpackage tool:
         dotnet tool install -g microsoft.sqlpackage

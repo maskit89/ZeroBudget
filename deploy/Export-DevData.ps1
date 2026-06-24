@@ -13,7 +13,7 @@
         dotnet tool install -g microsoft.sqlpackage
 
     Then copy the resulting .bacpac to the VPS (scp / RDP) and run
-    Import-ToServer.ps1 there. The .bacpac is gitignored — never commit it.
+    Import-ToServer.ps1 there. The .bacpac is gitignored - never commit it.
 #>
 [CmdletBinding()]
 param(

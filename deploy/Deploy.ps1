@@ -14,7 +14,7 @@
       2. robocopy /MIR the new files, preserving the server-only secrets file,
          the offline marker and the ANCM logs folder.
       3. Remove the marker and recycle both app pools.
-      4. Poll /health until 200 — EF migrations run on the first request.
+      4. Poll /health until 200 - EF migrations run on the first request.
 
     The SQL Server database and its files are never touched, so data persists
     across every deploy.

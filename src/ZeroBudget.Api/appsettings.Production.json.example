@@ -1,13 +1,13 @@
 {
-  "//": "TEMPLATE — copy to 'appsettings.Production.json' ON THE SERVER ONLY and fill in real values. Never commit the filled-in file (it is gitignored). The deploy script preserves it across redeploys (robocopy /XF).",
+  "//": "TEMPLATE - copy to 'appsettings.Production.json' ON THE SERVER ONLY and fill in real values. Never commit the filled-in file (it is gitignored). The deploy script preserves it across redeploys (robocopy /XF).",
 
   "ConnectionStrings": {
-    "//": "SQL Server Express on the same box. Trusted_Connection uses the API app-pool identity (IIS APPPOOL\\ZeroBudget-Api), which Setup-Database.sql grants db_owner — so there is no DB password to store. Adjust the instance name (\\SQLEXPRESS) if you installed a default instance.",
+    "//": "SQL Server Express on the same box. Trusted_Connection uses the API app-pool identity (IIS APPPOOL\\ZeroBudget-Api), which Setup-Database.sql grants db_owner - so there is no DB password to store. Adjust the instance name (\\SQLEXPRESS) if you installed a default instance.",
     "DefaultConnection": "Server=localhost\\SQLEXPRESS;Database=ZeroBudget;Trusted_Connection=True;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=true"
   },
 
   "Jwt": {
-    "//": "Generate a long random secret (>=32 bytes). e.g. PowerShell: [Convert]::ToBase64String((1..48 | %% { Get-Random -Max 256 }))",
+    "//": "Generate a long random secret (>=32 bytes). e.g. PowerShell: [Convert]::ToBase64String((1..48 | % { Get-Random -Max 256 }))",
     "Key": "REPLACE_WITH_A_LONG_RANDOM_SECRET_AT_LEAST_32_BYTES"
   },
 

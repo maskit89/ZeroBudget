@@ -24,7 +24,7 @@ New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
 $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
 $file  = Join-Path $BackupDir "$($Database)_$stamp.bak"
 
-# WITH CHECKSUM verifies page integrity. COMPRESSION is intentionally omitted —
+# WITH CHECKSUM verifies page integrity. COMPRESSION is intentionally omitted -
 # SQL Server Express does not support backup compression.
 $tsql = "BACKUP DATABASE [$Database] TO DISK = N'$file' WITH CHECKSUM, STATS = 10; " +
         "RESTORE VERIFYONLY FROM DISK = N'$file' WITH CHECKSUM;"
