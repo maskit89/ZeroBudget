@@ -26,7 +26,7 @@ param(
     [string]$WebDir     = 'C:\inetpub\zerobudget\web',
     [string]$ApiPool    = 'ZeroBudget-Api',
     [string]$WebPool    = 'ZeroBudget-Web',
-    [string]$HealthUrl  = 'http://localhost:5000/health'
+    [string]$HealthUrl  = 'http://127.0.0.1:5000/health'   # IPv4: the API binds to 127.0.0.1
 )
 
 $ErrorActionPreference = 'Stop'
