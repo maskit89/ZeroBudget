@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { MoonIcon, SunIcon } from './icons'
+import { EVENTS, track } from '../analytics'
 
 const KEY = 'zbb.theme'
 type Mode = 'light' | 'dark'
@@ -50,6 +51,7 @@ export function ThemeToggle() {
         const next: Mode = isDark ? 'light' : 'dark'
         localStorage.setItem(KEY, next)
         setMode(next)
+        track(EVENTS.themeChanged, { theme: next })
       }}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Light mode' : 'Dark mode'}

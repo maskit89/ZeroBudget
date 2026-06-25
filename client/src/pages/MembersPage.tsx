@@ -4,6 +4,7 @@ import { Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select } from
 import { MembersIcon } from '../components/icons'
 import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
+import { EVENTS, track } from '../analytics'
 import type { AccountDto, HouseholdMemberDto, MemberSpendingDto } from '../types'
 import { formatMoney, fromAmount, parseMinor, toAmount, toEditString } from '../lib/money'
 
@@ -95,6 +96,7 @@ export function MembersPage() {
         netMonthlyIncome,
         personalSavingsAccountId: savings || null,
       })
+      track(EVENTS.memberAdded)
       await reload() // income shares shift when a member is added
       setName('')
       setIncome('')
@@ -132,6 +134,7 @@ export function MembersPage() {
           netMonthlyIncome,
           personalSavingsAccountId: eSavings || null,
         })
+        track(EVENTS.memberEdited)
         await reload()
         setEditingId(null)
       } catch {

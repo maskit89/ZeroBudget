@@ -30,6 +30,13 @@ public class FeatureFlags
     /// <summary>Multi-user access: additional logins for the household with per-role permissions.</summary>
     public bool HouseholdAccess { get; set; } = true;
 
+    /// <summary>
+    /// Google Analytics (GA4) usage tracking in the SPA. Defaults OFF so analytics ships
+    /// dark and is enabled deliberately (and only ever loads after the user consents and a
+    /// build-time measurement ID is present).
+    /// </summary>
+    public bool Analytics { get; set; } = false;
+
     public bool IsEnabled(string feature) => feature switch
     {
         nameof(Accounts) => Accounts,
@@ -39,6 +46,7 @@ public class FeatureFlags
         nameof(SinkingFunds) => SinkingFunds,
         nameof(HouseholdAllocation) => HouseholdAllocation,
         nameof(HouseholdAccess) => HouseholdAccess,
+        nameof(Analytics) => Analytics,
         _ => true,
     };
 }

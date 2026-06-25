@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { AppNav, type NavKey } from './AppNav'
 import { CloseIcon, HelpIcon, LogoMark, LogoutIcon, MenuIcon, SettingsIcon } from './icons'
 import { ThemeToggle } from './ThemeToggle'
+import { EVENTS, track } from '../analytics'
 
 /**
  * The shared dashboard chrome: a fixed left sidebar for primary navigation and a
@@ -123,7 +124,10 @@ export function AppShell({
 
             <button
               type="button"
-              onClick={logout}
+              onClick={() => {
+                track(EVENTS.logout)
+                logout()
+              }}
               className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 sm:px-3"
             >
               <LogoutIcon className="h-4 w-4" />

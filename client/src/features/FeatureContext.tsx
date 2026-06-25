@@ -2,7 +2,11 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { api } from '../lib/api'
 import type { FeatureFlags } from '../types'
 
-/** Everything on by default — so the UI renders fully until (and unless) a flag is off. */
+/**
+ * Everything on by default — so the UI renders fully until (and unless) a flag is off.
+ * `analytics` is the exception: it ships OFF and is only ever on when the server enables it
+ * (and a build-time measurement ID exists), so tracking never starts by accident.
+ */
 const ALL_ON: FeatureFlags = {
   accounts: true,
   multiCurrency: true,
@@ -10,6 +14,7 @@ const ALL_ON: FeatureFlags = {
   reports: true,
   sinkingFunds: true,
   householdAllocation: true,
+  analytics: false,
   householdAccess: true,
 }
 

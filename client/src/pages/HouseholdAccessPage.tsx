@@ -5,6 +5,7 @@ import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select
 import { AccessIcon, CopyIcon } from '../components/icons'
 import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
+import { EVENTS, track } from '../analytics'
 import {
   HouseholdRole,
   HOUSEHOLD_ROLE_HINTS,
@@ -92,6 +93,7 @@ export function HouseholdAccessPage() {
         memberId: memberId || null,
       })
       if (data.inviteToken) setInviteLink(inviteLinkFor(data.inviteToken))
+      track(EVENTS.memberInvited, { method })
       await reload()
       setEmail('')
       setName('')
@@ -116,6 +118,7 @@ export function HouseholdAccessPage() {
       setError(null)
       try {
         await api.put(`/access/members/${id}/role`, { role })
+        track(EVENTS.memberRoleChanged, { kind: HOUSEHOLD_ROLE_LABELS[role] ?? 'unknown' })
         await reload()
       } catch {
         setError('Could not change that role.')
@@ -132,6 +135,7 @@ export function HouseholdAccessPage() {
       setError(null)
       try {
         await api.delete(`/access/members/${id}`)
+        track(EVENTS.memberRevoked)
         await reload()
       } catch {
         setError('Could not remove that member.')

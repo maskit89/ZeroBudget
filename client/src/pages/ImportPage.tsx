@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { Badge, Button, Card, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
 import { api, commitImport, previewImport, type StatementFormat } from '../lib/api'
+import { bucketCount, EVENTS, track } from '../analytics'
 import { useAuth } from '../auth/AuthContext'
 import type {
   AccountDto,
@@ -193,6 +194,7 @@ export function ImportPage() {
       )
       setSplitOpen(null)
       setPhase('review')
+      track(EVENTS.importPreviewed, { row_bucket: bucketCount(data.items.length) })
     } catch (err) {
       setError(errorMessage(err))
     } finally {
@@ -309,6 +311,7 @@ export function ImportPage() {
     try {
       setResult(await commitImport(accountId || null, items))
       setPhase('done')
+      track(EVENTS.importCommitted, { row_bucket: bucketCount(items.length) })
     } catch (err) {
       setError(errorMessage(err))
     } finally {

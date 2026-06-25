@@ -1,5 +1,10 @@
 import axios from 'axios'
 import type { CommitImportItem, ImportPreviewResult, ImportStatementResult } from '../types'
+// Import the leaf modules directly (not the analytics barrel) to avoid an import cycle:
+// the barrel pulls in the provider, which depends back on this api module.
+import { track } from '../analytics/analytics'
+import { EVENTS } from '../analytics/events'
+import { apiEndpointTemplate } from '../analytics/redact'
 
 /** Wire value of StatementFormat on the server. */
 export type StatementFormat = 'HsbcCsv' | 'Camt053'
@@ -32,9 +37,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (error.response?.status === 401) {
+    const status: number | undefined = error.response?.status
+    if (status === 401) {
       setToken(null)
     }
+    // One central hook for every failed request: report the endpoint shape + status only
+    // (no bodies, params or ids). No-ops unless analytics is live.
+    track(EVENTS.apiError, {
+      api_endpoint: apiEndpointTemplate(error.config?.url),
+      api_status: typeof status === 'number' ? status : 0,
+    })
     return Promise.reject(error)
   },
 )

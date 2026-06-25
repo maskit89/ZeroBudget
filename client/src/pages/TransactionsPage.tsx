@@ -6,6 +6,7 @@ import { ImportIcon, TransactionsIcon } from '../components/icons'
 import { useFeatures } from '../features/FeatureContext'
 import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
+import { EVENTS, track } from '../analytics'
 import type { AccountDto, BudgetMonthDto, HouseholdMemberDto, TransactionDto } from '../types'
 import { TransactionType } from '../types'
 import { formatMoney, fromAmount, parseMinor, sumMinor, toAmount } from '../lib/money'
@@ -122,6 +123,9 @@ export function TransactionsPage() {
         memberId: member || null,
       })
       setTransactions((prev) => [data, ...prev])
+      track(EVENTS.transactionAdded, {
+        line_type: type === TransactionType.Income ? 'income' : 'expense',
+      })
       setPayee('')
       setAmount('')
     } catch {
@@ -156,6 +160,7 @@ export function TransactionsPage() {
         payee: tPayee || null,
       })
       setTransactions((prev) => [data, ...prev])
+      track(EVENTS.transferCreated)
       setTAmount('')
       setTPayee('')
     } catch {
@@ -171,6 +176,7 @@ export function TransactionsPage() {
     try {
       await api.delete(`/transactions/${id}`)
       setTransactions((prev) => prev.filter((t) => t.id !== id))
+      track(EVENTS.transactionDeleted)
     } catch {
       setError('Could not delete that transaction.')
     } finally {
@@ -208,6 +214,7 @@ export function TransactionsPage() {
           memberId: eMember || null,
         })
         setTransactions((prev) => prev.map((t) => (t.id === id ? data : t)))
+        track(EVENTS.transactionEdited)
         setEditingId(null)
       } catch {
         setError('Could not save that change.')

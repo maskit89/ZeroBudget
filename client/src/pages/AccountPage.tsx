@@ -3,6 +3,7 @@ import axios from 'axios'
 import { AppShell } from '../components/AppShell'
 import { Button, Card, ErrorBanner, Input, PageHeader } from '../components/ui'
 import { useAuth } from '../auth/AuthContext'
+import { EVENTS, track } from '../analytics'
 import { HOUSEHOLD_ROLE_LABELS } from '../types'
 
 export function AccountPage() {
@@ -30,6 +31,7 @@ export function AccountPage() {
     setBusy(true)
     try {
       await changePassword(current, next)
+      track(EVENTS.passwordChanged)
       setDone(true)
       setCurrent('')
       setNext('')

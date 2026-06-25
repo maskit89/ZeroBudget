@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { TOUR_STEPS } from './tourSteps'
+import { EVENTS, track } from '../analytics'
 
 type Phase = 'idle' | 'welcome' | 'tour'
 
@@ -108,17 +109,20 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const dismissWelcome = useCallback(() => {
     setPhase('idle')
     persist({ welcomeSeen: true })
+    track(EVENTS.onboardingDismissed, { context: 'welcome' })
   }, [persist])
 
   const startTour = useCallback(() => {
     setTourStep(0)
     setPhase('tour')
     persist({ welcomeSeen: true })
+    track(EVENTS.onboardingStarted)
   }, [persist])
 
   const endTour = useCallback(() => {
     setPhase('idle')
     persist({ welcomeSeen: true, tourDone: true })
+    track(EVENTS.onboardingCompleted)
   }, [persist])
 
   const nextTourStep = useCallback(() => {
@@ -139,6 +143,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     setTourStep(0)
     setPhase('welcome')
     persist({ welcomeSeen: true, tourDone: false, checklistDismissed: false })
+    track(EVENTS.tourReplayed)
   }, [persist])
 
   const value: OnboardingApi = {
