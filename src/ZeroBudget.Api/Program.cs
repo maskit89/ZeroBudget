@@ -1,4 +1,6 @@
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using ZeroBudget.Api.Features;
@@ -13,6 +15,7 @@ using ZeroBudget.Infrastructure.Persistence;
 var builder = WebApplication.CreateBuilder(args);
 
 const string SpaCorsPolicy = "SpaCors";
+const string AuthRateLimitPolicy = "auth";
 
 // --- Layer composition ------------------------------------------------------
 builder.Services.AddApplication();
@@ -41,6 +44,26 @@ builder.Services.AddCors(options =>
         .WithOrigins(allowedOrigins)
         .AllowAnyHeader()
         .AllowAnyMethod()));
+
+// Rate limiting for the sensitive auth endpoints (login/register/accept-invite/change-password)
+// to blunt credential-stuffing and password-guessing floods. This is the coarse, per-source layer;
+// the precise, IP-independent defence is the per-account Identity lockout in CheckCredentialsAsync.
+// NOTE: in production the API sits behind the IIS/ARR reverse proxy, so RemoteIpAddress is the
+// proxy (loopback) and this effectively becomes a per-site cap until X-Forwarded-For handling is
+// added. The limit is set high enough that real household use never trips it.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(AuthRateLimitPolicy, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+});
 
 // --- Swagger with JWT bearer support ----------------------------------------
 builder.Services.AddEndpointsApiExplorer();
@@ -88,6 +111,11 @@ if (app.Environment.IsDevelopment())
 // IIS. In Development the Vite proxy likewise talks to the API over http.
 
 app.UseCors(SpaCorsPolicy);
+
+// Throttle abusive bursts before they reach authentication. Only endpoints tagged with the
+// [EnableRateLimiting("auth")] policy are limited; everything else is unaffected.
+app.UseRateLimiter();
+
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -3,8 +3,10 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using ZeroBudget.Api.Contracts.Auth;
+using ZeroBudget.Application.Auth.Commands.Login;
 using ZeroBudget.Application.Common.Interfaces;
 using ZeroBudget.Application.HouseholdAccess.Commands.AcceptInvite;
 using ZeroBudget.Domain.Entities;
@@ -40,6 +42,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Creates an account, seeds a starter budget + owner membership, returns a JWT.</summary>
     [HttpPost("register")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Register(RegisterRequest request, CancellationToken ct)
@@ -83,23 +86,31 @@ public class AuthController : ControllerBase
 
     /// <summary>Validates credentials and returns a JWT.</summary>
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
     {
-        var user = await _userManager.FindByEmailAsync(request.Email);
-        if (user is null || !await _userManager.CheckPasswordAsync(user, request.Password))
-        {
-            // Same response for unknown user and bad password — no account enumeration.
-            return Unauthorized(new { error = "Invalid email or password." });
-        }
+        var result = await _mediator.Send(new LoginCommand(request.Email, request.Password), ct);
 
-        return Ok(await BuildResponseAsync(user, ct));
+        return result.Outcome switch
+        {
+            LoginOutcome.Success => Ok(new AuthResponse(
+                result.Token!, result.ExpiresAtUtc, result.UserId!, result.Email!, result.Role, result.DisplayName)),
+            LoginOutcome.LockedOut => Unauthorized(new
+            {
+                error = "Your account is temporarily locked after too many failed sign-in attempts. " +
+                        "Please try again in a few minutes."
+            }),
+            // Same response for unknown user and bad password — no account enumeration.
+            _ => Unauthorized(new { error = "Invalid email or password." }),
+        };
     }
 
     /// <summary>Redeems a one-time invite link, creates the login and returns a JWT.</summary>
     [HttpPost("accept-invite")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -116,6 +127,7 @@ public class AuthController : ControllerBase
     /// <summary>Changes the authenticated login's own password.</summary>
     [HttpPost("change-password")]
     [Authorize]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
