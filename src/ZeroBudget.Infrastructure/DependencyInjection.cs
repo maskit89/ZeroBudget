@@ -52,6 +52,12 @@ public static class DependencyInjection
                 options.User.RequireUniqueEmail = true;
                 options.Password.RequiredLength = 8;
                 options.Password.RequireNonAlphanumeric = false;
+
+                // Brute-force protection: lock a login for 15 minutes after 5 consecutive failures.
+                // Enforced in IdentityService.CheckCredentialsAsync via the UserManager lockout APIs.
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                options.Lockout.AllowedForNewUsers = true;
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
@@ -95,6 +101,9 @@ public static class DependencyInjection
                     ValidIssuer = jwt.Issuer,
                     ValidAudience = jwt.Audience,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
+                    // Pin the accepted signing algorithm so a token can only be HS256 — defence in
+                    // depth against algorithm-substitution attacks.
+                    ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 },
                     ClockSkew = TimeSpan.FromSeconds(30)
                 };
             });

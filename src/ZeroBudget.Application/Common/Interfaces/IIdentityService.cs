@@ -15,6 +15,14 @@ public interface IIdentityService
     Task<CreateUserResult> CreateUserAsync(string email, string password, string? displayName);
 
     Task<IReadOnlyList<string>> ChangePasswordAsync(string userId, string currentPassword, string newPassword);
+
+    /// <summary>
+    /// Validates an email/password pair while tracking failed attempts for brute-force protection:
+    /// the implementation locks the account for a cooldown after too many consecutive failures, and
+    /// resets the counter on success. Returns a coarse outcome only — never reveals whether the
+    /// email exists — and equalises timing between the known- and unknown-email paths.
+    /// </summary>
+    Task<CredentialCheckResult> CheckCredentialsAsync(string email, string password);
 }
 
 /// <summary>A login as seen by the Application layer.</summary>
@@ -25,4 +33,28 @@ public record CreateUserResult(bool Succeeded, string? UserId, IReadOnlyList<str
 {
     public static CreateUserResult Success(string userId) => new(true, userId, Array.Empty<string>());
     public static CreateUserResult Failure(IEnumerable<string> errors) => new(false, null, errors.ToArray());
+}
+
+/// <summary>The coarse outcome of a credential check — deliberately does not distinguish an
+/// unknown email from a wrong password, to avoid leaking which accounts exist.</summary>
+public enum CredentialCheckOutcome
+{
+    Success,
+    InvalidCredentials,
+    LockedOut,
+}
+
+/// <summary>Outcome of <see cref="IIdentityService.CheckCredentialsAsync"/>. The login details are
+/// populated only on <see cref="CredentialCheckOutcome.Success"/>.</summary>
+public record CredentialCheckResult(
+    CredentialCheckOutcome Outcome, string? UserId, string? Email, string? DisplayName)
+{
+    public static CredentialCheckResult Success(string userId, string email, string? displayName) =>
+        new(CredentialCheckOutcome.Success, userId, email, displayName);
+
+    public static readonly CredentialCheckResult Invalid =
+        new(CredentialCheckOutcome.InvalidCredentials, null, null, null);
+
+    public static readonly CredentialCheckResult LockedOut =
+        new(CredentialCheckOutcome.LockedOut, null, null, null);
 }

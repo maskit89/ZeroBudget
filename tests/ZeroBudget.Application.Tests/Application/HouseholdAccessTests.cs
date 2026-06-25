@@ -49,6 +49,9 @@ public class HouseholdAccessTests
 
         public Task<IReadOnlyList<string>> ChangePasswordAsync(string userId, string current, string next) =>
             Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+
+        public Task<CredentialCheckResult> CheckCredentialsAsync(string email, string password) =>
+            Task.FromResult(CredentialCheckResult.Invalid);
     }
 
     private static ApplicationDbContext NewContext() =>
