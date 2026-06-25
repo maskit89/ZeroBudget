@@ -22,7 +22,7 @@ public class UpsertAllocationProfileCommandHandler
     public async Task<AllocationProfileDto> Handle(
         UpsertAllocationProfileCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         AllocationProfile profile;

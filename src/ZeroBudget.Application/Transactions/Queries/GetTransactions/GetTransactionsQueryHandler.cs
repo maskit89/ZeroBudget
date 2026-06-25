@@ -21,7 +21,7 @@ public class GetTransactionsQueryHandler
     public async Task<IReadOnlyList<TransactionDto>> Handle(
         GetTransactionsQuery request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var query = _db.Transactions

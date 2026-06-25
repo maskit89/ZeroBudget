@@ -22,7 +22,7 @@ public class CreateTransferCommandHandler : IRequestHandler<CreateTransferComman
 
     public async Task<TransactionDto> Handle(CreateTransferCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var from = await _db.Accounts.FirstOrDefaultAsync(a => a.Id == request.FromAccountId, cancellationToken)

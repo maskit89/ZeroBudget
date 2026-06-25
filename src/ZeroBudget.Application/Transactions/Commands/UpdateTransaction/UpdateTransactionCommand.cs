@@ -1,4 +1,5 @@
 using MediatR;
+using ZeroBudget.Application.Common.Security;
 using ZeroBudget.Application.Transactions.Dtos;
 using ZeroBudget.Domain.Enums;
 
@@ -9,6 +10,7 @@ namespace ZeroBudget.Application.Transactions.Commands.UpdateTransaction;
 /// (null clears it). Budget-line assignment and currency are unchanged. Returns the
 /// updated transaction.
 /// </summary>
+[AllowLimited]
 public record UpdateTransactionCommand(
     Guid TransactionId,
     DateOnly Date,

@@ -21,7 +21,7 @@ public class ArchiveHouseholdMemberCommandHandler
     public async Task<HouseholdMemberDto> Handle(
         ArchiveHouseholdMemberCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var member = await _db.HouseholdMembers

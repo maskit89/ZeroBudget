@@ -20,7 +20,7 @@ public class GetBudgetMonthsQueryHandler
     public async Task<IReadOnlyList<BudgetMonthSummaryDto>> Handle(
         GetBudgetMonthsQuery request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var months = await _db.BudgetMonths

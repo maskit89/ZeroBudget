@@ -20,7 +20,7 @@ public class DeleteBudgetCategoryCommandHandler : IRequestHandler<DeleteBudgetCa
 
     public async Task<BudgetMonthDto> Handle(DeleteBudgetCategoryCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var category = await _db.BudgetCategories

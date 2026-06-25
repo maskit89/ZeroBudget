@@ -30,7 +30,7 @@ public class ImportStatementCommandHandler : IRequestHandler<ImportStatementComm
 
     public async Task<ImportStatementResult> Handle(ImportStatementCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         // Validate the target account up front (when one was chosen) so we never

@@ -1,4 +1,5 @@
 using MediatR;
+using ZeroBudget.Application.Common.Security;
 using ZeroBudget.Application.Transactions.Dtos;
 
 namespace ZeroBudget.Application.Transactions.Commands.AssignTransaction;
@@ -8,5 +9,6 @@ namespace ZeroBudget.Application.Transactions.Commands.AssignTransaction;
 /// <paramref name="BudgetItemId"/> is null). The line's actual spending then
 /// reflects this transaction on the next budget read.
 /// </summary>
+[AllowLimited]
 public record AssignTransactionCommand(Guid TransactionId, Guid? BudgetItemId)
     : IRequest<TransactionDto>;

@@ -27,6 +27,9 @@ public class FeatureFlags
     /// <summary>Household members and the rules-based income allocation engine.</summary>
     public bool HouseholdAllocation { get; set; } = true;
 
+    /// <summary>Multi-user access: additional logins for the household with per-role permissions.</summary>
+    public bool HouseholdAccess { get; set; } = true;
+
     public bool IsEnabled(string feature) => feature switch
     {
         nameof(Accounts) => Accounts,
@@ -35,6 +38,7 @@ public class FeatureFlags
         nameof(Reports) => Reports,
         nameof(SinkingFunds) => SinkingFunds,
         nameof(HouseholdAllocation) => HouseholdAllocation,
+        nameof(HouseholdAccess) => HouseholdAccess,
         _ => true,
     };
 }

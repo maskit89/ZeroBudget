@@ -19,7 +19,7 @@ public class DeleteBudgetItemCommandHandler : IRequestHandler<DeleteBudgetItemCo
 
     public async Task<BudgetMonthDto> Handle(DeleteBudgetItemCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         // Load the line with its owning category + month so we can re-verify

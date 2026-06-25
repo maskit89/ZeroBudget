@@ -39,6 +39,7 @@ public class ImportStatementHandlerIsolationTests
 
         var currentUser = Substitute.For<ICurrentUser>();
         currentUser.UserId.Returns("user-1");
+        currentUser.OwnerId.Returns("user-1");
 
         var parser = Substitute.For<IStatementParser>();
         parser.Parse(Arg.Any<string>()).Returns(TwoEntries());
@@ -67,6 +68,7 @@ public class ImportStatementHandlerIsolationTests
 
         var currentUser = Substitute.For<ICurrentUser>();
         currentUser.UserId.Returns((string?)null);
+        currentUser.OwnerId.Returns((string?)null);
 
         var parser = Substitute.For<IStatementParser>();
 

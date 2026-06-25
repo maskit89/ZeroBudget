@@ -21,7 +21,7 @@ public class GetAnnualSummaryQueryHandler : IRequestHandler<GetAnnualSummaryQuer
 
     public async Task<AnnualSummaryDto> Handle(GetAnnualSummaryQuery request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var months = await _db.BudgetMonths

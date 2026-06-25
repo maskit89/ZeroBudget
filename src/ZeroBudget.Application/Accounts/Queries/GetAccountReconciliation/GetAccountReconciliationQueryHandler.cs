@@ -22,7 +22,7 @@ public class GetAccountReconciliationQueryHandler
     public async Task<IReadOnlyList<AccountReconciliationDto>> Handle(
         GetAccountReconciliationQuery request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var accounts = await _db.Accounts

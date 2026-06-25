@@ -22,7 +22,7 @@ public class CreateHouseholdMemberCommandHandler
     public async Task<HouseholdMemberDto> Handle(
         CreateHouseholdMemberCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId
+        var userId = _currentUser.OwnerId
             ?? throw new ForbiddenAccessException("No authenticated user on the request.");
 
         var nextOrder = await _db.HouseholdMembers
