@@ -393,6 +393,62 @@ export interface FeatureFlags {
   reports: boolean
   sinkingFunds: boolean
   householdAllocation: boolean
+  householdAccess: boolean
+}
+
+// Matches Domain.Enums.HouseholdRole (serialized as a number).
+export const HouseholdRole = { Owner: 0, Admin: 1, Limited: 2, ReadOnly: 3 } as const
+
+export const HOUSEHOLD_ROLE_LABELS: Record<number, string> = {
+  0: 'Owner',
+  1: 'Admin',
+  2: 'Limited',
+  3: 'Read-only',
+}
+
+/** One-line description of what each role can do, for the access UI. */
+export const HOUSEHOLD_ROLE_HINTS: Record<number, string> = {
+  0: 'Full control, including managing who has access.',
+  1: 'Everything except managing members and access.',
+  2: 'Day-to-day entry: transactions, mark bills paid, run allocation.',
+  3: 'View everything; cannot make changes.',
+}
+
+// Matches Domain.Enums.MembershipStatus (serialized as a number).
+export const MembershipStatus = { Active: 0, Invited: 1 } as const
+
+// Matches Application.HouseholdAccess.InviteMethod (serialized as a number).
+export const InviteMethod = { Direct: 0, Link: 1 } as const
+
+export interface MembershipDto {
+  id: string
+  email: string
+  displayName: string | null
+  /** Numeric HouseholdRole. */
+  role: number
+  /** Numeric MembershipStatus. */
+  status: number
+  memberId: string | null
+  isOwner: boolean
+  /** True when this row is the current login. */
+  isSelf: boolean
+  createdUtc: string
+}
+
+/** Returned by an invite: the new membership and, for link invites, the raw token (shown once). */
+export interface InviteResultDto {
+  membership: MembershipDto
+  inviteToken: string | null
+}
+
+/** GET /auth/me — the current login's identity, household and access level. */
+export interface MeResponse {
+  userId: string
+  email: string
+  displayName: string | null
+  role: number
+  ownerId: string
+  memberId: string | null
 }
 
 export interface AuthResponse {
@@ -400,4 +456,7 @@ export interface AuthResponse {
   expiresAtUtc: string
   userId: string
   email: string
+  /** Numeric HouseholdRole. */
+  role: number
+  displayName: string | null
 }

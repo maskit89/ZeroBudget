@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { AppShell } from '../components/AppShell'
 import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
 import { FundsIcon } from '../components/icons'
+import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
 import type { AccountDto, SinkingFundDto } from '../types'
 import {
@@ -71,6 +72,8 @@ const BLANK_FORM: FormState = {
 }
 
 export function FundsPage() {
+  // Managing sinking funds needs Admin+ (canWrite); others see them read-only.
+  const { canWrite } = useAuth()
   const [funds, setFunds] = useState<SinkingFundDto[]>([])
   const [accounts, setAccounts] = useState<AccountDto[]>([])
   const [loading, setLoading] = useState(true)
@@ -188,7 +191,8 @@ export function FundsPage() {
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
-      {/* Add / edit form. */}
+      {/* Add / edit form. Hidden unless you can manage funds. */}
+      {canWrite && (
       <Card className="p-4">
         <h2 className="mb-3 text-sm font-semibold text-slate-700">
           {editingId ? 'Edit fund' : 'Add a fund'}
@@ -298,6 +302,7 @@ export function FundsPage() {
           </div>
         </div>
       </Card>
+      )}
 
       {loading && <p className="text-slate-500">Loading…</p>}
 
@@ -319,6 +324,7 @@ export function FundsPage() {
               onEdit={() => startEdit(f)}
               onArchive={() => archive(f)}
               disabled={saving}
+              canManage={canWrite}
             />
           ))}
         </div>
@@ -333,12 +339,14 @@ function FundCard({
   onEdit,
   onArchive,
   disabled,
+  canManage,
 }: {
   fund: SinkingFundDto
   fundingAccountName: string | null
   onEdit: () => void
   onArchive: () => void
   disabled: boolean
+  canManage: boolean
 }) {
   const balanceMinor = fromAmount(fund.currentBalance)
   const targetMinor = fromAmount(fund.targetAmount)
@@ -399,27 +407,29 @@ function FundCard({
         )}
       </dl>
 
-      <div className="mt-auto flex justify-end gap-1 pt-1">
-        <button
-          type="button"
-          onClick={onEdit}
-          aria-label={`Edit ${fund.name}`}
-          title="Edit fund"
-          className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-        >
-          ✎
-        </button>
-        <button
-          type="button"
-          onClick={onArchive}
-          disabled={disabled}
-          aria-label={`Archive ${fund.name}`}
-          title="Archive fund"
-          className="rounded-md px-2 py-1 text-slate-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
-        >
-          ✕
-        </button>
-      </div>
+      {canManage && (
+        <div className="mt-auto flex justify-end gap-1 pt-1">
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label={`Edit ${fund.name}`}
+            title="Edit fund"
+            className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+          >
+            ✎
+          </button>
+          <button
+            type="button"
+            onClick={onArchive}
+            disabled={disabled}
+            aria-label={`Archive ${fund.name}`}
+            title="Archive fund"
+            className="rounded-md px-2 py-1 text-slate-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </Card>
   )
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
+import { useAuth } from '../auth/AuthContext'
 import { AppShell } from '../components/AppShell'
 import type {
   BudgetMonthDto,
@@ -44,6 +45,8 @@ const MONTH_NAMES = [
 const now = new Date()
 
 export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
+  // Building/editing the budget (groups, lines, months) needs Admin+ (canWrite).
+  const { canWrite } = useAuth()
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 })
   const [month, setMonth] = useState<MonthVM | null>(null)
   const [loading, setLoading] = useState(true)
@@ -549,7 +552,18 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
           </div>
         )}
 
-        {notFound && !loading && (
+        {notFound && !loading && !canWrite && (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-surface px-6 py-12 text-center shadow-card">
+            <p className="text-slate-600">
+              No budget for {MONTH_NAMES[view.month - 1]} {view.year} yet.
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Ask an admin or the owner to set this month up.
+            </p>
+          </div>
+        )}
+
+        {notFound && !loading && canWrite && (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-surface px-6 py-12 text-center shadow-card">
             <p className="text-slate-600">
               No budget for {MONTH_NAMES[view.month - 1]} {view.year} yet.
@@ -706,6 +720,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
               ))}
 
               {/* Add a new expense or fund group (EveryDollar "Add Group"). */}
+              {canWrite && (
               <div className="flex items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-surface/60 px-4 py-3">
                 <input
                   type="text"
@@ -740,6 +755,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
                   + Add group
                 </button>
               </div>
+              )}
             </div>
           </>
         )}

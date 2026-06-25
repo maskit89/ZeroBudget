@@ -221,3 +221,35 @@ export function ChevronDownIcon({ className }: { className?: string }) {
     </Base>
   )
 }
+
+/** Access — a key (managing who can sign in). */
+export function AccessIcon({ className }: { className?: string }) {
+  return (
+    <Base className={className}>
+      <circle cx="8" cy="8" r="4.5" />
+      <path d="M11.2 11.2L20 20" />
+      <path d="M17 17l2-2" />
+      <path d="M14 14l2-2" />
+    </Base>
+  )
+}
+
+/** Settings — a gear (account & password). */
+export function SettingsIcon({ className }: { className?: string }) {
+  return (
+    <Base className={className}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" />
+    </Base>
+  )
+}
+
+/** Copy — overlapping rectangles, for copy-to-clipboard. */
+export function CopyIcon({ className }: { className?: string }) {
+  return (
+    <Base className={className}>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h8" />
+    </Base>
+  )
+}

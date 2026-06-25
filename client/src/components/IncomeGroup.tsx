@@ -4,6 +4,7 @@ import { categoryPlanned } from '../budgetModel'
 import { formatMoney, type Minor } from '../lib/money'
 import { IncomeLineRow } from './IncomeLineRow'
 import { Badge } from './ui'
+import { useAuth } from '../auth/AuthContext'
 
 interface Props {
   category: CategoryVM
@@ -33,6 +34,7 @@ export function IncomeGroup({
   onDeleteItem,
   onAddItem,
 }: Props) {
+  const { canWrite } = useAuth()
   const [open, setOpen] = useState(true)
   const [newName, setNewName] = useState('')
 
@@ -95,27 +97,29 @@ export function IncomeGroup({
             )}
           </div>
 
-          <div className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50/30 px-4 py-2.5 dark:border-emerald-500/20 dark:bg-emerald-500/5">
-            <input
-              type="text"
-              value={newName}
-              placeholder="Add income source (e.g. Freelance, Child Benefit)…"
-              aria-label="New income source name"
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') submitNew()
-              }}
-              className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            />
-            <button
-              type="button"
-              onClick={submitNew}
-              aria-label="Add income source"
-              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
-            >
-              + Add
-            </button>
-          </div>
+          {canWrite && (
+            <div className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50/30 px-4 py-2.5 dark:border-emerald-500/20 dark:bg-emerald-500/5">
+              <input
+                type="text"
+                value={newName}
+                placeholder="Add income source (e.g. Freelance, Child Benefit)…"
+                aria-label="New income source name"
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') submitNew()
+                }}
+                className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+              <button
+                type="button"
+                onClick={submitNew}
+                aria-label="Add income source"
+                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                + Add
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
