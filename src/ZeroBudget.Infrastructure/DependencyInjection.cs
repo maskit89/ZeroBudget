@@ -45,6 +45,16 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(5);
         });
 
+        // Have I Been Pwned "Pwned Passwords" range API for the breached-password check
+        // (k-anonymity; see BreachedPasswordValidator). A short timeout keeps register/change-password
+        // snappy, and the validator fails open if this call doesn't come back.
+        services.AddHttpClient(BreachedPasswordValidator.HttpClientName, client =>
+        {
+            client.BaseAddress = new Uri("https://api.pwnedpasswords.com/");
+            client.Timeout = TimeSpan.FromSeconds(5);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("ZeroBudget-Security/1.0");
+        });
+
         // --- Identity ----------------------------------------------------------
         services
             .AddIdentityCore<ApplicationUser>(options =>
@@ -60,7 +70,9 @@ public static class DependencyInjection
                 options.Lockout.AllowedForNewUsers = true;
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddDefaultTokenProviders();
+            .AddDefaultTokenProviders()
+            // Screen new passwords against the Have I Been Pwned breach corpus.
+            .AddPasswordValidator<BreachedPasswordValidator>();
 
         // Application-facing wrapper over UserManager (create logins, change passwords).
         services.AddScoped<IIdentityService, IdentityService>();
