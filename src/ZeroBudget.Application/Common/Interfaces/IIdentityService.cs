@@ -47,14 +47,15 @@ public enum CredentialCheckOutcome
 /// <summary>Outcome of <see cref="IIdentityService.CheckCredentialsAsync"/>. The login details are
 /// populated only on <see cref="CredentialCheckOutcome.Success"/>.</summary>
 public record CredentialCheckResult(
-    CredentialCheckOutcome Outcome, string? UserId, string? Email, string? DisplayName)
+    CredentialCheckOutcome Outcome, string? UserId, string? Email, string? DisplayName, string? SecurityStamp)
 {
-    public static CredentialCheckResult Success(string userId, string email, string? displayName) =>
-        new(CredentialCheckOutcome.Success, userId, email, displayName);
+    public static CredentialCheckResult Success(
+        string userId, string email, string? displayName, string? securityStamp) =>
+        new(CredentialCheckOutcome.Success, userId, email, displayName, securityStamp);
 
     public static readonly CredentialCheckResult Invalid =
-        new(CredentialCheckOutcome.InvalidCredentials, null, null, null);
+        new(CredentialCheckOutcome.InvalidCredentials, null, null, null, null);
 
     public static readonly CredentialCheckResult LockedOut =
-        new(CredentialCheckOutcome.LockedOut, null, null, null);
+        new(CredentialCheckOutcome.LockedOut, null, null, null, null);
 }

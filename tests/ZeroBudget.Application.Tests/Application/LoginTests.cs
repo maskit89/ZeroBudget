@@ -38,7 +38,7 @@ public class LoginTests
 
     private sealed class StubTokenGenerator : IJwtTokenGenerator
     {
-        public (string Token, DateTime ExpiresAtUtc) Generate(string userId, string email) =>
+        public (string Token, DateTime ExpiresAtUtc) Generate(string userId, string email, string? securityStamp) =>
             ($"token-for-{userId}", DateTime.UtcNow.AddMinutes(30));
     }
 
@@ -88,7 +88,7 @@ public class LoginTests
         await db.SaveChangesAsync();
 
         var handler = new LoginCommandHandler(
-            new StubIdentity(CredentialCheckResult.Success(UserId, Email, "Chris")), db, new StubTokenGenerator());
+            new StubIdentity(CredentialCheckResult.Success(UserId, Email, "Chris", "stamp-1")), db, new StubTokenGenerator());
 
         var result = await handler.Handle(new LoginCommand(Email, "correct"), default);
 
@@ -106,7 +106,7 @@ public class LoginTests
     {
         using var db = NewContext();
         var handler = new LoginCommandHandler(
-            new StubIdentity(CredentialCheckResult.Success(UserId, Email, null)), db, new StubTokenGenerator());
+            new StubIdentity(CredentialCheckResult.Success(UserId, Email, null, "stamp-1")), db, new StubTokenGenerator());
 
         var result = await handler.Handle(new LoginCommand(Email, "correct"), default);
 

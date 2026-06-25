@@ -92,6 +92,7 @@ public class IdentityService : IIdentityService
         }
 
         await _userManager.ResetAccessFailedCountAsync(user);
-        return CredentialCheckResult.Success(user.Id, user.Email!, user.DisplayName);
+        var stamp = await _userManager.GetSecurityStampAsync(user);
+        return CredentialCheckResult.Success(user.Id, user.Email!, user.DisplayName, stamp);
     }
 }

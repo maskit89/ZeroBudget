@@ -120,7 +120,9 @@ public class AuthController : ControllerBase
         var result = await _mediator.Send(
             new AcceptInviteCommand(request.Token, request.Password, request.DisplayName), ct);
 
-        var (token, expiresAt) = _tokenGenerator.Generate(result.UserId, result.Email);
+        var user = await _userManager.FindByIdAsync(result.UserId);
+        var stamp = user is null ? null : await _userManager.GetSecurityStampAsync(user);
+        var (token, expiresAt) = _tokenGenerator.Generate(result.UserId, result.Email, stamp);
         return Ok(new AuthResponse(token, expiresAt, result.UserId, result.Email, result.Role, request.DisplayName));
     }
 
@@ -189,7 +191,8 @@ public class AuthController : ControllerBase
             .Select(m => (HouseholdRole?)m.Role)
             .FirstOrDefaultAsync(ct) ?? HouseholdRole.Owner;
 
-        var (token, expiresAt) = _tokenGenerator.Generate(user.Id, user.Email!);
+        var stamp = await _userManager.GetSecurityStampAsync(user);
+        var (token, expiresAt) = _tokenGenerator.Generate(user.Id, user.Email!, stamp);
         return new AuthResponse(token, expiresAt, user.Id, user.Email!, role, user.DisplayName);
     }
 }

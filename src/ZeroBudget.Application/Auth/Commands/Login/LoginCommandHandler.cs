@@ -43,7 +43,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
             .Select(m => (HouseholdRole?)m.Role)
             .FirstOrDefaultAsync(cancellationToken) ?? HouseholdRole.Owner;
 
-        var (token, expiresAt) = _tokenGenerator.Generate(check.UserId!, check.Email!);
+        var (token, expiresAt) = _tokenGenerator.Generate(check.UserId!, check.Email!, check.SecurityStamp);
         return new LoginResult(
             LoginOutcome.Success, token, expiresAt, check.UserId, check.Email, role, check.DisplayName);
     }

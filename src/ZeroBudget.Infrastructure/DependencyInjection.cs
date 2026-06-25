@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -117,6 +118,50 @@ public static class DependencyInjection
                     // depth against algorithm-substitution attacks.
                     ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 },
                     ClockSkew = TimeSpan.FromSeconds(30)
+                };
+
+                // Make the otherwise-stateless JWT revocable: every authenticated request re-checks
+                // the token's security-stamp claim against the user's current stamp. Rotating the
+                // stamp (on password change, or a future sign-out-everywhere) invalidates all tokens
+                // issued before it. Tokens minted before this shipped carry no stamp claim and stay
+                // valid until they expire, so existing sessions aren't dropped on rollout.
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        var tokenStamp = context.Principal?.FindFirstValue(JwtTokenGenerator.SecurityStampClaimType);
+                        if (string.IsNullOrEmpty(tokenStamp))
+                        {
+                            return; // legacy token — nothing to compare
+                        }
+
+                        var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                        if (string.IsNullOrEmpty(userId))
+                        {
+                            context.Fail("Token has no subject.");
+                            return;
+                        }
+
+                        try
+                        {
+                            var db = context.HttpContext.RequestServices
+                                .GetRequiredService<ApplicationDbContext>();
+                            var currentStamp = await db.Users
+                                .Where(u => u.Id == userId)
+                                .Select(u => u.SecurityStamp)
+                                .FirstOrDefaultAsync(context.HttpContext.RequestAborted);
+
+                            if (!SecurityStampValidation.IsValid(tokenStamp, currentStamp))
+                            {
+                                context.Fail("This session has been revoked.");
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // Fail OPEN on a transient datastore error — a DB blip must not log
+                            // every signed-in user out. Only a definite stamp mismatch revokes.
+                        }
+                    }
                 };
             });
 
