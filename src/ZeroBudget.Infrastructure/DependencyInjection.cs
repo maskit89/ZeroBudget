@@ -56,6 +56,9 @@ public static class DependencyInjection
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
 
+        // Application-facing wrapper over UserManager (create logins, change passwords).
+        services.AddScoped<IIdentityService, IdentityService>();
+
         // --- JWT authentication ------------------------------------------------
         var jwtSection = configuration.GetSection(JwtSettings.SectionName);
         services.Configure<JwtSettings>(jwtSection);
