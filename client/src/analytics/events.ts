@@ -9,6 +9,13 @@ export const EVENTS = {
   signUp: 'sign_up',
   logout: 'logout',
   loginFailed: 'login_failed',
+  passwordChanged: 'password_changed',
+  inviteAccepted: 'invite_accepted',
+
+  // Household access
+  memberInvited: 'member_invited',
+  memberRoleChanged: 'member_role_changed',
+  memberRevoked: 'member_revoked',
 
   // Navigation / shell
   navClick: 'nav_click',

@@ -4,6 +4,7 @@ import axios from 'axios'
 import { useAuth } from '../auth/AuthContext'
 import { LogoMark } from '../components/icons'
 import { Button, Card, Input } from '../components/ui'
+import { EVENTS, track } from '../analytics'
 
 /**
  * Public landing for a one-time invite link (/accept-invite?code=…). The invitee sets their
@@ -26,6 +27,7 @@ export function AcceptInvitePage() {
     setBusy(true)
     try {
       await acceptInvite(code, password, displayName || undefined)
+      track(EVENTS.inviteAccepted)
       navigate('/', { replace: true })
     } catch (err) {
       if (axios.isAxiosError(err)) {

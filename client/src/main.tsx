@@ -6,7 +6,7 @@ import App from './App.tsx'
 import { AuthProvider } from './auth/AuthContext'
 import { FeatureProvider } from './features/FeatureContext'
 import { OnboardingProvider } from './onboarding/OnboardingContext'
-import { AnalyticsProvider } from './analytics'
+import { AnalyticsProvider } from './analytics/AnalyticsProvider'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

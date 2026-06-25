@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import { AppShell } from '../components/AppShell'
 import { Button, Card, PageHeader } from '../components/ui'
 import { useOnboarding } from '../onboarding/OnboardingContext'
-import { EVENTS, track, useAnalytics } from '../analytics'
+import { EVENTS, track } from '../analytics'
+import { useAnalytics } from '../analytics/AnalyticsProvider'
 
 const GUIDE_URL = 'https://github.com/maskit89/ZeroBudget/blob/main/docs/USER_GUIDE.md'
 

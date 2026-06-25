@@ -9,9 +9,10 @@ import {
 } from 'react'
 import { useFeatures } from '../features/FeatureContext'
 import { useAuth } from '../auth/AuthContext'
+import { HOUSEHOLD_ROLE_LABELS } from '../types'
 import { isConfigured } from './gtag'
 import { getConsent, setConsent as persistConsent, type ConsentChoice } from './consent'
-import { clearUser, setUser, startTracking, track, trackPageView } from './analytics'
+import { clearUser, setUser, setUserRole, startTracking, track, trackPageView } from './analytics'
 import { hashUserId } from './hash'
 import { EVENTS } from './events'
 import { RouteAnalytics } from './RouteAnalytics'
@@ -47,7 +48,7 @@ const AnalyticsContext = createContext<AnalyticsState>(NOOP)
  */
 export function AnalyticsProvider({ children }: { children: ReactNode }) {
   const features = useFeatures()
-  const { email } = useAuth()
+  const { email, role } = useAuth()
 
   const available = features.analytics
   const [consent, setConsentState] = useState<ConsentChoice | null>(() => getConsent())
@@ -63,7 +64,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     track(EVENTS.consentUpdated, { consent: 'granted' })
   }, [tracking])
 
-  // Keep GA's User-ID synced to the hashed, non-PII identity of the logged-in user.
+  // Keep GA's User-ID + role property synced to the hashed, non-PII identity of the user.
   useEffect(() => {
     if (!tracking) return
     let cancelled = false
@@ -71,13 +72,14 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       void hashUserId(email).then((id) => {
         if (!cancelled) setUser(id)
       })
+      setUserRole(HOUSEHOLD_ROLE_LABELS[role] ?? null)
     } else {
       clearUser()
     }
     return () => {
       cancelled = true
     }
-  }, [tracking, email])
+  }, [tracking, email, role])
 
   const accept = useCallback(() => {
     persistConsent('granted')

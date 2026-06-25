@@ -43,7 +43,17 @@ export function setUser(hashedId: string | null): void {
   gtag('set', { user_id: hashedId ?? null })
 }
 
-/** Clear the User-ID on logout. */
+/**
+ * Set the `user_role` user property (a non-PII access-level label, e.g. "Owner") so
+ * behaviour can be segmented by role. Pass null to clear it.
+ */
+export function setUserRole(role: string | null): void {
+  if (!isStarted()) return
+  gtag('set', 'user_properties', { user_role: role ?? null })
+}
+
+/** Clear the User-ID and role on logout. */
 export function clearUser(): void {
   setUser(null)
+  setUserRole(null)
 }
