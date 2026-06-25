@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { AppShell } from '../components/AppShell'
 import { Button, Card, PageHeader } from '../components/ui'
 import { useOnboarding } from '../onboarding/OnboardingContext'
+import { EVENTS, track, useAnalytics } from '../analytics'
 
 const GUIDE_URL = 'https://github.com/maskit89/ZeroBudget/blob/main/docs/USER_GUIDE.md'
 
@@ -16,6 +17,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 export function HelpPage() {
   const { replay } = useOnboarding()
+  const { available, consent, accept, decline } = useAnalytics()
   return (
     <AppShell>
       <PageHeader
@@ -27,6 +29,7 @@ export function HelpPage() {
               href={GUIDE_URL}
               target="_blank"
               rel="noreferrer"
+              onClick={() => track(EVENTS.helpGuideOpened)}
               className="font-medium text-brand-600 hover:underline dark:text-emerald-400"
             >
               complete user guide
@@ -106,6 +109,38 @@ export function HelpPage() {
           any month, and an annual overview.
         </p>
       </Section>
+
+      {available && (
+        <Section title="Privacy & analytics">
+          <p>
+            We use <strong>Google Analytics</strong> to understand how ZeroBudget is used so we can
+            improve it. We never send your name, email, account or category names, or any amounts —
+            only anonymous page views and feature-usage events.
+          </p>
+          <p>
+            Status:{' '}
+            <strong>
+              {consent === 'granted'
+                ? 'Analytics is on'
+                : consent === 'denied'
+                  ? 'Analytics is off'
+                  : 'Not chosen yet'}
+            </strong>
+            . You can change this at any time.
+          </p>
+          <div className="pt-1">
+            {consent === 'granted' ? (
+              <Button variant="secondary" size="sm" onClick={decline}>
+                Turn off analytics
+              </Button>
+            ) : (
+              <Button size="sm" onClick={accept}>
+                Turn on analytics
+              </Button>
+            )}
+          </div>
+        </Section>
+      )}
 
       <Section title="Good to know">
         <ul className="ml-5 list-disc space-y-1">

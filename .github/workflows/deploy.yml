@@ -41,6 +41,11 @@ jobs:
 
       - name: Build SPA
         working-directory: client
+        # VITE_* vars are inlined into the bundle at build time, so the GA measurement ID
+        # must be present here. Set it as a repo Variable (Settings → Secrets and variables
+        # → Actions → Variables). Leaving it empty ships the app with analytics disabled.
+        env:
+          VITE_GA_MEASUREMENT_ID: ${{ vars.VITE_GA_MEASUREMENT_ID }}
         run: |
           npm ci
           npm run build

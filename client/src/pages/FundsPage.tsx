@@ -3,6 +3,7 @@ import { AppShell } from '../components/AppShell'
 import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
 import { FundsIcon } from '../components/icons'
 import { api } from '../lib/api'
+import { EVENTS, track } from '../analytics'
 import type { AccountDto, SinkingFundDto } from '../types'
 import {
   AccrualMethod,
@@ -140,9 +141,11 @@ export function FundsPage() {
       if (editingId) {
         const { data } = await api.put<SinkingFundDto>(`/sinkingfunds/${editingId}`, body)
         setFunds((prev) => prev.map((f) => (f.id === editingId ? data : f)))
+        track(EVENTS.fundEdited, { kind: form.kind })
       } else {
         const { data } = await api.post<SinkingFundDto>('/sinkingfunds', body)
         setFunds((prev) => [...prev, data])
+        track(EVENTS.fundCreated, { kind: form.kind })
       }
       resetForm()
     } catch {
@@ -172,6 +175,7 @@ export function FundsPage() {
     try {
       await api.put(`/sinkingfunds/${f.id}/archive`, { archived: true })
       setFunds((prev) => prev.filter((x) => x.id !== f.id))
+      track(EVENTS.fundArchived)
     } catch {
       setError('Could not archive that fund.')
     } finally {

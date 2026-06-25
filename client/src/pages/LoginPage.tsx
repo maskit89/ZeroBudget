@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import axios from 'axios'
 import { LogoMark } from '../components/icons'
 import { Button, Card, Input, SegmentedControl } from '../components/ui'
+import { EVENTS, track } from '../analytics'
 
 export function LoginPage() {
   const { login, register } = useAuth()
@@ -30,8 +31,10 @@ export function LoginPage() {
       } else {
         await register(email, password)
       }
+      track(mode === 'login' ? EVENTS.login : EVENTS.signUp, { method: 'password' })
       navigate('/', { replace: true })
     } catch (err) {
+      track(EVENTS.loginFailed, { method: 'password' })
       if (axios.isAxiosError(err)) {
         const data = err.response?.data as { error?: string; errors?: string[] } | undefined
         setError(data?.error ?? data?.errors?.join(' ') ?? 'Something went wrong.')

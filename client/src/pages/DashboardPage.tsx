@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
+import { EVENTS, track } from '../analytics'
 import { AppShell } from '../components/AppShell'
 import type {
   BudgetMonthDto,
@@ -107,14 +108,14 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
   )
 
   const goToMonth = useCallback((year: number, month: number) => setView({ year, month }), [])
-  const goPrev = useCallback(
-    () => setView((v) => (v.month === 1 ? { year: v.year - 1, month: 12 } : { ...v, month: v.month - 1 })),
-    [],
-  )
-  const goNext = useCallback(
-    () => setView((v) => (v.month === 12 ? { year: v.year + 1, month: 1 } : { ...v, month: v.month + 1 })),
-    [],
-  )
+  const goPrev = useCallback(() => {
+    track(EVENTS.monthNavigated, { direction: 'prev' })
+    setView((v) => (v.month === 1 ? { year: v.year - 1, month: 12 } : { ...v, month: v.month - 1 }))
+  }, [])
+  const goNext = useCallback(() => {
+    track(EVENTS.monthNavigated, { direction: 'next' })
+    setView((v) => (v.month === 12 ? { year: v.year + 1, month: 1 } : { ...v, month: v.month + 1 }))
+  }, [])
 
   // Create the viewed month — copying the previous month's plan, or blank.
   const createMonth = useCallback(
@@ -130,6 +131,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
         setMonth(fromDto(data))
         setNotFound(false)
         refreshMonths()
+        track(EVENTS.budgetMonthCreated, { source: copyFromPrevious ? 'copy' : 'blank' })
       } catch {
         setError('Could not create that budget.')
       } finally {
@@ -154,6 +156,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
         setMonth(fromDto(data))
         setNotFound(false)
         refreshMonths()
+        track(EVENTS.budgetMonthCreated, { source: 'template' })
       } catch {
         setError('Could not create that budget.')
       } finally {
@@ -177,6 +180,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
 
       try {
         await api.put(`/budget/items/${itemId}`, { plannedAmount: toAmount(plannedMinor) })
+        track(EVENTS.budgetItemEdited, { context: 'planned' })
       } catch {
         setMonth(snapshot) // roll back to the pre-edit state
         setError('Could not save that change — reverted to the previous value.')

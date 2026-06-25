@@ -3,6 +3,7 @@ import { AppShell } from '../components/AppShell'
 import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select, SegmentedControl } from '../components/ui'
 import { AllocationIcon } from '../components/icons'
 import { api } from '../lib/api'
+import { bucketCount, EVENTS, track } from '../analytics'
 import type { AccountDto, AllocationProfileDto, AllocationResultDto, BudgetMonthDto } from '../types'
 import { AllocationRuleType, ALLOCATION_RULE_LABELS, SplitMethod } from '../types'
 import { formatMoney, fromAmount, parseMinor, toAmount, toEditString } from '../lib/money'
@@ -112,6 +113,7 @@ export function AllocationPage() {
         rules: standardRules(split, toAmount(pocketAmount as number), savingsSplit),
       })
       setProfile(data)
+      track(EVENTS.allocationPreviewed, { split })
       await loadPreview(period.year, period.month)
     } catch {
       setError('Could not save the allocation profile.')
@@ -128,6 +130,7 @@ export function AllocationPage() {
       const { data } = await api.post<AllocationResultDto>(`/allocation/commit/${period.year}/${period.month}`, {})
       setPreview(data)
       setCommitted(data.transfersCreated)
+      track(EVENTS.allocationCommitted, { count_bucket: bucketCount(data.transfersCreated) })
     } catch {
       setError('Could not commit the allocation. Check the source account and members’ savings accounts are set.')
     } finally {

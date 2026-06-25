@@ -3,6 +3,7 @@ import { AppShell } from '../components/AppShell'
 import { Card, EmptyState, ErrorBanner, PageHeader } from '../components/ui'
 import { ReportsIcon } from '../components/icons'
 import { api } from '../lib/api'
+import { EVENTS, track } from '../analytics'
 import type { AnnualSummaryDto, BudgetMonthDto, BudgetTrendsDto } from '../types'
 import { formatMoney, fromAmount, type Minor } from '../lib/money'
 
@@ -202,7 +203,10 @@ export function ReportsPage() {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setAnnualYear((y) => (y ?? new Date().getFullYear()) - 1)}
+                      onClick={() => {
+                        track(EVENTS.reportViewed, { report_type: 'annual' })
+                        setAnnualYear((y) => (y ?? new Date().getFullYear()) - 1)
+                      }}
                       aria-label="Previous year"
                       className="rounded-md border border-slate-300 px-2 py-0.5 text-slate-600 hover:bg-slate-50"
                     >
@@ -213,7 +217,10 @@ export function ReportsPage() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => setAnnualYear((y) => (y ?? new Date().getFullYear()) + 1)}
+                      onClick={() => {
+                        track(EVENTS.reportViewed, { report_type: 'annual' })
+                        setAnnualYear((y) => (y ?? new Date().getFullYear()) + 1)
+                      }}
                       aria-label="Next year"
                       className="rounded-md border border-slate-300 px-2 py-0.5 text-slate-600 hover:bg-slate-50"
                     >
@@ -320,7 +327,10 @@ export function ReportsPage() {
                 <select
                   aria-label="Breakdown month"
                   value={breakdownKey ?? ''}
-                  onChange={(e) => setBreakdownKey(e.target.value)}
+                  onChange={(e) => {
+                    track(EVENTS.reportViewed, { report_type: 'breakdown' })
+                    setBreakdownKey(e.target.value)
+                  }}
                   className="rounded-md border border-slate-300 bg-surface px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
                 >
                   {[...trends.points].reverse().map((p) => (

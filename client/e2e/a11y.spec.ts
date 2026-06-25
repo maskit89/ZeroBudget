@@ -262,6 +262,23 @@ for (const theme of ['light', 'dark'] as const) {
       await expectNoViolations(page)
     })
 
+    test('analytics consent banner + Help control have no WCAG A/AA violations', async ({ page }) => {
+      await authedSetup(page, theme)
+      // Turn the analytics flag on so the consent banner and the Help privacy control both render
+      // (no real GA loads — there's no measurement ID in the e2e build).
+      await page.route('**/api/features', (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ ...FLAGS, analytics: true }),
+        }),
+      )
+      await page.goto('/help')
+      await page.getByRole('region', { name: 'Analytics consent' }).waitFor()
+      await page.getByRole('heading', { name: 'Privacy & analytics' }).waitFor()
+      await expectNoViolations(page)
+    })
+
     test('onboarding welcome, tour and checklist have no WCAG A/AA violations', async ({ page }) => {
       // A brand-new user (no onboarding record) so the welcome auto-opens.
       await page.addInitScript(

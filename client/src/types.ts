@@ -393,6 +393,8 @@ export interface FeatureFlags {
   reports: boolean
   sinkingFunds: boolean
   householdAllocation: boolean
+  /** GA4 usage analytics. Off unless explicitly enabled server-side AND a measurement ID is built in. */
+  analytics: boolean
 }
 
 export interface AuthResponse {

@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import { Link } from 'react-router-dom'
 import { useFeatures } from '../features/FeatureContext'
 import { AccountsIcon, AllocationIcon, DashboardIcon, FundsIcon, MembersIcon, ReportsIcon, TransactionsIcon } from './icons'
+import { EVENTS, track } from '../analytics'
 
 export type NavKey = 'budget' | 'transactions' | 'accounts' | 'funds' | 'members' | 'allocation' | 'reports'
 
@@ -47,7 +48,10 @@ export function AppNav({
             <Link
               key={i.key}
               to={i.to}
-              onClick={onNavigate}
+              onClick={() => {
+                track(EVENTS.navClick, { destination: i.to })
+                onNavigate?.()
+              }}
               aria-current={isActive ? 'page' : undefined}
               className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
                 isActive

@@ -3,6 +3,7 @@ import { AppShell } from '../components/AppShell'
 import { Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
 import { AccountsIcon } from '../components/icons'
 import { api } from '../lib/api'
+import { EVENTS, track } from '../analytics'
 import type { AccountDto, AccountReconciliationDto } from '../types'
 import { ACCOUNT_TYPE_LABELS, AccountType } from '../types'
 import { formatMoney, fromAmount, parseMinor, toAmount, toEditString } from '../lib/money'
@@ -91,6 +92,7 @@ export function AccountsPage() {
         openingBalance,
       })
       setAccounts((prev) => [...prev, data])
+      track(EVENTS.accountCreated, { kind: ACCOUNT_TYPE_LABELS[type] ?? 'unknown' })
       setName('')
       setOpening('')
     } catch {
@@ -127,6 +129,7 @@ export function AccountsPage() {
           openingBalance,
         })
         setAccounts((prev) => prev.map((a) => (a.id === id ? data : a)))
+        track(EVENTS.accountEdited)
         setEditingId(null)
       } catch {
         setError('Could not save that account.')

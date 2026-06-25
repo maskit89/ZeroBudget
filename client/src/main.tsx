@@ -6,15 +6,18 @@ import App from './App.tsx'
 import { AuthProvider } from './auth/AuthContext'
 import { FeatureProvider } from './features/FeatureContext'
 import { OnboardingProvider } from './onboarding/OnboardingContext'
+import { AnalyticsProvider } from './analytics'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
         <FeatureProvider>
-          <OnboardingProvider>
-            <App />
-          </OnboardingProvider>
+          <AnalyticsProvider>
+            <OnboardingProvider>
+              <App />
+            </OnboardingProvider>
+          </AnalyticsProvider>
         </FeatureProvider>
       </AuthProvider>
     </BrowserRouter>
