@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ItemVM } from '../budgetModel'
 import { currencySymbol, formatMoney, parseMinor, toEditString, type Minor } from '../lib/money'
+import { useAuth } from '../auth/AuthContext'
 
 interface Props {
   item: ItemVM
@@ -29,6 +30,8 @@ export function IncomeLineRow({
   onSetActualMode,
   onDelete,
 }: Props) {
+  // Editing income lines (structure + amounts) needs Admin+ (canWrite).
+  const { canWrite } = useAuth()
   const [name, setName] = useState(item.name)
   const [draft, setDraft] = useState(toEditString(item.plannedMinor))
   const [receivedDraft, setReceivedDraft] = useState(toEditString(item.actualMinor))
@@ -64,23 +67,27 @@ export function IncomeLineRow({
     if (parsed !== item.actualMinor) onCommitReceived(item.id, parsed)
   }
 
-  const receivedEditable = !item.actualIsTracked
+  const receivedEditable = canWrite && !item.actualIsTracked
 
   return (
     <div className="grid grid-cols-12 items-center gap-2 px-4 py-2.5 hover:bg-emerald-50/40">
       <div className="col-span-5 flex items-center gap-2">
-        <input
-          type="text"
-          value={name}
-          aria-label="Income source name"
-          onChange={(e) => setName(e.target.value)}
-          onBlur={commitName}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-            if (e.key === 'Escape') setName(item.name)
-          }}
-          className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-slate-700 hover:border-slate-200 focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-        />
+        {canWrite ? (
+          <input
+            type="text"
+            value={name}
+            aria-label="Income source name"
+            onChange={(e) => setName(e.target.value)}
+            onBlur={commitName}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+              if (e.key === 'Escape') setName(item.name)
+            }}
+            className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-slate-700 hover:border-slate-200 focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          />
+        ) : (
+          <span className="w-full px-2 py-1 text-sm font-medium text-slate-700">{item.name}</span>
+        )}
         {saving && (
           <span
             className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-emerald-500"
@@ -92,39 +99,47 @@ export function IncomeLineRow({
 
       <div className="col-span-3 flex items-center justify-end">
         <span className="mr-1 text-slate-500">{currencySymbol(currency)}</span>
-        <input
-          type="text"
-          inputMode="decimal"
-          value={draft}
-          aria-label={`Planned amount for ${item.name}`}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commitPlanned}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-            if (e.key === 'Escape') setDraft(toEditString(item.plannedMinor))
-          }}
-          className="w-24 rounded-lg border border-transparent bg-transparent px-2 py-1 text-right text-sm font-medium tabular-nums text-slate-800 transition hover:bg-slate-100 focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-        />
+        {canWrite ? (
+          <input
+            type="text"
+            inputMode="decimal"
+            value={draft}
+            aria-label={`Planned amount for ${item.name}`}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitPlanned}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+              if (e.key === 'Escape') setDraft(toEditString(item.plannedMinor))
+            }}
+            className="w-24 rounded-lg border border-transparent bg-transparent px-2 py-1 text-right text-sm font-medium tabular-nums text-slate-800 transition hover:bg-slate-100 focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          />
+        ) : (
+          <span className="w-24 px-2 py-1 text-right text-sm font-medium tabular-nums text-slate-800">
+            {toEditString(item.plannedMinor)}
+          </span>
+        )}
       </div>
 
       <div className="col-span-3 flex items-center justify-end gap-1">
-        <button
-          type="button"
-          onClick={() => onSetActualMode(item.id, !item.actualIsTracked)}
-          aria-label={
-            item.actualIsTracked
-              ? `Enter ${item.name} received manually`
-              : `Track ${item.name} by transactions`
-          }
-          title={
-            item.actualIsTracked
-              ? 'Received from transactions — switch to manual entry'
-              : 'Manual entry — switch to transaction tracking'
-          }
-          className="shrink-0 rounded px-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-600"
-        >
-          {item.actualIsTracked ? '🔗' : '✎'}
-        </button>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={() => onSetActualMode(item.id, !item.actualIsTracked)}
+            aria-label={
+              item.actualIsTracked
+                ? `Enter ${item.name} received manually`
+                : `Track ${item.name} by transactions`
+            }
+            title={
+              item.actualIsTracked
+                ? 'Received from transactions — switch to manual entry'
+                : 'Manual entry — switch to transaction tracking'
+            }
+            className="shrink-0 rounded px-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-600"
+          >
+            {item.actualIsTracked ? '🔗' : '✎'}
+          </button>
+        )}
         {receivedEditable ? (
           <input
             type="text"
@@ -147,15 +162,17 @@ export function IncomeLineRow({
       </div>
 
       <div className="col-span-1 flex justify-end">
-        <button
-          type="button"
-          onClick={() => onDelete(item.id)}
-          aria-label={`Delete ${item.name}`}
-          title="Delete income source"
-          className="rounded-md px-1.5 py-1 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
-        >
-          ✕
-        </button>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={() => onDelete(item.id)}
+            aria-label={`Delete ${item.name}`}
+            title="Delete income source"
+            className="rounded-md px-1.5 py-1 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+          >
+            ✕
+          </button>
+        )}
       </div>
     </div>
   )

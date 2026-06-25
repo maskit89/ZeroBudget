@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { AppShell } from '../components/AppShell'
 import { Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
 import { MembersIcon } from '../components/icons'
+import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
 import type { AccountDto, HouseholdMemberDto, MemberSpendingDto } from '../types'
 import { formatMoney, fromAmount, parseMinor, toAmount, toEditString } from '../lib/money'
@@ -20,6 +21,8 @@ function sharePct(share: number): string {
 }
 
 export function MembersPage() {
+  // Managing household members needs Admin+ (canWrite); others see them read-only.
+  const { canWrite } = useAuth()
   const [members, setMembers] = useState<HouseholdMemberDto[]>([])
   const [accounts, setAccounts] = useState<AccountDto[]>([])
   const [spending, setSpending] = useState<MemberSpendingDto[]>([])
@@ -165,6 +168,7 @@ export function MembersPage() {
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
+      {canWrite && (
       <Card className="p-4">
         <h2 className="mb-3 text-sm font-semibold text-slate-700">Add a member</h2>
         <div className="flex flex-wrap items-end gap-3">
@@ -217,6 +221,7 @@ export function MembersPage() {
           </Button>
         </div>
       </Card>
+      )}
 
       {loading && <p className="text-slate-500">Loading…</p>}
 
@@ -320,6 +325,7 @@ export function MembersPage() {
                         </td>
                         <td className="px-4 py-2.5 text-slate-500">{accountName(m.personalSavingsAccountId)}</td>
                         <td className="px-4 py-2.5 text-right">
+                          {canWrite && (
                           <div className="flex justify-end gap-1">
                             <button
                               type="button"
@@ -341,6 +347,7 @@ export function MembersPage() {
                               ✕
                             </button>
                           </div>
+                          )}
                         </td>
                       </>
                     )}

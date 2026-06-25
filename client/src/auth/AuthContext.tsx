@@ -64,10 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     request
       .then((res) => {
         const data = res?.data
-        if (cancelled || !data) return
+        // Only adopt a well-formed response — never let a malformed /auth/me downgrade the role.
+        if (cancelled || !data || typeof data.role !== 'number') return
         setRole(data.role)
-        setEmail(data.email)
-        setDisplayName(data.displayName)
+        if (typeof data.email === 'string') setEmail(data.email)
+        setDisplayName(data.displayName ?? null)
         localStorage.setItem(ROLE_KEY, String(data.role))
       })
       .catch(() => {})

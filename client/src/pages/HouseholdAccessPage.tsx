@@ -193,7 +193,7 @@ export function HouseholdAccessPage() {
           </label>
 
           <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
-            Name <span className="font-normal text-slate-400">(optional)</span>
+            Name <span className="font-normal text-slate-500">(optional)</span>
             <Input
               type="text"
               value={name}
@@ -218,12 +218,12 @@ export function HouseholdAccessPage() {
                 </option>
               ))}
             </Select>
-            <span className="text-xs font-normal text-slate-400">{HOUSEHOLD_ROLE_HINTS[roleValue]}</span>
+            <span className="text-xs font-normal text-slate-500">{HOUSEHOLD_ROLE_HINTS[roleValue]}</span>
           </label>
 
           {householdMembers.length > 0 && (
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
-              Link to budget member <span className="font-normal text-slate-400">(optional)</span>
+              Link to budget member <span className="font-normal text-slate-500">(optional)</span>
               <Select
                 value={memberId}
                 onChange={(e) => setMemberId(e.target.value)}
@@ -265,10 +265,10 @@ export function HouseholdAccessPage() {
               aria-label="Temporary password"
               className="w-full"
             />
-            <span className="font-normal text-slate-400">Share it with them; they can change it after signing in.</span>
+            <span className="font-normal text-slate-500">Share it with them; they can change it after signing in.</span>
           </label>
         ) : (
-          <p className="mt-4 max-w-md text-xs text-slate-400">
+          <p className="mt-4 max-w-md text-xs text-slate-500">
             A one-time link will be created for you to copy and send. They set their own password when they open it.
           </p>
         )}
@@ -316,7 +316,7 @@ export function HouseholdAccessPage() {
                   <tr key={m.id} className="hover:bg-slate-50">
                     <td className="px-4 py-2.5">
                       <div className="font-medium text-slate-700">{m.displayName ?? m.email}</div>
-                      {m.displayName && <div className="text-xs text-slate-400">{m.email}</div>}
+                      {m.displayName && <div className="text-xs text-slate-500">{m.email}</div>}
                     </td>
                     <td className="px-4 py-2.5">
                       {m.status === MembershipStatus.Invited ? (
@@ -346,9 +346,9 @@ export function HouseholdAccessPage() {
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       {m.isOwner ? (
-                        <span className="text-xs text-slate-400">Owner</span>
+                        <span className="text-xs text-slate-500">Owner</span>
                       ) : m.isSelf ? (
-                        <span className="text-xs text-slate-400">You</span>
+                        <span className="text-xs text-slate-500">You</span>
                       ) : (
                         <button
                           type="button"

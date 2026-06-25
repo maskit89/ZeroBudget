@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { BillStatus, ItemVM } from '../budgetModel'
 import { itemRemaining } from '../budgetModel'
 import { currencySymbol, formatMoney, parseMinor, toEditString, type Minor } from '../lib/money'
+import { useAuth } from '../auth/AuthContext'
 
 interface Props {
   item: ItemVM
@@ -56,6 +57,8 @@ export function BudgetItemRow({
   availableMinor,
   billStatus,
 }: Props) {
+  // Structural edits need Admin+ (canWrite); marking a bill paid is day-to-day (canEnterData).
+  const { canWrite, canEnterData } = useAuth()
   const [name, setName] = useState(item.name)
   const [draft, setDraft] = useState(toEditString(item.plannedMinor))
   const [actualDraft, setActualDraft] = useState(toEditString(item.actualMinor))
@@ -115,8 +118,8 @@ export function BudgetItemRow({
 
   const remaining = itemRemaining(item)
   const overspent = remaining < 0
-  // The spent cell is editable only when manual (no transactions drive it).
-  const actualEditable = Boolean(onCommitActual) && !item.actualIsTracked
+  // The spent cell is editable only when manual (no transactions drive it) and you can write.
+  const actualEditable = canWrite && Boolean(onCommitActual) && !item.actualIsTracked
   // A fund line shows its rolled-over available balance instead of the remaining.
   const showAvailable = availableMinor !== undefined && availableMinor !== null
   const fundOverdrawn = showAvailable && (availableMinor as Minor) < 0
@@ -132,11 +135,17 @@ export function BudgetItemRow({
     : dueSoon
       ? `Due soon — day ${item.dueDay}`
       : `Bill due on day ${item.dueDay}`
+  // Non-interactive pill colours (no hover) for when the due day isn't editable.
+  const billPillStatic = overdue
+    ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-200'
+    : dueSoon
+      ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200'
+      : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200'
 
   return (
     <div className="grid grid-cols-12 items-center gap-2 px-4 py-2.5 hover:bg-slate-50">
       <div className="col-span-4 flex items-center gap-1">
-        {onMove && (
+        {canWrite && onMove && (
           <div className="flex shrink-0 flex-col">
             <button
               type="button"
@@ -160,7 +169,7 @@ export function BudgetItemRow({
             </button>
           </div>
         )}
-        {onRename ? (
+        {canWrite && onRename ? (
           <input
             type="text"
             value={name}
@@ -184,8 +193,8 @@ export function BudgetItemRow({
           />
         )}
 
-        {onSetBill &&
-          (billEditing ? (
+        {(item.dueDay !== null || (canWrite && onSetBill)) &&
+          (canWrite && onSetBill && billEditing ? (
             <span className="flex shrink-0 items-center gap-0.5">
               <input
                 type="number"
@@ -225,16 +234,25 @@ export function BudgetItemRow({
             </span>
           ) : item.dueDay !== null ? (
             <span className="flex shrink-0 items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setBillEditing(true)}
-                aria-label={`Edit due day for ${item.name}`}
-                title={billTitle}
-                className={`inline-flex min-h-6 items-center rounded px-1.5 text-[11px] font-medium tabular-nums ${billPillClass}`}
-              >
-                {overdue ? '⚠' : '📅'} {item.dueDay}
-              </button>
-              {onSetPaid && (
+              {canWrite && onSetBill ? (
+                <button
+                  type="button"
+                  onClick={() => setBillEditing(true)}
+                  aria-label={`Edit due day for ${item.name}`}
+                  title={billTitle}
+                  className={`inline-flex min-h-6 items-center rounded px-1.5 text-[11px] font-medium tabular-nums ${billPillClass}`}
+                >
+                  {overdue ? '⚠' : '📅'} {item.dueDay}
+                </button>
+              ) : (
+                <span
+                  title={billTitle}
+                  className={`inline-flex min-h-6 items-center rounded px-1.5 text-[11px] font-medium tabular-nums ${billPillStatic}`}
+                >
+                  {overdue ? '⚠' : '📅'} {item.dueDay}
+                </span>
+              )}
+              {canEnterData && onSetPaid && (
                 <button
                   type="button"
                   onClick={() => onSetPaid(item.id, !item.isPaid)}
@@ -252,7 +270,7 @@ export function BudgetItemRow({
                 </button>
               )}
             </span>
-          ) : (
+          ) : canWrite && onSetBill ? (
             <button
               type="button"
               onClick={() => setBillEditing(true)}
@@ -262,28 +280,34 @@ export function BudgetItemRow({
             >
               📅
             </button>
-          ))}
+          ) : null)}
       </div>
 
       <div className="col-span-3 flex items-center justify-end">
         <span className="mr-1 text-slate-500">{currencySymbol(currency)}</span>
-        <input
-          type="text"
-          inputMode="decimal"
-          value={draft}
-          aria-label={`Planned amount for ${item.name}`}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commitPlanned}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-            if (e.key === 'Escape') setDraft(toEditString(item.plannedMinor))
-          }}
-          className="w-24 rounded-lg border border-transparent bg-transparent px-2 py-1 text-right text-sm font-medium tabular-nums text-slate-800 transition hover:bg-slate-100 focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-        />
+        {canWrite ? (
+          <input
+            type="text"
+            inputMode="decimal"
+            value={draft}
+            aria-label={`Planned amount for ${item.name}`}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitPlanned}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+              if (e.key === 'Escape') setDraft(toEditString(item.plannedMinor))
+            }}
+            className="w-24 rounded-lg border border-transparent bg-transparent px-2 py-1 text-right text-sm font-medium tabular-nums text-slate-800 transition hover:bg-slate-100 focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          />
+        ) : (
+          <span className="w-24 px-2 py-1 text-right text-sm font-medium tabular-nums text-slate-800">
+            {toEditString(item.plannedMinor)}
+          </span>
+        )}
       </div>
 
       <div className="col-span-2 flex items-center justify-end gap-1">
-        {onSetActualMode && (
+        {canWrite && onSetActualMode && (
           <button
             type="button"
             onClick={() => onSetActualMode(item.id, !item.actualIsTracked)}
@@ -346,7 +370,7 @@ export function BudgetItemRow({
       )}
 
       <div className="col-span-1 flex justify-end">
-        {onDelete && (
+        {canWrite && onDelete && (
           <button
             type="button"
             onClick={() => onDelete(item.id)}

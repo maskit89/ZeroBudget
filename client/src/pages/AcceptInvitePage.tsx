@@ -58,7 +58,7 @@ export function AcceptInvitePage() {
             <form onSubmit={onSubmit} className="space-y-4">
               <div>
                 <label htmlFor="displayName" className="mb-1 block text-sm font-medium text-slate-600">
-                  Your name <span className="text-slate-400">(optional)</span>
+                  Your name <span className="text-slate-500">(optional)</span>
                 </label>
                 <Input
                   id="displayName"
