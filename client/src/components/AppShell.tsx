@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { AppNav, type NavKey } from './AppNav'
-import { CloseIcon, HelpIcon, LogoMark, LogoutIcon, MenuIcon } from './icons'
+import { CloseIcon, HelpIcon, LogoMark, LogoutIcon, MenuIcon, SettingsIcon } from './icons'
 import { ThemeToggle } from './ThemeToggle'
 import { EVENTS, track } from '../analytics'
 
@@ -22,8 +22,14 @@ export function AppShell({
   maxWidth?: '4xl' | '5xl'
   children: ReactNode
 }) {
-  const { email, logout } = useAuth()
+  const { email, logout, canWrite, canEnterData, isReadOnly } = useAuth()
   const [navOpen, setNavOpen] = useState(false)
+  // Only Limited/Read-only roles are restricted; Owner/Admin have full write access.
+  const accessBanner = isReadOnly
+    ? 'You have read-only access — you can view everything but cannot make changes.'
+    : !canWrite && canEnterData
+      ? 'You have limited access — you can record transactions, mark bills paid and run allocation, but not change the budget structure or settings.'
+      : null
   const width = maxWidth === '4xl' ? 'max-w-4xl' : 'max-w-5xl'
   const initial = email?.trim().charAt(0).toUpperCase() || '?'
 
@@ -91,6 +97,14 @@ export function AppShell({
             >
               <HelpIcon className="h-5 w-5" />
             </Link>
+            <Link
+              to="/account"
+              aria-label="Account settings"
+              title="Account settings"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-600"
+            >
+              <SettingsIcon className="h-5 w-5" />
+            </Link>
 
             <div className="hidden h-6 w-px bg-slate-200 sm:block" />
 
@@ -127,6 +141,14 @@ export function AppShell({
           tabIndex={-1}
           className={`mx-auto ${width} space-y-6 px-4 py-8 focus:outline-none sm:px-6 lg:px-8`}
         >
+          {accessBanner && (
+            <div
+              role="status"
+              className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+            >
+              {accessBanner}
+            </div>
+          )}
           {children}
         </main>
       </div>

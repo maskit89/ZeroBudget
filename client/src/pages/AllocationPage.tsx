@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/AppShell'
 import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select, SegmentedControl } from '../components/ui'
 import { AllocationIcon } from '../components/icons'
+import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
 import { bucketCount, EVENTS, track } from '../analytics'
 import type { AccountDto, AllocationProfileDto, AllocationResultDto, BudgetMonthDto } from '../types'
@@ -27,6 +28,8 @@ function standardRules(costSplit: number, pocketAmount: number, savingsSplit: nu
 }
 
 export function AllocationPage() {
+  // Editing the allocation profile needs Admin+; running an allocation is day-to-day (Limited+).
+  const { canWrite, canEnterData } = useAuth()
   const [profile, setProfile] = useState<AllocationProfileDto | null>(null)
   const [accounts, setAccounts] = useState<AccountDto[]>([])
   const [preview, setPreview] = useState<AllocationResultDto | null>(null)
@@ -155,7 +158,8 @@ export function AllocationPage() {
 
       {!loading && (
         <>
-          {/* Setup / settings. */}
+          {/* Setup / settings. Editing the profile is Admin+. */}
+          {canWrite && (
           <Card className="p-4">
             <h2 className="mb-3 text-sm font-semibold text-slate-700">
               {profile ? 'Allocation settings' : 'Set up allocation'}
@@ -233,6 +237,7 @@ export function AllocationPage() {
               </Button>
             </div>
           </Card>
+          )}
 
           {!profile && (
             <EmptyState
@@ -255,9 +260,11 @@ export function AllocationPage() {
                     net income
                   </p>
                 </div>
-                <Button onClick={commit} disabled={busy} aria-label="Commit allocation">
-                  Allocate {monthLabel}
-                </Button>
+                {canEnterData && (
+                  <Button onClick={commit} disabled={busy} aria-label="Commit allocation">
+                    Allocate {monthLabel}
+                  </Button>
+                )}
               </div>
 
               {committed !== null && (

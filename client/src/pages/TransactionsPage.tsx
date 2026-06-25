@@ -4,6 +4,7 @@ import { AppShell } from '../components/AppShell'
 import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, SegmentedControl, Select } from '../components/ui'
 import { ImportIcon, TransactionsIcon } from '../components/icons'
 import { useFeatures } from '../features/FeatureContext'
+import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
 import { EVENTS, track } from '../analytics'
 import type { AccountDto, BudgetMonthDto, HouseholdMemberDto, TransactionDto } from '../types'
@@ -17,6 +18,8 @@ function today(): string {
 
 export function TransactionsPage() {
   const features = useFeatures()
+  // Recording/editing transactions is day-to-day entry (Limited+); importing needs Admin+.
+  const { canEnterData, canWrite } = useAuth()
   const [transactions, setTransactions] = useState<TransactionDto[]>([])
   const [month, setMonth] = useState<BudgetMonthDto | null>(null)
   const [accounts, setAccounts] = useState<AccountDto[]>([])
@@ -328,7 +331,7 @@ export function TransactionsPage() {
           title="Transactions"
           subtitle="Add what you’ve spent (or received) by hand, then assign each to a budget line — its spending rolls up into that line."
           actions={
-            features.camtImport && (
+            features.camtImport && canWrite && (
               <Link
                 to="/import"
                 className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-surface px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -342,7 +345,8 @@ export function TransactionsPage() {
 
         {error && <ErrorBanner>{error}</ErrorBanner>}
 
-        {/* Add-transaction form (the manual "sheet" entry). */}
+        {/* Add-transaction form (the manual "sheet" entry). Hidden for read-only access. */}
+        {canEnterData && (
         <Card className="p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-slate-700">
@@ -548,6 +552,7 @@ export function TransactionsPage() {
           </div>
           )}
         </Card>
+        )}
 
         {loading && <p className="text-slate-500">Loading…</p>}
 
@@ -764,7 +769,7 @@ export function TransactionsPage() {
                                       .join(' · ')}
                                   </span>
                                 </div>
-                              ) : (
+                              ) : canEnterData ? (
                                 <select
                                   value={t.budgetItemId ?? ''}
                                   disabled={savingId === t.id}
@@ -783,9 +788,14 @@ export function TransactionsPage() {
                                     </optgroup>
                                   ))}
                                 </select>
+                              ) : (
+                                <span className="text-sm text-slate-600">
+                                  {t.budgetItemName ?? 'Unassigned'}
+                                </span>
                               )}
                             </td>
                             <td className="px-4 py-2.5 text-right">
+                              {canEnterData && (
                               <div className="flex justify-end gap-1">
                                 {!isTransfer && (
                                   <>
@@ -820,6 +830,7 @@ export function TransactionsPage() {
                                   ✕
                                 </button>
                               </div>
+                              )}
                             </td>
                           </>
                         )}

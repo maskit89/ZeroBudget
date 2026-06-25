@@ -4,6 +4,7 @@ import { billStatus, categoryPlanned } from '../budgetModel'
 import { formatMoney, type Minor } from '../lib/money'
 import { BudgetItemRow } from './BudgetItemRow'
 import { Badge, Card } from './ui'
+import { useAuth } from '../auth/AuthContext'
 
 interface Props {
   category: CategoryVM
@@ -58,6 +59,8 @@ export function CategoryAccordion({
   onDeleteCategory,
   onReorderItems,
 }: Props) {
+  // Group structure (rename/move/delete/add line) needs Admin+; rows self-gate internally.
+  const { canWrite } = useAuth()
   const [open, setOpen] = useState(defaultOpen)
   const [name, setName] = useState(category.name)
   const [newItemName, setNewItemName] = useState('')
@@ -103,23 +106,27 @@ export function CategoryAccordion({
           >
             ▶
           </button>
-          <input
-            type="text"
-            value={name}
-            aria-label={`Rename group ${category.name}`}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={commitName}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-              if (e.key === 'Escape') setName(category.name)
-            }}
-            className="rounded-md border border-transparent bg-transparent px-2 py-1 text-base font-semibold text-slate-800 hover:border-slate-200 focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-          />
+          {canWrite ? (
+            <input
+              type="text"
+              value={name}
+              aria-label={`Rename group ${category.name}`}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={commitName}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                if (e.key === 'Escape') setName(category.name)
+              }}
+              className="rounded-md border border-transparent bg-transparent px-2 py-1 text-base font-semibold text-slate-800 hover:border-slate-200 focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            />
+          ) : (
+            <span className="px-2 py-1 text-base font-semibold text-slate-800">{category.name}</span>
+          )}
           <Badge>{category.items.length}</Badge>
         </div>
 
         <div className="flex items-center gap-3">
-          {onMove && (
+          {canWrite && onMove && (
             <div className="flex items-center">
               <button
                 type="button"
@@ -146,37 +153,38 @@ export function CategoryAccordion({
           <span className="text-sm font-semibold tabular-nums text-slate-600">
             {formatMoney(categoryPlanned(category), currency)}
           </span>
-          {confirmingDelete ? (
-            <span className="flex items-center gap-1 text-xs">
-              <span className="text-slate-500">Delete group?</span>
+          {canWrite &&
+            (confirmingDelete ? (
+              <span className="flex items-center gap-1 text-xs">
+                <span className="text-slate-500">Delete group?</span>
+                <button
+                  type="button"
+                  onClick={() => onDeleteCategory(category.id)}
+                  aria-label={`Confirm delete ${category.name}`}
+                  className="rounded-md bg-rose-600 px-2 py-1 font-semibold text-white hover:bg-rose-700"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(false)}
+                  aria-label="Cancel delete"
+                  className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+              </span>
+            ) : (
               <button
                 type="button"
-                onClick={() => onDeleteCategory(category.id)}
-                aria-label={`Confirm delete ${category.name}`}
-                className="rounded-md bg-rose-600 px-2 py-1 font-semibold text-white hover:bg-rose-700"
+                onClick={() => setConfirmingDelete(true)}
+                aria-label={`Delete group ${category.name}`}
+                title="Delete group"
+                className="rounded-md px-1.5 py-1 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
               >
-                Delete
+                🗑
               </button>
-              <button
-                type="button"
-                onClick={() => setConfirmingDelete(false)}
-                aria-label="Cancel delete"
-                className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100"
-              >
-                Cancel
-              </button>
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setConfirmingDelete(true)}
-              aria-label={`Delete group ${category.name}`}
-              title="Delete group"
-              className="rounded-md px-1.5 py-1 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
-            >
-              🗑
-            </button>
-          )}
+            ))}
         </div>
       </div>
 
@@ -215,27 +223,29 @@ export function CategoryAccordion({
             )}
           </div>
 
-          <div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50/50 px-4 py-2.5">
-            <input
-              type="text"
-              value={newItemName}
-              placeholder="Add a line (e.g. Groceries, Fuel)…"
-              aria-label={`Add a line to ${category.name}`}
-              onChange={(e) => setNewItemName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') submitNewItem()
-              }}
-              className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            />
-            <button
-              type="button"
-              onClick={submitNewItem}
-              aria-label={`Add line to ${category.name}`}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-surface"
-            >
-              + Add
-            </button>
-          </div>
+          {canWrite && (
+            <div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50/50 px-4 py-2.5">
+              <input
+                type="text"
+                value={newItemName}
+                placeholder="Add a line (e.g. Groceries, Fuel)…"
+                aria-label={`Add a line to ${category.name}`}
+                onChange={(e) => setNewItemName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') submitNewItem()
+                }}
+                className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+              <button
+                type="button"
+                onClick={submitNewItem}
+                aria-label={`Add line to ${category.name}`}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-surface"
+              >
+                + Add
+              </button>
+            </div>
+          )}
         </div>
       )}
     </Card>

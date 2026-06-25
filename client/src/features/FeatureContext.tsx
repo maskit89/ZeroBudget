@@ -15,6 +15,7 @@ const ALL_ON: FeatureFlags = {
   sinkingFunds: true,
   householdAllocation: true,
   analytics: false,
+  householdAccess: true,
 }
 
 const FeatureContext = createContext<FeatureFlags>(ALL_ON)

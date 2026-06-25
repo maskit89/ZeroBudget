@@ -13,19 +13,22 @@ vi.mock('../lib/api', () => ({
 
 import { AppNav } from './AppNav'
 import { FeatureProvider } from '../features/FeatureContext'
+import { AuthProvider } from '../auth/AuthContext'
 
 function renderNav() {
   return render(
     <MemoryRouter>
-      <FeatureProvider>
-        <AppNav active="budget" />
-      </FeatureProvider>
+      <AuthProvider>
+        <FeatureProvider>
+          <AppNav active="budget" />
+        </FeatureProvider>
+      </AuthProvider>
     </MemoryRouter>,
   )
 }
 
 const flags = (over: Partial<FeatureFlags>): FeatureFlags => ({
-  accounts: true, multiCurrency: true, camtImport: true, reports: true, sinkingFunds: true, householdAllocation: true, ...over,
+  accounts: true, multiCurrency: true, camtImport: true, reports: true, sinkingFunds: true, householdAllocation: true, householdAccess: true, ...over,
 })
 
 describe('AppNav (feature flags)', () => {

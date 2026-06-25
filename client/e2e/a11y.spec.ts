@@ -4,7 +4,22 @@ import { expect, test, type Page, type Route } from '@playwright/test'
 // The WCAG 2.x success criteria we assert against (A + AA, through 2.2).
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
-const FLAGS = { accounts: true, multiCurrency: true, camtImport: true, reports: true, sinkingFunds: true, householdAllocation: true }
+const FLAGS = { accounts: true, multiCurrency: true, camtImport: true, reports: true, sinkingFunds: true, householdAllocation: true, householdAccess: true }
+
+// The current login (Owner) for /auth/me, so role-gated UI resolves to full access.
+function meResponse() {
+  return { userId: 'u1', email: 'e2e@zerobudget.app', displayName: 'Chris', role: 0, ownerId: 'u1', memberId: null }
+}
+
+// A representative access list so the /access table renders both status badges (Active +
+// Invited), the per-row role <select> and the Remove button for axe to scan.
+function memberships() {
+  return [
+    { id: 'mem1', email: 'e2e@zerobudget.app', displayName: 'Chris', role: 0, status: 0, memberId: null, isOwner: true, isSelf: true, createdUtc: '2026-01-01T00:00:00Z' },
+    { id: 'mem2', email: 'liza@example.eu', displayName: 'Liza', role: 1, status: 0, memberId: null, isOwner: false, isSelf: false, createdUtc: '2026-02-01T00:00:00Z' },
+    { id: 'mem3', email: 'guest@example.eu', displayName: null, role: 3, status: 1, memberId: null, isOwner: false, isSelf: false, createdUtc: '2026-03-01T00:00:00Z' },
+  ]
+}
 
 function householdMembers() {
   return [
@@ -168,6 +183,8 @@ async function mockApi(route: Route) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
 
   if (path === '/features') return json(FLAGS)
+  if (path === '/auth/me') return json(meResponse())
+  if (path === '/access/members') return json(memberships())
   if (path === '/transactions') return json(transactions())
   if (path === '/import/preview') return json(importPreview())
   if (path === '/budget/current') return json(budgetMonth(2026, 6))
@@ -216,7 +233,7 @@ async function expectNoViolations(page: Page) {
   expect(violations, summary).toEqual([])
 }
 
-const AUTHED_ROUTES = ['/', '/transactions', '/accounts', '/funds', '/members', '/allocation', '/reports', '/import', '/help']
+const AUTHED_ROUTES = ['/', '/transactions', '/accounts', '/funds', '/members', '/allocation', '/reports', '/import', '/help', '/access', '/account']
 
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`a11y — ${theme}`, () => {

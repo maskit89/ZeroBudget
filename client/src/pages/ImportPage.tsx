@@ -4,6 +4,7 @@ import { AppShell } from '../components/AppShell'
 import { Badge, Button, Card, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
 import { api, commitImport, previewImport, type StatementFormat } from '../lib/api'
 import { bucketCount, EVENTS, track } from '../analytics'
+import { useAuth } from '../auth/AuthContext'
 import type {
   AccountDto,
   BudgetMonthDto,
@@ -111,6 +112,8 @@ function CategoryOptions({ groups }: { groups: ItemOptionGroup[] }) {
 }
 
 export function ImportPage() {
+  // Importing a statement creates/edits budget structure, so it needs Admin+ (canWrite).
+  const { canWrite } = useAuth()
   const [phase, setPhase] = useState<Phase>('upload')
   const [format, setFormat] = useState<Format>('hsbc')
   const [file, setFile] = useState<File | null>(null)
@@ -342,7 +345,14 @@ export function ImportPage() {
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
-      {phase === 'upload' && (
+      {!canWrite && (
+        <Card className="p-6 text-sm text-slate-600">
+          Importing statements is available to admins and the household owner. You can still add
+          transactions by hand on the <Link to="/transactions" className="font-medium text-brand-700 hover:underline dark:text-brand-200">Transactions</Link> page.
+        </Card>
+      )}
+
+      {canWrite && phase === 'upload' && (
         <Card as="section" aria-labelledby="import-form-heading" className="p-6">
           <h2 id="import-form-heading" className="sr-only">
             Upload a statement
@@ -408,7 +418,7 @@ export function ImportPage() {
         </Card>
       )}
 
-      {phase === 'review' && preview && (
+      {canWrite && phase === 'review' && preview && (
         <>
           <p className="text-sm text-slate-600">
             <span className="font-semibold text-slate-800">{preview.newCount}</span> new transaction
@@ -775,7 +785,7 @@ export function ImportPage() {
         </>
       )}
 
-      {phase === 'done' && result && (
+      {canWrite && phase === 'done' && result && (
         <Card as="section" aria-labelledby="import-result-heading" className="p-6">
           <h2 id="import-result-heading" className="text-lg font-semibold text-slate-900">
             Import complete

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../components/AppShell'
 import { Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
 import { AccountsIcon } from '../components/icons'
+import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
 import { EVENTS, track } from '../analytics'
 import type { AccountDto, AccountReconciliationDto } from '../types'
@@ -28,6 +29,8 @@ function parseSignedAmount(input: string): number | null {
 }
 
 export function AccountsPage() {
+  // Managing accounts needs Admin+ (canWrite); others get a read-only register.
+  const { canWrite } = useAuth()
   const [accounts, setAccounts] = useState<AccountDto[]>([])
   const [reconciliation, setReconciliation] = useState<AccountReconciliationDto[]>([])
   const [loading, setLoading] = useState(true)
@@ -168,7 +171,8 @@ export function AccountsPage() {
 
         {error && <ErrorBanner>{error}</ErrorBanner>}
 
-        {/* Add-account form. */}
+        {/* Add-account form. Hidden unless you can manage accounts. */}
+        {canWrite && (
         <Card className="p-4">
           <h3 className="mb-3 text-sm font-semibold text-slate-700">Add an account</h3>
           <div className="flex flex-wrap items-end gap-3">
@@ -217,6 +221,7 @@ export function AccountsPage() {
             </Button>
           </div>
         </Card>
+        )}
 
         {loading && <p className="text-slate-500">Loading…</p>}
 
@@ -319,6 +324,7 @@ export function AccountsPage() {
                             {formatMoney(balanceMinor, CURRENCY)}
                           </td>
                           <td className="px-4 py-2.5 text-right">
+                            {canWrite && (
                             <div className="flex justify-end gap-1">
                               <button
                                 type="button"
@@ -340,6 +346,7 @@ export function AccountsPage() {
                                 ✕
                               </button>
                             </div>
+                            )}
                           </td>
                         </>
                       )}
