@@ -10,7 +10,8 @@ namespace ZeroBudget.Infrastructure.Persistence;
 /// (<see cref="EnsureOwnerMemberAsync"/>); pre-existing accounts are backfilled on startup
 /// (<see cref="BackfillOwnerMembersAsync"/>). Both are idempotent — a household that already
 /// has any member is left untouched, so this never adds a duplicate or disturbs a shared
-/// household (e.g. one that already has two members).
+/// household (e.g. one that already has two members). When it creates the owner member it also
+/// links the owner's own membership to it (the 1:1 person↔login link).
 /// </summary>
 public static class OwnerMemberSeeder
 {
@@ -45,7 +46,9 @@ public static class OwnerMemberSeeder
             return;
         }
 
-        db.HouseholdMembers.Add(NewOwnerMember(ownerId, name));
+        var member = NewOwnerMember(ownerId, name);
+        db.HouseholdMembers.Add(member);
+        await LinkOwnerMembershipAsync(db, ownerId, member.Id, ct);
         await db.SaveChangesAsync(ct);
     }
 
@@ -86,10 +89,27 @@ public static class OwnerMemberSeeder
 
         foreach (var u in owners)
         {
-            db.HouseholdMembers.Add(NewOwnerMember(u.Id, ResolveOwnerName(u.FirstName, u.DisplayName, u.Email)));
+            var member = NewOwnerMember(u.Id, ResolveOwnerName(u.FirstName, u.DisplayName, u.Email));
+            db.HouseholdMembers.Add(member);
+            await LinkOwnerMembershipAsync(db, u.Id, member.Id, ct);
         }
 
         await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Links the owner's own membership to their budget person — the 1:1 person↔login link — but
+    /// only when that membership isn't already linked, so an existing link is never overwritten.
+    /// </summary>
+    private static async Task LinkOwnerMembershipAsync(
+        ApplicationDbContext db, string ownerId, Guid memberId, CancellationToken ct)
+    {
+        var ownerMembership = await db.HouseholdMemberships
+            .FirstOrDefaultAsync(m => m.OwnerId == ownerId && m.UserId == ownerId && m.MemberId == null, ct);
+        if (ownerMembership is not null)
+        {
+            ownerMembership.MemberId = memberId;
+        }
     }
 
     private static HouseholdMember NewOwnerMember(string ownerId, string name) => new()

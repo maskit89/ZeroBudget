@@ -7,6 +7,7 @@ using ZeroBudget.Application.HouseholdAccess;
 using ZeroBudget.Application.HouseholdAccess.Commands.AcceptInvite;
 using ZeroBudget.Application.HouseholdAccess.Commands.ChangeMemberRole;
 using ZeroBudget.Application.HouseholdAccess.Commands.InviteMember;
+using ZeroBudget.Application.HouseholdAccess.Commands.LinkMembershipMember;
 using ZeroBudget.Application.HouseholdAccess.Commands.RevokeMember;
 using ZeroBudget.Domain.Entities;
 using ZeroBudget.Domain.Enums;
@@ -236,5 +237,66 @@ public class HouseholdAccessTests
 
         var act = () => handler.Handle(new RevokeMemberCommand(owner.Id), default);
         await act.Should().ThrowAsync<ForbiddenAccessException>();
+    }
+
+    private static HouseholdMembership ActiveLogin(string userId, string email, Guid? memberId = null) => new()
+    {
+        OwnerId = OwnerId, UserId = userId, Role = HouseholdRole.Admin,
+        Status = MembershipStatus.Active, InvitedEmail = email, MemberId = memberId,
+    };
+
+    [Fact]
+    public async Task Invite_rejects_linking_a_budget_person_already_linked_to_another_login()
+    {
+        using var db = NewContext();
+        db.HouseholdMemberships.Add(Owner());
+        var member = new HouseholdMember { OwnerId = OwnerId, Name = "Liza", DisplayOrder = 0 };
+        db.HouseholdMembers.Add(member);
+        db.HouseholdMemberships.Add(ActiveLogin("user-2", "liza@x.com", member.Id));
+        await db.SaveChangesAsync();
+
+        var handler = new InviteMemberCommandHandler(db, new CurrentUserStub(OwnerId), new FakeIdentity());
+        var act = () => handler.Handle(new InviteMemberCommand(
+            "new@x.com", HouseholdRole.Limited, InviteMethod.Link, null, null, member.Id), default);
+
+        await act.Should().ThrowAsync<ValidationException>();
+    }
+
+    [Fact]
+    public async Task Link_connects_a_login_to_a_budget_person_and_can_unlink()
+    {
+        using var db = NewContext();
+        db.HouseholdMemberships.Add(Owner());
+        var member = new HouseholdMember { OwnerId = OwnerId, Name = "Liza", DisplayOrder = 0 };
+        db.HouseholdMembers.Add(member);
+        var login = ActiveLogin("user-2", "liza@x.com");
+        db.HouseholdMemberships.Add(login);
+        await db.SaveChangesAsync();
+
+        var handler = new LinkMembershipMemberCommandHandler(db, new CurrentUserStub(OwnerId));
+
+        var linked = await handler.Handle(new LinkMembershipMemberCommand(login.Id, member.Id), default);
+        linked.MemberId.Should().Be(member.Id);
+
+        var unlinked = await handler.Handle(new LinkMembershipMemberCommand(login.Id, null), default);
+        unlinked.MemberId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Link_rejects_a_budget_person_already_linked_to_another_login()
+    {
+        using var db = NewContext();
+        db.HouseholdMemberships.Add(Owner());
+        var member = new HouseholdMember { OwnerId = OwnerId, Name = "Liza", DisplayOrder = 0 };
+        db.HouseholdMembers.Add(member);
+        db.HouseholdMemberships.Add(ActiveLogin("user-2", "liza@x.com", member.Id));
+        var other = ActiveLogin("user-3", "sam@x.com");
+        db.HouseholdMemberships.Add(other);
+        await db.SaveChangesAsync();
+
+        var handler = new LinkMembershipMemberCommandHandler(db, new CurrentUserStub(OwnerId));
+        var act = () => handler.Handle(new LinkMembershipMemberCommand(other.Id, member.Id), default);
+
+        await act.Should().ThrowAsync<ValidationException>();
     }
 }

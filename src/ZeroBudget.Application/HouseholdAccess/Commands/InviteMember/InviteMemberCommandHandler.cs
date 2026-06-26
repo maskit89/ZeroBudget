@@ -43,6 +43,14 @@ public class InviteMemberCommandHandler : IRequestHandler<InviteMemberCommand, I
             {
                 throw new NotFoundException($"Member {memberId} was not found.");
             }
+
+            // The budget person ↔ login link is 1:1 — refuse a person another login already claims.
+            var alreadyLinked = await _db.HouseholdMemberships
+                .AnyAsync(m => m.OwnerId == ownerId && m.MemberId == memberId, cancellationToken);
+            if (alreadyLinked)
+            {
+                throw Conflict("MemberId", "That budget person is already linked to another login.");
+            }
         }
 
         var membership = new HouseholdMembership

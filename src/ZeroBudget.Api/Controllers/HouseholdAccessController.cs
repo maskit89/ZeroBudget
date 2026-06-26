@@ -5,6 +5,7 @@ using ZeroBudget.Api.Features;
 using ZeroBudget.Application.HouseholdAccess;
 using ZeroBudget.Application.HouseholdAccess.Commands.ChangeMemberRole;
 using ZeroBudget.Application.HouseholdAccess.Commands.InviteMember;
+using ZeroBudget.Application.HouseholdAccess.Commands.LinkMembershipMember;
 using ZeroBudget.Application.HouseholdAccess.Commands.RevokeMember;
 using ZeroBudget.Application.HouseholdAccess.Dtos;
 using ZeroBudget.Application.HouseholdAccess.Queries.GetMemberships;
@@ -63,6 +64,18 @@ public class HouseholdAccessController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Links a login to the budget person it represents, or unlinks it (null member). Owner-only.</summary>
+    [HttpPut("members/{id:guid}/link")]
+    [ProducesResponseType(typeof(MembershipDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<MembershipDto>> Link(Guid id, LinkMemberRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new LinkMembershipMemberCommand(id, request.MemberId), ct);
+        return Ok(result);
+    }
+
     /// <summary>Removes a member's access to the household. Owner-only.</summary>
     [HttpDelete("members/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -86,3 +99,6 @@ public record InviteMemberRequest(
 
 /// <summary>Request body for changing a member's role (the id comes from the route).</summary>
 public record ChangeRoleRequest(HouseholdRole Role);
+
+/// <summary>Request body for linking a login to a budget person (null member = unlink).</summary>
+public record LinkMemberRequest(Guid? MemberId);

@@ -36,6 +36,11 @@ public class HouseholdMembershipConfiguration : IEntityTypeConfiguration<Househo
             .IsUnique()
             .HasFilter("[UserId] IS NOT NULL");
 
+        // A budget person (member) is claimed by at most one login — the link is 1:1.
+        builder.HasIndex(m => m.MemberId)
+            .IsUnique()
+            .HasFilter("[MemberId] IS NOT NULL");
+
         // Invite-link redemption looks up the membership by token hash.
         builder.HasIndex(m => m.InviteTokenHash)
             .HasFilter("[InviteTokenHash] IS NOT NULL");
