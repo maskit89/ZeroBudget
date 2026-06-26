@@ -131,11 +131,11 @@ describe('MembersPage', () => {
     await waitFor(() => expect(screen.queryByText('Chris')).not.toBeInTheDocument())
   })
 
-  it('shows an empty state when there are no members', { timeout: 15000 }, async () => {
+  it('shows a solo-friendly empty state when there are no members', { timeout: 15000 }, async () => {
     membersData = []
 
     renderPage()
 
-    expect(await screen.findByText(/No members yet/, {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(await screen.findByText(/Budgeting on your own\?/, {}, { timeout: 5000 })).toBeInTheDocument()
   })
 })

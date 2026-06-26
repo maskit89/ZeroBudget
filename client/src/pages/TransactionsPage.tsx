@@ -454,7 +454,7 @@ export function TransactionsPage() {
                 </Select>
               </label>
             )}
-            {members.length > 0 && (
+            {members.length >= 2 && (
               <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
                 Member
                 <Select
@@ -665,7 +665,7 @@ export function TransactionsPage() {
                                     ))}
                                   </select>
                                 )}
-                                {members.length > 0 && (
+                                {members.length >= 2 && (
                                   <select
                                     value={eMember}
                                     aria-label="Edit member"
@@ -890,7 +890,7 @@ export function TransactionsPage() {
                                     onChange={(e) => updateSplitRow(index, { amount: e.target.value })}
                                     className="w-28 rounded-md border border-slate-300 px-2 py-1 text-right text-sm tabular-nums focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
                                   />
-                                  {members.length > 0 && (
+                                  {members.length >= 2 && (
                                     <select
                                       value={row.memberId}
                                       aria-label={`Split line ${index + 1} member`}

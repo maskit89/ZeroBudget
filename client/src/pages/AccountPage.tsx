@@ -1,8 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { AppShell } from '../components/AppShell'
 import { Button, Card, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
 import { useAuth } from '../auth/AuthContext'
+import { useHousehold } from '../features/HouseholdContext'
 import { CURRENCY_OPTIONS, NUMBER_FORMAT_OPTIONS } from '../lib/money'
 import { EVENTS, track } from '../analytics'
 import { HOUSEHOLD_ROLE_LABELS } from '../types'
@@ -19,6 +21,8 @@ export function AccountPage() {
     changePassword,
     updatePreferences,
   } = useAuth()
+  const { isShared, members, loading: householdLoading } = useHousehold()
+  const navigate = useNavigate()
 
   // --- Preferences (name + money display) ---
   const [pfFirst, setPfFirst] = useState(firstName ?? '')
@@ -122,6 +126,35 @@ export function AccountPage() {
           </div>
         </dl>
       </Card>
+
+      {!householdLoading && (
+        <Card className="p-5">
+          <h2 className="mb-1 text-sm font-semibold text-slate-700">Sharing</h2>
+          {isShared ? (
+            <>
+              <p className="mb-4 text-sm text-slate-500">
+                This budget is shared between {members.length}{' '}
+                {members.length === 1 ? 'person' : 'people'}. Manage their incomes, savings, and how
+                shared costs are split on the members page.
+              </p>
+              <Link
+                to="/members"
+                className="text-sm font-semibold text-brand-700 hover:text-brand-800 dark:text-brand-200"
+              >
+                Manage members →
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="mb-4 text-sm text-slate-500">
+                You’re budgeting on your own. If you share money with a partner or housemate, you can
+                add them to split shared costs and divide savings between you.
+              </p>
+              <Button onClick={() => navigate('/members')}>Share this budget</Button>
+            </>
+          )}
+        </Card>
+      )}
 
       <Card className="p-5">
         <h2 className="mb-1 text-sm font-semibold text-slate-700">Preferences</h2>
