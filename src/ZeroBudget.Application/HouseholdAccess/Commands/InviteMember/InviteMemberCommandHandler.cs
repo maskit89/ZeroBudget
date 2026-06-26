@@ -68,7 +68,9 @@ public class InviteMemberCommandHandler : IRequestHandler<InviteMemberCommand, I
         {
             if (await _identity.EmailExistsAsync(email))
             {
-                throw Conflict("Email", "An account with that email already exists.");
+                // A temporary password only makes sense for someone without an account. Existing
+                // accounts join via a link invite, which they accept while signed in.
+                throw Conflict("Email", "That email already has an account — use ‘Generate an invite link’ so they can accept it.");
             }
 
             var created = await _identity.CreateUserAsync(email, request.TempPassword!, request.DisplayName);

@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ZeroBudget.Application.Common.Exceptions;
 using ZeroBudget.Application.Common.Interfaces;
+using ZeroBudget.Domain.Entities;
 using ZeroBudget.Domain.Enums;
 
 namespace ZeroBudget.Application.HouseholdAccess.Commands.AcceptInvite;
@@ -10,11 +11,13 @@ public class AcceptInviteCommandHandler : IRequestHandler<AcceptInviteCommand, A
 {
     private readonly IApplicationDbContext _db;
     private readonly IIdentityService _identity;
+    private readonly ICurrentUser _currentUser;
 
-    public AcceptInviteCommandHandler(IApplicationDbContext db, IIdentityService identity)
+    public AcceptInviteCommandHandler(IApplicationDbContext db, IIdentityService identity, ICurrentUser currentUser)
     {
         _db = db;
         _identity = identity;
+        _currentUser = currentUser;
     }
 
     public async Task<AcceptInviteResult> Handle(AcceptInviteCommand request, CancellationToken cancellationToken)
@@ -32,31 +35,67 @@ public class AcceptInviteCommandHandler : IRequestHandler<AcceptInviteCommand, A
             throw new ForbiddenAccessException("This invite link has expired.");
         }
 
+        // Path A — a signed-in user joins this household with their existing login (keeping their own
+        // budget). They can only accept an invite addressed to their own email.
+        if (_currentUser.UserId is string userId)
+        {
+            var me = await _identity.FindByIdAsync(userId)
+                ?? throw new ForbiddenAccessException("No authenticated user on the request.");
+
+            if (!string.Equals(me.Email, membership.InvitedEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                throw Invalid("Email", "This invite was sent to a different email address.");
+            }
+
+            var already = await _db.HouseholdMemberships.AnyAsync(
+                m => m.OwnerId == membership.OwnerId && m.UserId == userId && m.Id != membership.Id,
+                cancellationToken);
+            if (already)
+            {
+                throw Invalid("Email", "You already have access to this household.");
+            }
+
+            membership.UserId = userId;
+            Activate(membership, me.DisplayName ?? request.DisplayName);
+            await _db.SaveChangesAsync(cancellationToken);
+            return new AcceptInviteResult(userId, me.Email, membership.Role);
+        }
+
+        // Path B — anonymous accept. An existing account must sign in first (then accept as Path A).
         if (await _identity.EmailExistsAsync(membership.InvitedEmail))
         {
-            throw new ValidationException(new Dictionary<string, string[]>
-            {
-                ["Email"] = new[] { "An account with that email already exists." }
-            });
+            throw Invalid("Email", "You already have an account — sign in first, then open this link to join.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
+        {
+            throw Invalid("Password", "Choose a password of at least 8 characters.");
         }
 
         var displayName = request.DisplayName ?? membership.DisplayName;
         var created = await _identity.CreateUserAsync(membership.InvitedEmail, request.Password, displayName);
         if (!created.Succeeded)
         {
-            throw new ValidationException(new Dictionary<string, string[]>
-            {
-                ["Password"] = created.Errors.ToArray()
-            });
+            throw new ValidationException(new Dictionary<string, string[]> { ["Password"] = created.Errors.ToArray() });
         }
 
         membership.UserId = created.UserId;
+        Activate(membership, displayName);
+        await _db.SaveChangesAsync(cancellationToken);
+        return new AcceptInviteResult(created.UserId!, membership.InvitedEmail, membership.Role);
+    }
+
+    private static void Activate(HouseholdMembership membership, string? displayName)
+    {
         membership.Status = MembershipStatus.Active;
         membership.InviteTokenHash = null;
         membership.InviteExpiresUtc = null;
-        membership.DisplayName = displayName;
-        await _db.SaveChangesAsync(cancellationToken);
-
-        return new AcceptInviteResult(created.UserId!, membership.InvitedEmail, membership.Role);
+        if (!string.IsNullOrWhiteSpace(displayName))
+        {
+            membership.DisplayName = displayName;
+        }
     }
+
+    private static ValidationException Invalid(string field, string message) =>
+        new(new Dictionary<string, string[]> { [field] = new[] { message } });
 }

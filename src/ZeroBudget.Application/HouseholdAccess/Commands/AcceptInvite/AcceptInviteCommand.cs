@@ -4,11 +4,11 @@ using ZeroBudget.Domain.Enums;
 namespace ZeroBudget.Application.HouseholdAccess.Commands.AcceptInvite;
 
 /// <summary>
-/// Redeems a one-time invite link: creates the login behind the pending membership and
-/// activates it. Anonymous — the token is the credential. Returns enough for the API to
-/// issue a JWT.
+/// Redeems a one-time invite link and activates the pending membership. Two paths: a signed-in
+/// user (their email must match the invite) simply joins with their existing login; otherwise a new
+/// login is created from <see cref="Password"/>. Returns enough for the API to issue a JWT.
 /// </summary>
-public record AcceptInviteCommand(string Token, string Password, string? DisplayName)
+public record AcceptInviteCommand(string Token, string? Password, string? DisplayName)
     : IRequest<AcceptInviteResult>;
 
 public record AcceptInviteResult(string UserId, string Email, HouseholdRole Role);
