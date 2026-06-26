@@ -1,14 +1,68 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import axios from 'axios'
 import { AppShell } from '../components/AppShell'
-import { Button, Card, ErrorBanner, Input, PageHeader } from '../components/ui'
+import { Button, Card, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
 import { useAuth } from '../auth/AuthContext'
+import { CURRENCY_OPTIONS, NUMBER_FORMAT_OPTIONS } from '../lib/money'
 import { EVENTS, track } from '../analytics'
 import { HOUSEHOLD_ROLE_LABELS } from '../types'
 
 export function AccountPage() {
-  const { email, displayName, role, changePassword } = useAuth()
+  const {
+    email,
+    displayName,
+    role,
+    firstName,
+    lastName,
+    preferredCurrency,
+    numberFormat,
+    changePassword,
+    updatePreferences,
+  } = useAuth()
 
+  // --- Preferences (name + money display) ---
+  const [pfFirst, setPfFirst] = useState(firstName ?? '')
+  const [pfLast, setPfLast] = useState(lastName ?? '')
+  const [pfCurrency, setPfCurrency] = useState(preferredCurrency)
+  const [pfFormat, setPfFormat] = useState(numberFormat)
+  const [prefBusy, setPrefBusy] = useState(false)
+  const [prefError, setPrefError] = useState<string | null>(null)
+  const [prefDone, setPrefDone] = useState(false)
+
+  // Hydrate the form once /auth/me resolves the saved preferences into the auth context.
+  useEffect(() => {
+    setPfFirst(firstName ?? '')
+    setPfLast(lastName ?? '')
+    setPfCurrency(preferredCurrency)
+    setPfFormat(numberFormat)
+  }, [firstName, lastName, preferredCurrency, numberFormat])
+
+  async function savePreferences(e: FormEvent) {
+    e.preventDefault()
+    setPrefError(null)
+    setPrefDone(false)
+    setPrefBusy(true)
+    try {
+      await updatePreferences({
+        firstName: pfFirst.trim(),
+        lastName: pfLast.trim(),
+        preferredCurrency: pfCurrency,
+        numberFormat: pfFormat,
+      })
+      setPrefDone(true)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { errors?: string[]; error?: string } | undefined
+        setPrefError(data?.error ?? data?.errors?.join(' ') ?? 'Could not save your preferences.')
+      } else {
+        setPrefError('Could not save your preferences.')
+      }
+    } finally {
+      setPrefBusy(false)
+    }
+  }
+
+  // --- Change password ---
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -50,7 +104,7 @@ export function AccountPage() {
 
   return (
     <AppShell maxWidth="4xl">
-      <PageHeader title="Account" subtitle="Your sign-in details and password." />
+      <PageHeader title="Account" subtitle="Your details, preferences and password." />
 
       <Card className="p-5">
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -67,6 +121,91 @@ export function AccountPage() {
             <dd className="mt-1 text-sm font-medium text-slate-800">{HOUSEHOLD_ROLE_LABELS[role] ?? 'Member'}</dd>
           </div>
         </dl>
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="mb-1 text-sm font-semibold text-slate-700">Preferences</h2>
+        <p className="mb-4 text-sm text-slate-500">
+          Your name and how money is shown across the app. Your currency sets the app-wide default;
+          number format controls the decimal and grouping separators.
+        </p>
+        <form onSubmit={savePreferences} className="max-w-sm space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="pf-first" className="mb-1 block text-sm font-medium text-slate-600">
+                First name
+              </label>
+              <Input
+                id="pf-first"
+                type="text"
+                autoComplete="given-name"
+                value={pfFirst}
+                onChange={(e) => setPfFirst(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label htmlFor="pf-last" className="mb-1 block text-sm font-medium text-slate-600">
+                Last name
+              </label>
+              <Input
+                id="pf-last"
+                type="text"
+                autoComplete="family-name"
+                value={pfLast}
+                onChange={(e) => setPfLast(e.target.value)}
+                className="w-full"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="pf-currency" className="mb-1 block text-sm font-medium text-slate-600">
+                Currency
+              </label>
+              <Select
+                id="pf-currency"
+                value={pfCurrency}
+                onChange={(e) => setPfCurrency(e.target.value)}
+                className="w-full"
+              >
+                {CURRENCY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="pf-format" className="mb-1 block text-sm font-medium text-slate-600">
+                Number format
+              </label>
+              <Select
+                id="pf-format"
+                value={pfFormat}
+                onChange={(e) => setPfFormat(e.target.value)}
+                className="w-full"
+              >
+                {NUMBER_FORMAT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+
+          {prefError && <ErrorBanner>{prefError}</ErrorBanner>}
+          {prefDone && (
+            <p role="status" className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+              Your preferences have been saved.
+            </p>
+          )}
+
+          <Button type="submit" disabled={prefBusy}>
+            {prefBusy ? 'Saving…' : 'Save preferences'}
+          </Button>
+        </form>
       </Card>
 
       <Card className="p-5">

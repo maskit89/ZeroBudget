@@ -9,8 +9,6 @@ import type { AccountDto, AllocationProfileDto, AllocationResultDto, BudgetMonth
 import { AllocationRuleType, ALLOCATION_RULE_LABELS, SplitMethod } from '../types'
 import { formatMoney, fromAmount, parseMinor, toAmount, toEditString } from '../lib/money'
 
-const CURRENCY = 'EUR'
-
 interface RuleSpec {
   order: number
   type: number
@@ -29,7 +27,8 @@ function standardRules(costSplit: number, pocketAmount: number, savingsSplit: nu
 
 export function AllocationPage() {
   // Editing the allocation profile needs Admin+; running an allocation is day-to-day (Limited+).
-  const { canWrite, canEnterData } = useAuth()
+  const { canWrite, canEnterData, preferredCurrency } = useAuth()
+  const CURRENCY = preferredCurrency
   const [profile, setProfile] = useState<AllocationProfileDto | null>(null)
   const [accounts, setAccounts] = useState<AccountDto[]>([])
   const [preview, setPreview] = useState<AllocationResultDto | null>(null)

@@ -47,17 +47,42 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Register(RegisterRequest request, CancellationToken ct)
     {
+        if (!request.AcceptedTerms)
+        {
+            return BadRequest(new { error = "Please accept the terms and privacy policy to create an account." });
+        }
+
+        var currency = UserPreferences.NormalizeCurrency(request.PreferredCurrency);
+        if (currency is null)
+        {
+            return BadRequest(new { error = "That isn't a valid ISO 4217 currency code." });
+        }
+
+        var numberFormat = UserPreferences.NormalizeNumberFormat(request.NumberFormat);
+        if (numberFormat is null)
+        {
+            return BadRequest(new { error = "That number format isn't supported." });
+        }
+
         var existing = await _userManager.FindByEmailAsync(request.Email);
         if (existing is not null)
         {
             return BadRequest(new { error = "An account with that email already exists." });
         }
 
+        var firstName = NullIfBlank(request.FirstName);
+        var lastName = NullIfBlank(request.LastName);
+
         var user = new ApplicationUser
         {
             UserName = request.Email,
             Email = request.Email,
-            DisplayName = request.DisplayName
+            DisplayName = ComposeDisplayName(firstName, lastName),
+            FirstName = firstName,
+            LastName = lastName,
+            PreferredCurrency = currency,
+            NumberFormat = numberFormat,
+            ConsentedUtc = DateTime.UtcNow,
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
@@ -181,8 +206,81 @@ public class AuthController : ControllerBase
             user.DisplayName,
             _currentUser.Role ?? HouseholdRole.Owner,
             _currentUser.OwnerId ?? userId,
-            _currentUser.MemberId));
+            _currentUser.MemberId,
+            user.FirstName,
+            user.LastName,
+            ResolveCurrency(user.PreferredCurrency),
+            ResolveNumberFormat(user.NumberFormat)));
     }
+
+    /// <summary>Updates the authenticated login's name and money-display preferences.</summary>
+    [HttpPut("preferences")]
+    [Authorize]
+    [ProducesResponseType(typeof(PreferencesResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdatePreferences(UpdatePreferencesRequest request)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        // A blank currency/format means "leave as is", so a name-only save can't reset them.
+        var currency = UserPreferences.NormalizeCurrency(
+            string.IsNullOrWhiteSpace(request.PreferredCurrency) ? user.PreferredCurrency : request.PreferredCurrency);
+        if (currency is null)
+        {
+            return BadRequest(new { error = "That isn't a valid ISO 4217 currency code." });
+        }
+
+        var numberFormat = UserPreferences.NormalizeNumberFormat(
+            string.IsNullOrWhiteSpace(request.NumberFormat) ? user.NumberFormat : request.NumberFormat);
+        if (numberFormat is null)
+        {
+            return BadRequest(new { error = "That number format isn't supported." });
+        }
+
+        user.FirstName = NullIfBlank(request.FirstName);
+        user.LastName = NullIfBlank(request.LastName);
+        user.DisplayName = ComposeDisplayName(user.FirstName, user.LastName);
+        user.PreferredCurrency = currency;
+        user.NumberFormat = numberFormat;
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+        }
+
+        return Ok(new PreferencesResponse(
+            user.FirstName, user.LastName, user.DisplayName, user.PreferredCurrency, user.NumberFormat));
+    }
+
+    private static string? NullIfBlank(string? value)
+    {
+        var trimmed = value?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+    }
+
+    private static string? ComposeDisplayName(string? firstName, string? lastName)
+    {
+        var composed = $"{firstName} {lastName}".Trim();
+        return composed.Length == 0 ? null : composed;
+    }
+
+    private static string ResolveCurrency(string? value) =>
+        UserPreferences.NormalizeCurrency(value) ?? UserPreferences.DefaultCurrency;
+
+    private static string ResolveNumberFormat(string? value) =>
+        UserPreferences.NormalizeNumberFormat(value) ?? UserPreferences.DefaultNumberFormat;
 
     private async Task<AuthResponse> BuildResponseAsync(ApplicationUser user, CancellationToken ct)
     {

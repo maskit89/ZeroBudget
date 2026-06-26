@@ -36,19 +36,66 @@ export function toEditString(minor: Minor): string {
   return (minor / FACTOR).toString()
 }
 
-// Cache one formatter per currency (constructing Intl.NumberFormat isn't free).
+// --- Display preferences ----------------------------------------------------
+// The grouping/decimal style is a per-user preference, independent of the currency
+// (a EUR user may still prefer "1,234.56"). Each key maps to a locale that renders it.
+
+/** The money grouping/decimal styles a user can choose. */
+export type NumberFormatKey = 'dot-comma' | 'comma-dot' | 'space-comma'
+
+const FORMAT_LOCALES: Record<NumberFormatKey, string> = {
+  'dot-comma': 'de-DE', // 1.234,56
+  'comma-dot': 'en-GB', // 1,234.56
+  'space-comma': 'fr-FR', // 1 234,56
+}
+
+/** Selectable money-format presets for the sign-up + preferences UI (value → worked example). */
+export const NUMBER_FORMAT_OPTIONS: { value: NumberFormatKey; label: string }[] = [
+  { value: 'dot-comma', label: '1.234,56' },
+  { value: 'comma-dot', label: '1,234.56' },
+  { value: 'space-comma', label: '1 234,56' },
+]
+
+/** The currencies offered at sign-up and in preferences (ISO code → display label). */
+export const CURRENCY_OPTIONS: { value: string; label: string }[] = [
+  { value: 'EUR', label: 'Euro (€)' },
+  { value: 'GBP', label: 'British pound (£)' },
+  { value: 'USD', label: 'US dollar ($)' },
+  { value: 'CHF', label: 'Swiss franc (CHF)' },
+  { value: 'SEK', label: 'Swedish krona (kr)' },
+  { value: 'NOK', label: 'Norwegian krone (kr)' },
+  { value: 'DKK', label: 'Danish krone (kr)' },
+  { value: 'PLN', label: 'Polish złoty (zł)' },
+]
+
+// The active display locale. Defaults to de-DE so rendering is unchanged until the
+// signed-in user's preference is applied (see setMoneyFormat / AuthContext).
+const DEFAULT_LOCALE = 'de-DE'
+let activeLocale = DEFAULT_LOCALE
+
+/**
+ * Apply the user's chosen money format app-wide. Every subsequent formatMoney /
+ * currencySymbol call renders with it. Call once after sign-in (and on logout to reset).
+ */
+export function setMoneyFormat(format: NumberFormatKey | string | null | undefined): void {
+  activeLocale = FORMAT_LOCALES[(format ?? '') as NumberFormatKey] ?? DEFAULT_LOCALE
+}
+
+// Cache one formatter per (locale, currency) — constructing Intl.NumberFormat isn't free,
+// and the locale can change when the user updates their preference.
 const formatters = new Map<string, Intl.NumberFormat>()
 
 function formatterFor(currency: string): Intl.NumberFormat {
-  let fmt = formatters.get(currency)
+  const key = `${activeLocale}:${currency}`
+  let fmt = formatters.get(key)
   if (!fmt) {
-    fmt = new Intl.NumberFormat('de-DE', {
+    fmt = new Intl.NumberFormat(activeLocale, {
       style: 'currency',
       currency,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })
-    formatters.set(currency, fmt)
+    formatters.set(key, fmt)
   }
   return fmt
 }

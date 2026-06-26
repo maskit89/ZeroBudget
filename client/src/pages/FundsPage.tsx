@@ -14,8 +14,6 @@ import {
 } from '../types'
 import { formatMoney, fromAmount, parseMinor, toAmount, toEditString } from '../lib/money'
 
-const CURRENCY = 'EUR'
-
 const KIND_OPTIONS = Object.entries(FUND_KIND_LABELS).map(([value, label]) => ({ value: Number(value), label }))
 const ACCRUAL_OPTIONS = Object.entries(ACCRUAL_METHOD_LABELS).map(([value, label]) => ({ value: Number(value), label }))
 
@@ -74,7 +72,8 @@ const BLANK_FORM: FormState = {
 
 export function FundsPage() {
   // Managing sinking funds needs Admin+ (canWrite); others see them read-only.
-  const { canWrite } = useAuth()
+  const { canWrite, preferredCurrency } = useAuth()
+  const CURRENCY = preferredCurrency
   const [funds, setFunds] = useState<SinkingFundDto[]>([])
   const [accounts, setAccounts] = useState<AccountDto[]>([])
   const [loading, setLoading] = useState(true)
@@ -324,6 +323,7 @@ export function FundsPage() {
             <FundCard
               key={f.id}
               fund={f}
+              currency={CURRENCY}
               fundingAccountName={accountName(f.fundingAccountId)}
               onEdit={() => startEdit(f)}
               onArchive={() => archive(f)}
@@ -339,6 +339,7 @@ export function FundsPage() {
 
 function FundCard({
   fund,
+  currency,
   fundingAccountName,
   onEdit,
   onArchive,
@@ -346,6 +347,7 @@ function FundCard({
   canManage,
 }: {
   fund: SinkingFundDto
+  currency: string
   fundingAccountName: string | null
   onEdit: () => void
   onArchive: () => void
@@ -378,10 +380,10 @@ function FundCard({
       </div>
 
       <p className="text-sm text-slate-600">
-        <span className="font-semibold tabular-nums text-slate-800">{formatMoney(balanceMinor, CURRENCY)}</span>
+        <span className="font-semibold tabular-nums text-slate-800">{formatMoney(balanceMinor, currency)}</span>
         {targetMinor > 0 && (
           <>
-            {' '}of <span className="tabular-nums">{formatMoney(targetMinor, CURRENCY)}</span>
+            {' '}of <span className="tabular-nums">{formatMoney(targetMinor, currency)}</span>
           </>
         )}
       </p>
@@ -389,7 +391,7 @@ function FundCard({
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-500">
         <dt>Monthly</dt>
         <dd className="text-right font-medium tabular-nums text-slate-700">
-          {formatMoney(fromAmount(fund.requiredMonthlyContribution), CURRENCY)}
+          {formatMoney(fromAmount(fund.requiredMonthlyContribution), currency)}
         </dd>
         {fund.targetDate && (
           <>
