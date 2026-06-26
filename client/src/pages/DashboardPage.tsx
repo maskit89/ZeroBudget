@@ -739,7 +739,7 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') submitNewCategory()
                   }}
-                  className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <select
                   value={newCategoryIsFund ? 'fund' : 'expense'}

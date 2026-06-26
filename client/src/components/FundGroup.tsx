@@ -137,6 +137,8 @@ export function FundGroup({
 
       {open && (
         <div className="border-t border-violet-100 dark:border-violet-500/20">
+          <div className="overflow-x-auto">
+          <div className="min-w-[40rem]">
           <div className="grid grid-cols-12 gap-2 bg-slate-50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
             <div className="col-span-4">Fund</div>
             <div className="col-span-3 text-right">Planned</div>
@@ -163,6 +165,8 @@ export function FundGroup({
             {category.items.length === 0 && (
               <p className="px-4 py-3 text-sm text-slate-500">No funds yet — add one below.</p>
             )}
+          </div>
+          </div>
           </div>
 
           {canWrite && (

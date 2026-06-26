@@ -599,6 +599,7 @@ export function TransactionsPage() {
             </div>
 
             <Card className="overflow-hidden">
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
@@ -966,6 +967,7 @@ export function TransactionsPage() {
                   })}
                 </tbody>
               </table>
+              </div>
             </Card>
           </>
         )}
