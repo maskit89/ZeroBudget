@@ -47,6 +47,24 @@ public class OwnerMemberSeederTests
         members[0].NetMonthlyIncome.Should().Be(0m);
         members[0].DisplayOrder.Should().Be(0);
         members[0].IsArchived.Should().BeFalse();
+
+        // The owner's own membership is linked to that person (the 1:1 person↔login link).
+        var ownerMembership = await db.HouseholdMemberships.AsNoTracking().SingleAsync();
+        ownerMembership.MemberId.Should().Be(members[0].Id);
+    }
+
+    [Fact]
+    public async Task EnsureOwnerMember_links_the_owner_membership_to_the_new_person()
+    {
+        using var db = NewContext();
+        db.HouseholdMemberships.Add(Owner("owner-1"));
+        await db.SaveChangesAsync();
+
+        await OwnerMemberSeeder.EnsureOwnerMemberAsync(db, "owner-1", "Sam");
+
+        var member = await db.HouseholdMembers.AsNoTracking().SingleAsync(m => m.OwnerId == "owner-1");
+        var membership = await db.HouseholdMemberships.AsNoTracking().SingleAsync(m => m.OwnerId == "owner-1");
+        membership.MemberId.Should().Be(member.Id);
     }
 
     [Fact]
