@@ -50,7 +50,7 @@ public record PreferencesResponse(
     string PreferredCurrency,
     string NumberFormat);
 
-/// <summary>The authenticated login's identity, household, access level and preferences.</summary>
+/// <summary>The authenticated login's identity, active household, access level and preferences.</summary>
 public record MeResponse(
     string UserId,
     string Email,
@@ -61,4 +61,11 @@ public record MeResponse(
     string? FirstName,
     string? LastName,
     string PreferredCurrency,
-    string NumberFormat);
+    string NumberFormat,
+    IReadOnlyList<HouseholdSummary> Households);
+
+/// <summary>One household the login can act in, for the household switcher. The active one has <see cref="IsActive"/>.</summary>
+public record HouseholdSummary(string OwnerId, string Label, HouseholdRole Role, bool IsActive, bool IsOwn);
+
+/// <summary>Switches which household the login is acting in (must have access). <c>OwnerId</c> = the target household key.</summary>
+public record SwitchHouseholdRequest(string OwnerId);

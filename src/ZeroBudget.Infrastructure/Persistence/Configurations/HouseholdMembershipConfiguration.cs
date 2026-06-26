@@ -31,10 +31,14 @@ public class HouseholdMembershipConfiguration : IEntityTypeConfiguration<Househo
         // The household a request belongs to is looked up by OwnerId.
         builder.HasIndex(m => m.OwnerId);
 
-        // A login belongs to exactly one household.
-        builder.HasIndex(m => m.UserId)
+        // A login may belong to several households (one membership per household), but only one
+        // per household — so the pair is unique, not the login on its own.
+        builder.HasIndex(m => new { m.OwnerId, m.UserId })
             .IsUnique()
             .HasFilter("[UserId] IS NOT NULL");
+
+        // The resolution middleware looks a login's memberships up by UserId every request.
+        builder.HasIndex(m => m.UserId);
 
         // A budget person (member) is claimed by at most one login — the link is 1:1.
         builder.HasIndex(m => m.MemberId)

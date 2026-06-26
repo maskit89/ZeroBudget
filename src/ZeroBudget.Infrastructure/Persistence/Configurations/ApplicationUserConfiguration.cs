@@ -25,5 +25,8 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
             .IsRequired()
             .HasMaxLength(32)
             .HasDefaultValue(UserPreferences.DefaultNumberFormat);
+
+        // The household the login is currently viewing (null = its own). Same shape as an Identity id.
+        builder.Property(u => u.ActiveOwnerId).HasMaxLength(450);
     }
 }
