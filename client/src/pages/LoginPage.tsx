@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import axios from 'axios'
 import { LogoMark } from '../components/icons'
-import { Button, Card, Input, SegmentedControl } from '../components/ui'
+import { Button, Card, Input, SegmentedControl, Select } from '../components/ui'
+import { CURRENCY_OPTIONS, NUMBER_FORMAT_OPTIONS } from '../lib/money'
 import { EVENTS, track } from '../analytics'
 
 export function LoginPage() {
@@ -13,6 +14,11 @@ export function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [currency, setCurrency] = useState('EUR')
+  const [numberFormat, setNumberFormat] = useState('dot-comma')
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -29,7 +35,15 @@ export function LoginPage() {
       if (mode === 'login') {
         await login(email, password)
       } else {
-        await register(email, password)
+        await register({
+          email,
+          password,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          preferredCurrency: currency,
+          numberFormat,
+          acceptedTerms,
+        })
       }
       track(mode === 'login' ? EVENTS.login : EVENTS.signUp, { method: 'password' })
       navigate('/', { replace: true })
@@ -45,6 +59,8 @@ export function LoginPage() {
       setBusy(false)
     }
   }
+
+  const registering = mode === 'register'
 
   return (
     <div className="flex min-h-full items-center justify-center bg-slate-50 px-4 py-12">
@@ -70,6 +86,39 @@ export function LoginPage() {
           </div>
 
           <form onSubmit={onSubmit} className="space-y-4">
+            {registering && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="firstName" className="mb-1 block text-sm font-medium text-slate-600">
+                    First name
+                  </label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    required
+                    autoComplete="given-name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="lastName" className="mb-1 block text-sm font-medium text-slate-600">
+                    Last name
+                  </label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    required
+                    autoComplete="family-name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
               <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-600">
                 Email
@@ -94,13 +143,68 @@ export function LoginPage() {
                 type="password"
                 required
                 minLength={8}
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                autoComplete={registering ? 'new-password' : 'current-password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 8 characters"
                 className="w-full"
               />
             </div>
+
+            {registering && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="currency" className="mb-1 block text-sm font-medium text-slate-600">
+                      Currency
+                    </label>
+                    <Select
+                      id="currency"
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value)}
+                      className="w-full"
+                    >
+                      {CURRENCY_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <label htmlFor="numberFormat" className="mb-1 block text-sm font-medium text-slate-600">
+                      Number format
+                    </label>
+                    <Select
+                      id="numberFormat"
+                      value={numberFormat}
+                      onChange={(e) => setNumberFormat(e.target.value)}
+                      className="w-full"
+                    >
+                      {NUMBER_FORMAT_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500">
+                  You can change your currency and number format anytime in account settings.
+                </p>
+
+                <label className="flex items-start gap-2 text-sm text-slate-600">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-400 text-brand-600 focus:ring-2 focus:ring-brand-500/40"
+                  />
+                  <span>I agree to the Terms of Service and Privacy Policy.</span>
+                </label>
+              </>
+            )}
 
             {error && (
               <p role="alert" className="text-sm text-rose-600">
@@ -109,7 +213,7 @@ export function LoginPage() {
             )}
 
             <Button type="submit" disabled={busy} className="w-full">
-              {busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
+              {busy ? 'Please wait…' : registering ? 'Create account' : 'Sign in'}
             </Button>
           </form>
         </Card>

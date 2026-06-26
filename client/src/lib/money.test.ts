@@ -1,5 +1,14 @@
-import { describe, it, expect } from 'vitest'
-import { fromAmount, toAmount, sumMinor, parseMinor, formatMoney, toEditString } from './money'
+import { describe, it, expect, afterEach } from 'vitest'
+import {
+  fromAmount,
+  toAmount,
+  sumMinor,
+  parseMinor,
+  formatMoney,
+  toEditString,
+  currencySymbol,
+  setMoneyFormat,
+} from './money'
 
 describe('money — integer minor units', () => {
   it('round-trips amount <-> minor at scale 4', () => {
@@ -54,5 +63,43 @@ describe('formatting', () => {
   it('produces a plain editable string', () => {
     expect(toEditString(11_005_000)).toBe('1100.5')
     expect(toEditString(11_000_000)).toBe('1100')
+  })
+})
+
+describe('setMoneyFormat — money-display preference', () => {
+  const minor = fromAmount(1234.56)
+
+  // Reset to the app default so test order can't leak the active format into other suites.
+  afterEach(() => setMoneyFormat('dot-comma'))
+
+  it('renders dot-grouping, comma-decimal (de-DE)', () => {
+    setMoneyFormat('dot-comma')
+    expect(formatMoney(minor, 'EUR')).toContain('1.234,56')
+  })
+
+  it('renders comma-grouping, dot-decimal (en-GB)', () => {
+    setMoneyFormat('comma-dot')
+    expect(formatMoney(minor, 'EUR')).toContain('1,234.56')
+  })
+
+  it('renders space-grouping, comma-decimal (fr-FR)', () => {
+    setMoneyFormat('space-comma')
+    const out = formatMoney(minor, 'EUR')
+    expect(out).toContain('234,56') // comma decimal
+    expect(out).not.toContain('.234') // grouping is not a dot
+    expect(out).not.toContain(',234') // grouping is not a comma
+  })
+
+  it('falls back to the default for an unknown/blank format', () => {
+    setMoneyFormat('not-a-real-format')
+    expect(formatMoney(minor, 'EUR')).toContain('1.234,56')
+    setMoneyFormat(null)
+    expect(formatMoney(minor, 'EUR')).toContain('1.234,56')
+  })
+
+  it('keeps the currency symbol independent of the chosen number format', () => {
+    setMoneyFormat('comma-dot')
+    expect(currencySymbol('GBP')).toBe('£')
+    expect(currencySymbol('EUR')).toBe('€')
   })
 })

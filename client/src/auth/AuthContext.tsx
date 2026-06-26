@@ -1,11 +1,37 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, getToken, setToken } from '../lib/api'
-import { HouseholdRole, type AuthResponse, type MeResponse } from '../types'
+import { setMoneyFormat } from '../lib/money'
+import { HouseholdRole, type AuthResponse, type MeResponse, type PreferencesResponse } from '../types'
+
+/** What the sign-up form collects. */
+export interface RegisterInput {
+  email: string
+  password: string
+  firstName: string
+  lastName: string
+  preferredCurrency: string
+  numberFormat: string
+  acceptedTerms: boolean
+}
+
+/** What the account-preferences form submits. */
+export interface PreferencesInput {
+  firstName: string
+  lastName: string
+  preferredCurrency: string
+  numberFormat: string
+}
 
 interface AuthState {
   token: string | null
   email: string | null
   displayName: string | null
+  firstName: string | null
+  lastName: string | null
+  /** The user's home currency (ISO 4217) — drives the app-wide default + display label. */
+  preferredCurrency: string
+  /** The user's money-format preference key (e.g. "dot-comma"). */
+  numberFormat: string
   /** Numeric HouseholdRole for the current login (defaults to Owner until resolved). */
   role: number
   isAuthenticated: boolean
@@ -17,9 +43,10 @@ interface AuthState {
   canEnterData: boolean
   isReadOnly: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string, displayName?: string) => Promise<void>
+  register: (input: RegisterInput) => Promise<void>
   acceptInvite: (token: string, password: string, displayName?: string) => Promise<void>
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>
+  updatePreferences: (input: PreferencesInput) => Promise<void>
   logout: () => void
 }
 
@@ -28,6 +55,11 @@ const AuthContext = createContext<AuthState | undefined>(undefined)
 const EMAIL_KEY = 'zbb.email'
 const ROLE_KEY = 'zbb.role'
 const NAME_KEY = 'zbb.displayName'
+const CURRENCY_KEY = 'zbb.currency'
+const FORMAT_KEY = 'zbb.numberFormat'
+
+const DEFAULT_CURRENCY = 'EUR'
+const DEFAULT_FORMAT = 'dot-comma'
 
 function storedRole(): number {
   const raw = localStorage.getItem(ROLE_KEY)
@@ -39,7 +71,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setTokenState] = useState<string | null>(getToken())
   const [email, setEmail] = useState<string | null>(localStorage.getItem(EMAIL_KEY))
   const [displayName, setDisplayName] = useState<string | null>(localStorage.getItem(NAME_KEY))
+  const [firstName, setFirstName] = useState<string | null>(null)
+  const [lastName, setLastName] = useState<string | null>(null)
+  const [preferredCurrency, setPreferredCurrency] = useState<string>(
+    localStorage.getItem(CURRENCY_KEY) || DEFAULT_CURRENCY,
+  )
+  const [numberFormat, setNumberFormat] = useState<string>(
+    localStorage.getItem(FORMAT_KEY) || DEFAULT_FORMAT,
+  )
   const [role, setRole] = useState<number>(storedRole())
+
+  // Apply the persisted money format on first mount so a hard reload renders amounts in
+  // the user's chosen style before /auth/me round-trips.
+  useEffect(() => {
+    setMoneyFormat(numberFormat)
+    // Intentionally run once; numberFormat changes are applied where they're set.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function applyPrefs(currency: string | null | undefined, format: string | null | undefined) {
+    const c = currency || DEFAULT_CURRENCY
+    const f = format || DEFAULT_FORMAT
+    setPreferredCurrency(c)
+    setNumberFormat(f)
+    setMoneyFormat(f)
+    localStorage.setItem(CURRENCY_KEY, c)
+    localStorage.setItem(FORMAT_KEY, f)
+  }
 
   function apply(res: AuthResponse) {
     setToken(res.token)
@@ -53,8 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else localStorage.removeItem(NAME_KEY)
   }
 
-  // Refresh the role from the server whenever there's a token — a role change (or revoke)
-  // takes effect on next load without needing a fresh login.
+  // Refresh role + profile/preferences from the server whenever there's a token — a role
+  // change (or revoke) and the user's saved preferences both take effect on next load.
   useEffect(() => {
     if (!token) return
     let cancelled = false
@@ -69,6 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRole(data.role)
         if (typeof data.email === 'string') setEmail(data.email)
         setDisplayName(data.displayName ?? null)
+        setFirstName(data.firstName ?? null)
+        setLastName(data.lastName ?? null)
+        applyPrefs(data.preferredCurrency, data.numberFormat)
         localStorage.setItem(ROLE_KEY, String(data.role))
       })
       .catch(() => {})
@@ -82,9 +143,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     apply(data)
   }
 
-  async function register(email: string, password: string, displayName?: string) {
-    const { data } = await api.post<AuthResponse>('/auth/register', { email, password, displayName })
+  async function register(input: RegisterInput) {
+    const { data } = await api.post<AuthResponse>('/auth/register', input)
     apply(data)
+    // The new user picked these at sign-up — apply immediately so the app speaks their
+    // currency/format right away (the /auth/me refresh will confirm them).
+    setFirstName(input.firstName || null)
+    setLastName(input.lastName || null)
+    applyPrefs(input.preferredCurrency, input.numberFormat)
   }
 
   async function acceptInvite(inviteToken: string, password: string, displayName?: string) {
@@ -100,12 +166,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.post('/auth/change-password', { currentPassword, newPassword })
   }
 
+  async function updatePreferences(input: PreferencesInput) {
+    const { data } = await api.put<PreferencesResponse>('/auth/preferences', input)
+    setFirstName(data.firstName)
+    setLastName(data.lastName)
+    setDisplayName(data.displayName)
+    if (data.displayName) localStorage.setItem(NAME_KEY, data.displayName)
+    else localStorage.removeItem(NAME_KEY)
+    applyPrefs(data.preferredCurrency, data.numberFormat)
+  }
+
   function logout() {
     setToken(null)
     setTokenState(null)
     setEmail(null)
     setDisplayName(null)
+    setFirstName(null)
+    setLastName(null)
     setRole(HouseholdRole.Owner)
+    applyPrefs(DEFAULT_CURRENCY, DEFAULT_FORMAT)
     localStorage.removeItem(EMAIL_KEY)
     localStorage.removeItem(ROLE_KEY)
     localStorage.removeItem(NAME_KEY)
@@ -116,6 +195,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       email,
       displayName,
+      firstName,
+      lastName,
+      preferredCurrency,
+      numberFormat,
       role,
       isAuthenticated: !!token,
       canManageHousehold: role === HouseholdRole.Owner,
@@ -126,9 +209,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       acceptInvite,
       changePassword,
+      updatePreferences,
       logout,
     }),
-    [token, email, displayName, role],
+    [token, email, displayName, firstName, lastName, preferredCurrency, numberFormat, role],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

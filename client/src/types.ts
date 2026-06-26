@@ -451,6 +451,19 @@ export interface MeResponse {
   role: number
   ownerId: string
   memberId: string | null
+  firstName?: string | null
+  lastName?: string | null
+  preferredCurrency?: string
+  numberFormat?: string
+}
+
+/** The login's current name + money-display preferences (GET via /auth/me, PUT /auth/preferences). */
+export interface PreferencesResponse {
+  firstName: string | null
+  lastName: string | null
+  displayName: string | null
+  preferredCurrency: string
+  numberFormat: string
 }
 
 export interface AuthResponse {

@@ -9,10 +9,6 @@ import type { AccountDto, AccountReconciliationDto } from '../types'
 import { ACCOUNT_TYPE_LABELS, AccountType } from '../types'
 import { formatMoney, fromAmount, parseMinor, toAmount, toEditString } from '../lib/money'
 
-// ZeroBudget runs as a single-currency app today (the multi-currency engine is kept
-// dormant in the backend for future expansion). All money is shown in euros.
-const CURRENCY = 'EUR'
-
 const TYPE_OPTIONS = Object.entries(ACCOUNT_TYPE_LABELS).map(([value, label]) => ({
   value: Number(value),
   label,
@@ -30,7 +26,10 @@ function parseSignedAmount(input: string): number | null {
 
 export function AccountsPage() {
   // Managing accounts needs Admin+ (canWrite); others get a read-only register.
-  const { canWrite } = useAuth()
+  // The household's home currency drives the app-wide label and the new-account default;
+  // an account may still hold a different currency, which is shown in its own currency.
+  const { canWrite, preferredCurrency } = useAuth()
+  const CURRENCY = preferredCurrency
   const [accounts, setAccounts] = useState<AccountDto[]>([])
   const [reconciliation, setReconciliation] = useState<AccountReconciliationDto[]>([])
   const [loading, setLoading] = useState(true)
@@ -235,6 +234,7 @@ export function AccountsPage() {
 
         {accounts.length > 0 && (
           <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
@@ -370,6 +370,7 @@ export function AccountsPage() {
                 </tr>
               </tfoot>
             </table>
+            </div>
           </Card>
         )}
 
@@ -381,6 +382,7 @@ export function AccountsPage() {
                 Each account’s balance against the sinking funds it holds — the float is what’s not yet earmarked.
               </p>
             </div>
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
@@ -413,6 +415,7 @@ export function AccountsPage() {
                   ))}
               </tbody>
             </table>
+            </div>
           </Card>
         )}
     </AppShell>
