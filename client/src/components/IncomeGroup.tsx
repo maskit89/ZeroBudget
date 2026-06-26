@@ -69,6 +69,8 @@ export function IncomeGroup({
 
       {open && (
         <div className="border-t border-emerald-100 dark:border-emerald-500/20">
+          <div className="overflow-x-auto">
+          <div className="min-w-[40rem]">
           <div className="grid grid-cols-12 gap-2 bg-emerald-50/50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-emerald-800 dark:bg-emerald-500/5 dark:text-emerald-200">
             <div className="col-span-5">Source</div>
             <div className="col-span-3 text-right">Planned</div>
@@ -95,6 +97,8 @@ export function IncomeGroup({
                 No income yet — add your first source below.
               </p>
             )}
+          </div>
+          </div>
           </div>
 
           {canWrite && (
