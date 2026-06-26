@@ -32,4 +32,10 @@ public class ApplicationUser : IdentityUser
 
     /// <summary>When the user accepted the terms/privacy policy at registration; null for legacy logins.</summary>
     public DateTime? ConsentedUtc { get; set; }
+
+    /// <summary>
+    /// Which household this login is currently viewing, when it can access more than one. Null means
+    /// its own household (OwnerId == this user's id). Set by the household switcher.
+    /// </summary>
+    public string? ActiveOwnerId { get; set; }
 }

@@ -1,16 +1,18 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using ZeroBudget.Api.Services;
+using ZeroBudget.Application.Common.Households;
 using ZeroBudget.Domain.Enums;
 using ZeroBudget.Infrastructure.Persistence;
 
 namespace ZeroBudget.Api.Middleware;
 
 /// <summary>
-/// After authentication, resolves the caller's household membership (one indexed lookup) and
-/// stashes the household id + role into the per-request <see cref="HouseholdContext"/>. Doing
-/// it server-side every request — rather than baking the role into the JWT — means a revoked
-/// or downgraded membership takes effect immediately, regardless of token age.
+/// After authentication, resolves which household the caller is currently acting in and stashes the
+/// household id + role into the per-request <see cref="HouseholdContext"/>. A login may belong to
+/// several households; the active one is the login's <c>ActiveOwnerId</c> (their own household when
+/// unset). Resolving server-side every request — rather than baking the role into the JWT — means a
+/// revoked or downgraded membership, or a household switch, takes effect immediately.
 /// </summary>
 public class HouseholdResolutionMiddleware
 {
@@ -23,17 +25,28 @@ public class HouseholdResolutionMiddleware
         var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!string.IsNullOrEmpty(userId))
         {
-            var membership = await db.HouseholdMemberships
+            var rows = await db.HouseholdMemberships
                 .AsNoTracking()
                 .Where(m => m.UserId == userId && m.Status == MembershipStatus.Active)
                 .Select(m => new { m.OwnerId, m.Role, m.MemberId })
-                .FirstOrDefaultAsync(context.RequestAborted);
+                .ToListAsync(context.RequestAborted);
 
-            if (membership is not null)
+            if (rows.Count > 0)
             {
-                household.OwnerId = membership.OwnerId;
-                household.Role = membership.Role;
-                household.MemberId = membership.MemberId;
+                var activeOwnerId = await db.Users
+                    .AsNoTracking()
+                    .Where(u => u.Id == userId)
+                    .Select(u => u.ActiveOwnerId)
+                    .FirstOrDefaultAsync(context.RequestAborted);
+
+                var memberships = rows
+                    .Select(r => new HouseholdMembershipRef(r.OwnerId, r.Role, r.MemberId))
+                    .ToList();
+                var chosen = ActiveHouseholdSelector.Pick(memberships, activeOwnerId, userId)!.Value;
+
+                household.OwnerId = chosen.OwnerId;
+                household.Role = chosen.Role;
+                household.MemberId = chosen.MemberId;
             }
             else
             {

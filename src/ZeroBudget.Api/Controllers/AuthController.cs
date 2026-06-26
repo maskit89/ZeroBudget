@@ -205,17 +205,59 @@ public class AuthController : ControllerBase
             return Unauthorized();
         }
 
+        var activeOwnerId = _currentUser.OwnerId ?? userId;
+        var households = await BuildHouseholdsAsync(userId, activeOwnerId, HttpContext.RequestAborted);
+
         return Ok(new MeResponse(
             userId,
             user.Email!,
             user.DisplayName,
             _currentUser.Role ?? HouseholdRole.Owner,
-            _currentUser.OwnerId ?? userId,
+            activeOwnerId,
             _currentUser.MemberId,
             user.FirstName,
             user.LastName,
             ResolveCurrency(user.PreferredCurrency),
-            ResolveNumberFormat(user.NumberFormat)));
+            ResolveNumberFormat(user.NumberFormat),
+            households));
+    }
+
+    /// <summary>The households this login can act in (for the switcher), with the active one flagged.</summary>
+    private async Task<IReadOnlyList<HouseholdSummary>> BuildHouseholdsAsync(
+        string userId, string activeOwnerId, CancellationToken ct)
+    {
+        var memberships = await _db.HouseholdMemberships
+            .AsNoTracking()
+            .Where(m => m.UserId == userId && m.Status == MembershipStatus.Active)
+            .Select(m => new { m.OwnerId, m.Role })
+            .ToListAsync(ct);
+
+        var ownerIds = memberships.Select(m => m.OwnerId).Distinct().ToList();
+        var owners = await _db.Users
+            .AsNoTracking()
+            .Where(u => ownerIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.DisplayName, u.Email })
+            .ToDictionaryAsync(u => u.Id, ct);
+
+        var households = memberships
+            .Select(m =>
+            {
+                var isOwn = m.OwnerId == userId;
+                owners.TryGetValue(m.OwnerId, out var owner);
+                var label = isOwn ? "Your household" : owner?.DisplayName ?? owner?.Email ?? "Household";
+                return new HouseholdSummary(m.OwnerId, label, m.Role, m.OwnerId == activeOwnerId, isOwn);
+            })
+            .OrderByDescending(h => h.IsOwn)
+            .ThenBy(h => h.Label)
+            .ToList();
+
+        // A login with no membership row yet still owns its own household.
+        if (households.Count == 0)
+        {
+            households.Add(new HouseholdSummary(userId, "Your household", HouseholdRole.Owner, true, true));
+        }
+
+        return households;
     }
 
     /// <summary>Updates the authenticated login's name and money-display preferences.</summary>
