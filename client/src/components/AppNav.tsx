@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useFeatures } from '../features/FeatureContext'
+import { useHousehold } from '../features/HouseholdContext'
 import { AccessIcon, AccountsIcon, AllocationIcon, DashboardIcon, FundsIcon, MembersIcon, ReportsIcon, TransactionsIcon } from './icons'
 import { EVENTS, track } from '../analytics'
 
@@ -10,8 +11,10 @@ export type NavKey = 'budget' | 'transactions' | 'accounts' | 'funds' | 'members
 /**
  * The primary navigation, rendered as a vertical list inside the sidebar. The
  * active item is highlighted (brand-tinted, `aria-current="page"`); the rest are
- * plain links. Accounts and Reports are hidden when their feature flag is off.
- * `onNavigate` lets the shell close the mobile drawer when a link is tapped.
+ * plain links. Accounts and Reports are hidden when their feature flag is off, and
+ * the multi-member items (Members, Allocation) only appear once the budget is
+ * shared — a solo user never sees them. `onNavigate` lets the shell close the
+ * mobile drawer when a link is tapped.
  */
 export function AppNav({
   active,
@@ -22,6 +25,7 @@ export function AppNav({
 }) {
   const features = useFeatures()
   const { canManageHousehold } = useAuth()
+  const { isShared } = useHousehold()
 
   const items: {
     key: NavKey
@@ -34,8 +38,8 @@ export function AppNav({
     { key: 'transactions', to: '/transactions', label: 'Transactions', icon: TransactionsIcon, show: true },
     { key: 'accounts', to: '/accounts', label: 'Accounts', icon: AccountsIcon, show: features.accounts },
     { key: 'funds', to: '/funds', label: 'Funds', icon: FundsIcon, show: features.sinkingFunds },
-    { key: 'members', to: '/members', label: 'Members', icon: MembersIcon, show: features.householdAllocation },
-    { key: 'allocation', to: '/allocation', label: 'Allocation', icon: AllocationIcon, show: features.householdAllocation },
+    { key: 'members', to: '/members', label: 'Members', icon: MembersIcon, show: features.householdAllocation && isShared },
+    { key: 'allocation', to: '/allocation', label: 'Allocation', icon: AllocationIcon, show: features.householdAllocation && isShared },
     { key: 'reports', to: '/reports', label: 'Reports', icon: ReportsIcon, show: features.reports },
     { key: 'access', to: '/access', label: 'Members & access', icon: AccessIcon, show: features.householdAccess && canManageHousehold },
   ]

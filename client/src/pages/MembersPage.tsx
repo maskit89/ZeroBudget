@@ -3,6 +3,7 @@ import { AppShell } from '../components/AppShell'
 import { Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select } from '../components/ui'
 import { MembersIcon } from '../components/icons'
 import { useAuth } from '../auth/AuthContext'
+import { useHousehold } from '../features/HouseholdContext'
 import { api } from '../lib/api'
 import { EVENTS, track } from '../analytics'
 import type { AccountDto, HouseholdMemberDto, MemberSpendingDto } from '../types'
@@ -24,6 +25,9 @@ function sharePct(share: number): string {
 export function MembersPage() {
   // Managing household members needs Admin+ (canWrite); others see them read-only.
   const { canWrite } = useAuth()
+  // Adding the first member flips the app from solo to shared, so refresh the
+  // shared household state to reveal the Members/Allocation nav items.
+  const { refresh: refreshHousehold } = useHousehold()
   const [members, setMembers] = useState<HouseholdMemberDto[]>([])
   const [accounts, setAccounts] = useState<AccountDto[]>([])
   const [spending, setSpending] = useState<MemberSpendingDto[]>([])
@@ -98,6 +102,7 @@ export function MembersPage() {
       })
       track(EVENTS.memberAdded)
       await reload() // income shares shift when a member is added
+      await refreshHousehold() // reveal the shared nav items once the first member exists
       setName('')
       setIncome('')
       setSavings('')
@@ -106,7 +111,7 @@ export function MembersPage() {
     } finally {
       setAdding(false)
     }
-  }, [name, income, savings, reload])
+  }, [name, income, savings, reload, refreshHousehold])
 
   function startEdit(m: HouseholdMemberDto) {
     setEditingId(m.id)
@@ -153,20 +158,21 @@ export function MembersPage() {
       try {
         await api.put(`/members/${id}/archive`, { archived: true })
         await reload()
+        await refreshHousehold() // back to solo (hide nav items) if that was the last member
       } catch {
         setError('Could not archive that member.')
       } finally {
         setSavingId(null)
       }
     },
-    [reload],
+    [reload, refreshHousehold],
   )
 
   return (
     <AppShell active="members">
       <PageHeader
         title="Household members"
-        subtitle="The people who share this budget. Their net incomes set how shared costs and the monthly surplus are split; the savings account is where their allocated surplus lands."
+        subtitle="Add the people you share money with. Their net incomes set how shared costs and any monthly surplus are split, and each person’s savings account is where their share lands."
       />
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
@@ -180,7 +186,7 @@ export function MembersPage() {
             <Input
               type="text"
               value={name}
-              placeholder="e.g. Chris"
+              placeholder="First name"
               aria-label="Member name"
               onChange={(e) => setName(e.target.value)}
               className="min-w-32"
@@ -231,8 +237,8 @@ export function MembersPage() {
       {!loading && members.length === 0 && (
         <EmptyState
           icon={<MembersIcon className="h-6 w-6" />}
-          title="No members yet"
-          description="Add the people who share this budget — their incomes drive how the surplus is split."
+          title="Budgeting on your own?"
+          description="You don’t need members to use ZeroBudget. If you share money with a partner or housemate, add them here to split shared costs and divide savings between you."
         />
       )}
 

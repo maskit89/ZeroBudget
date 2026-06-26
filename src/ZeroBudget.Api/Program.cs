@@ -99,6 +99,9 @@ await ApplyMigrationsAsync(app);
 // Ensure every existing login owns an Owner membership for their household (idempotent).
 await BackfillMembershipsAsync(app);
 
+// Ensure every household has the owner as member #1, so a household is never "0 members".
+await BackfillOwnerMembersAsync(app);
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -173,6 +176,23 @@ static async Task BackfillMembershipsAsync(WebApplication app)
     catch (Exception ex)
     {
         logger.LogWarning(ex, "Owner-membership backfill failed; continuing startup.");
+    }
+}
+
+// Seeds an owner member (member #1) for any household that has none, naming it from the owner
+// login. Idempotent and non-fatal: a household that already has members is untouched.
+static async Task BackfillOwnerMembersAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        await OwnerMemberSeeder.BackfillOwnerMembersAsync(db);
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Owner-member backfill failed; continuing startup.");
     }
 }
 

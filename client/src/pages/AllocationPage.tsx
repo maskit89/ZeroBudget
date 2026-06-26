@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select, SegmentedControl } from '../components/ui'
 import { AllocationIcon } from '../components/icons'
 import { useAuth } from '../auth/AuthContext'
+import { useHousehold } from '../features/HouseholdContext'
 import { api } from '../lib/api'
 import { bucketCount, EVENTS, track } from '../analytics'
 import type { AccountDto, AllocationProfileDto, AllocationResultDto, BudgetMonthDto } from '../types'
@@ -28,6 +30,8 @@ function standardRules(costSplit: number, pocketAmount: number, savingsSplit: nu
 export function AllocationPage() {
   // Editing the allocation profile needs Admin+; running an allocation is day-to-day (Limited+).
   const { canWrite, canEnterData, preferredCurrency } = useAuth()
+  const { isShared, loading: householdLoading } = useHousehold()
+  const navigate = useNavigate()
   const CURRENCY = preferredCurrency
   const [profile, setProfile] = useState<AllocationProfileDto | null>(null)
   const [accounts, setAccounts] = useState<AccountDto[]>([])
@@ -144,6 +148,26 @@ export function AllocationPage() {
     () => new Date(period.year, period.month - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
     [period],
   )
+
+  // Allocation only makes sense once the budget is shared. A solo user who reaches
+  // this route directly gets a friendly nudge to add members rather than an empty engine.
+  if (!householdLoading && !isShared) {
+    return (
+      <AppShell active="allocation">
+        <PageHeader
+          title="Income allocation"
+          subtitle="Pool everyone’s income, cover the shared costs, then split what’s left into each person’s savings."
+        />
+        <EmptyState
+          icon={<AllocationIcon className="h-6 w-6" />}
+          title="Add household members first"
+          description="Allocation pools everyone’s income and divides the surplus into each person’s savings, so it needs the people you share money with. Add them to set this up."
+        >
+          <Button onClick={() => navigate('/members')}>Add household members</Button>
+        </EmptyState>
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell active="allocation">

@@ -5,6 +5,7 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './auth/AuthContext'
 import { FeatureProvider } from './features/FeatureContext'
+import { HouseholdProvider } from './features/HouseholdContext'
 import { OnboardingProvider } from './onboarding/OnboardingContext'
 import { AnalyticsProvider } from './analytics/AnalyticsProvider'
 
@@ -13,11 +14,13 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AuthProvider>
         <FeatureProvider>
-          <AnalyticsProvider>
-            <OnboardingProvider>
-              <App />
-            </OnboardingProvider>
-          </AnalyticsProvider>
+          <HouseholdProvider>
+            <AnalyticsProvider>
+              <OnboardingProvider>
+                <App />
+              </OnboardingProvider>
+            </AnalyticsProvider>
+          </HouseholdProvider>
         </FeatureProvider>
       </AuthProvider>
     </BrowserRouter>

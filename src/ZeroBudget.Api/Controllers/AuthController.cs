@@ -40,7 +40,7 @@ public class AuthController : ControllerBase
         _currentUser = currentUser;
     }
 
-    /// <summary>Creates an account, seeds a starter budget + owner membership, returns a JWT.</summary>
+    /// <summary>Creates an account, seeds a starter budget + owner membership + owner member, returns a JWT.</summary>
     [HttpPost("register")]
     [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
@@ -105,6 +105,11 @@ public class AuthController : ControllerBase
         });
         await _db.SaveChangesAsync(ct);
         await BudgetSeeder.SeedDefaultMonthAsync(_db, user.Id, now.Year, now.Month, ct);
+
+        // The owner is themselves member #1, so a household is never "0 members": solo is a
+        // household of one, shared is two or more.
+        await OwnerMemberSeeder.EnsureOwnerMemberAsync(
+            _db, user.Id, OwnerMemberSeeder.ResolveOwnerName(firstName, user.DisplayName, user.Email), ct);
 
         return Ok(await BuildResponseAsync(user, ct));
     }

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import type { HouseholdMemberDto } from '../types'
 
 const { mockGet, mockPost, mockPut } = vi.hoisted(() => ({
   mockGet: vi.fn(),
@@ -17,12 +18,24 @@ vi.mock('../lib/api', () => ({
 
 import { AccountPage } from './AccountPage'
 import { AuthProvider } from '../auth/AuthContext'
+import { HouseholdProvider } from '../features/HouseholdContext'
+
+const meData = { userId: 'u1', email: 'chris@x.com', displayName: 'Chris', role: 0, ownerId: 'u1', memberId: null }
+
+function member(over: Partial<HouseholdMemberDto> = {}): HouseholdMemberDto {
+  return { id: 'm1', name: 'Chris', netMonthlyIncome: 6000, personalSavingsAccountId: null, displayOrder: 0, isArchived: false, incomeSharePct: 1, ...over }
+}
+
+// The Sharing card reads /members; everything else (/auth/me) returns the login.
+let membersData: HouseholdMemberDto[] = []
 
 function renderPage() {
   return render(
     <MemoryRouter>
       <AuthProvider>
-        <AccountPage />
+        <HouseholdProvider>
+          <AccountPage />
+        </HouseholdProvider>
       </AuthProvider>
     </MemoryRouter>,
   )
@@ -33,8 +46,10 @@ describe('AccountPage', () => {
     mockGet.mockReset()
     mockPost.mockReset()
     mockPut.mockReset()
-    mockGet.mockResolvedValue({
-      data: { userId: 'u1', email: 'chris@x.com', displayName: 'Chris', role: 0, ownerId: 'u1', memberId: null },
+    membersData = []
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/members') return Promise.resolve({ data: membersData })
+      return Promise.resolve({ data: meData })
     })
   })
 
@@ -101,5 +116,37 @@ describe('AccountPage', () => {
 
     expect(await screen.findByText(/do not match/)).toBeInTheDocument()
     expect(mockPost).not.toHaveBeenCalled()
+  })
+
+  it('offers to share the budget when solo (no members)', async () => {
+    membersData = []
+
+    renderPage()
+
+    expect(
+      await screen.findByRole('button', { name: 'Share this budget' }, { timeout: 5000 }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Manage members →')).not.toBeInTheDocument()
+  })
+
+  it('still offers to share when there is a single member (still solo)', async () => {
+    membersData = [member()]
+
+    renderPage()
+
+    expect(
+      await screen.findByRole('button', { name: 'Share this budget' }, { timeout: 5000 }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Manage members →')).not.toBeInTheDocument()
+  })
+
+  it('links to manage members when the budget is shared (2+ members)', async () => {
+    membersData = [member(), member({ id: 'm2', name: 'Liza' })]
+
+    renderPage()
+
+    expect(await screen.findByText('Manage members →', {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(screen.getByText(/shared between 2 people/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Share this budget' })).not.toBeInTheDocument()
   })
 })

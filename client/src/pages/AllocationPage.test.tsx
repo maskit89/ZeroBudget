@@ -18,6 +18,7 @@ vi.mock('../lib/api', () => ({
 
 import { AllocationPage } from './AllocationPage'
 import { AuthProvider } from '../auth/AuthContext'
+import { HouseholdProvider } from '../features/HouseholdContext'
 
 const accountsData: AccountDto[] = [
   { id: 'acc0', name: 'Joint Current', type: 0, currency: 'EUR', openingBalance: 0, currentBalance: 0, displayOrder: 0 },
@@ -79,6 +80,19 @@ function renderPage() {
   )
 }
 
+// Wrapped in a real HouseholdProvider so the page can tell solo from shared.
+function renderWithHousehold() {
+  return render(
+    <MemoryRouter>
+      <AuthProvider>
+        <HouseholdProvider>
+          <AllocationPage />
+        </HouseholdProvider>
+      </AuthProvider>
+    </MemoryRouter>,
+  )
+}
+
 describe('AllocationPage', () => {
   beforeEach(() => {
     mockGet.mockReset()
@@ -95,6 +109,17 @@ describe('AllocationPage', () => {
 
     expect(await screen.findByText(/No allocation set up yet/, {}, { timeout: 5000 })).toBeInTheDocument()
     expect(screen.getByText('Set up allocation')).toBeInTheDocument()
+  })
+
+  it('nudges a solo user to add members instead of the allocation engine', { timeout: 15000 }, async () => {
+    profileData = profile() // a profile exists, but with no members the page should still guard
+
+    renderWithHousehold()
+
+    expect(await screen.findByText(/Add household members first/, {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add household members' })).toBeInTheDocument()
+    // The allocation setup form must not render in solo mode.
+    expect(screen.queryByText('Allocation settings')).not.toBeInTheDocument()
   })
 
   it('renders the waterfall and each member’s surplus', { timeout: 15000 }, async () => {
