@@ -24,10 +24,13 @@ public record AuthResponse(
     HouseholdRole Role,
     string? DisplayName);
 
-/// <summary>Redeems a one-time invite link and sets the new login's password.</summary>
+/// <summary>
+/// Redeems a one-time invite link. A new user sets <see cref="Password"/>; a signed-in user joining
+/// with their existing login omits it (and sends their bearer token instead).
+/// </summary>
 public record AcceptInviteRequest(
     [Required] string Token,
-    [Required, MinLength(8)] string Password,
+    string? Password,
     string? DisplayName);
 
 /// <summary>Self-service password change for the authenticated login.</summary>

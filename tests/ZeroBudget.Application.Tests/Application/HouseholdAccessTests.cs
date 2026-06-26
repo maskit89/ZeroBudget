@@ -32,20 +32,32 @@ public class HouseholdAccessTests
         public Guid? MemberId => null;
     }
 
+    private sealed class AnonymousUserStub : ICurrentUser
+    {
+        public string? UserId => null;
+        public string? OwnerId => null;
+        public HouseholdRole? Role => null;
+        public Guid? MemberId => null;
+    }
+
     private sealed class FakeIdentity : IIdentityService
     {
         public readonly List<string> CreatedEmails = new();
         public readonly HashSet<string> Existing = new(StringComparer.OrdinalIgnoreCase);
+        public readonly Dictionary<string, UserAccount> ById = new();
 
         public Task<bool> EmailExistsAsync(string email) => Task.FromResult(Existing.Contains(email));
         public Task<UserAccount?> FindByEmailAsync(string email) => Task.FromResult<UserAccount?>(null);
-        public Task<UserAccount?> FindByIdAsync(string userId) => Task.FromResult<UserAccount?>(null);
+        public Task<UserAccount?> FindByIdAsync(string userId) =>
+            Task.FromResult(ById.TryGetValue(userId, out var u) ? u : null);
 
         public Task<CreateUserResult> CreateUserAsync(string email, string password, string? displayName)
         {
             CreatedEmails.Add(email);
             Existing.Add(email);
-            return Task.FromResult(CreateUserResult.Success("user-" + Guid.NewGuid().ToString("N")[..8]));
+            var id = "user-" + Guid.NewGuid().ToString("N")[..8];
+            ById[id] = new UserAccount(id, email, displayName);
+            return Task.FromResult(CreateUserResult.Success(id));
         }
 
         public Task<IReadOnlyList<string>> ChangePasswordAsync(string userId, string current, string next) =>
@@ -148,7 +160,7 @@ public class HouseholdAccessTests
         await db.SaveChangesAsync();
         var identity = new FakeIdentity();
 
-        var handler = new AcceptInviteCommandHandler(db, identity);
+        var handler = new AcceptInviteCommandHandler(db, identity, new AnonymousUserStub());
         var result = await handler.Handle(new AcceptInviteCommand(token, "password123", "Liza"), default);
 
         result.Role.Should().Be(HouseholdRole.Limited);
@@ -178,7 +190,7 @@ public class HouseholdAccessTests
         });
         await db.SaveChangesAsync();
 
-        var handler = new AcceptInviteCommandHandler(db, new FakeIdentity());
+        var handler = new AcceptInviteCommandHandler(db, new FakeIdentity(), new AnonymousUserStub());
         var act = () => handler.Handle(new AcceptInviteCommand(token, "password123", null), default);
 
         await act.Should().ThrowAsync<ForbiddenAccessException>();
@@ -188,7 +200,7 @@ public class HouseholdAccessTests
     public async Task Accept_invite_rejects_an_unknown_token()
     {
         using var db = NewContext();
-        var handler = new AcceptInviteCommandHandler(db, new FakeIdentity());
+        var handler = new AcceptInviteCommandHandler(db, new FakeIdentity(), new AnonymousUserStub());
 
         var act = () => handler.Handle(new AcceptInviteCommand(InviteToken.Generate(), "password123", null), default);
 
@@ -296,6 +308,74 @@ public class HouseholdAccessTests
 
         var handler = new LinkMembershipMemberCommandHandler(db, new CurrentUserStub(OwnerId));
         var act = () => handler.Handle(new LinkMembershipMemberCommand(other.Id, member.Id), default);
+
+        await act.Should().ThrowAsync<ValidationException>();
+    }
+
+    private static (HouseholdMembership membership, string token) PendingInvite(string email)
+    {
+        var token = InviteToken.Generate();
+        var membership = new HouseholdMembership
+        {
+            OwnerId = OwnerId,
+            Role = HouseholdRole.Admin,
+            Status = MembershipStatus.Invited,
+            InvitedEmail = email,
+            InviteTokenHash = InviteToken.Hash(token),
+            InviteExpiresUtc = DateTime.UtcNow.AddDays(3),
+        };
+        return (membership, token);
+    }
+
+    [Fact]
+    public async Task Accept_invite_by_a_signed_in_existing_user_joins_without_a_new_login()
+    {
+        using var db = NewContext();
+        var (membership, token) = PendingInvite("liza@x.com");
+        db.HouseholdMemberships.Add(membership);
+        await db.SaveChangesAsync();
+        var identity = new FakeIdentity();
+        identity.ById["user-liza"] = new UserAccount("user-liza", "liza@x.com", "Liza"); // already has an account
+
+        var handler = new AcceptInviteCommandHandler(db, identity, new CurrentUserStub("user-liza"));
+        var result = await handler.Handle(new AcceptInviteCommand(token, null, null), default);
+
+        result.UserId.Should().Be("user-liza");
+        identity.CreatedEmails.Should().BeEmpty(); // joined with the existing login — no new one
+        var saved = await db.HouseholdMemberships.SingleAsync();
+        saved.Status.Should().Be(MembershipStatus.Active);
+        saved.UserId.Should().Be("user-liza");
+        saved.InviteTokenHash.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Accept_invite_by_a_signed_in_user_with_a_different_email_is_rejected()
+    {
+        using var db = NewContext();
+        var (membership, token) = PendingInvite("liza@x.com");
+        db.HouseholdMemberships.Add(membership);
+        await db.SaveChangesAsync();
+        var identity = new FakeIdentity();
+        identity.ById["user-sam"] = new UserAccount("user-sam", "sam@x.com", "Sam");
+
+        var handler = new AcceptInviteCommandHandler(db, identity, new CurrentUserStub("user-sam"));
+        var act = () => handler.Handle(new AcceptInviteCommand(token, null, null), default);
+
+        await act.Should().ThrowAsync<ValidationException>();
+    }
+
+    [Fact]
+    public async Task Accept_invite_anonymously_with_an_existing_email_tells_them_to_sign_in()
+    {
+        using var db = NewContext();
+        var (membership, token) = PendingInvite("liza@x.com");
+        db.HouseholdMemberships.Add(membership);
+        await db.SaveChangesAsync();
+        var identity = new FakeIdentity();
+        identity.Existing.Add("liza@x.com"); // an account exists, but the accepter isn't signed in
+
+        var handler = new AcceptInviteCommandHandler(db, identity, new AnonymousUserStub());
+        var act = () => handler.Handle(new AcceptInviteCommand(token, "password123", null), default);
 
         await act.Should().ThrowAsync<ValidationException>();
     }

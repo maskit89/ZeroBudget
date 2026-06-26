@@ -7,7 +7,9 @@ public class AcceptInviteCommandValidator : AbstractValidator<AcceptInviteComman
     public AcceptInviteCommandValidator()
     {
         RuleFor(x => x.Token).NotEmpty();
-        RuleFor(x => x.Password).NotEmpty().MinimumLength(8);
+        // Password is only needed when a new login is being created (anonymous accept); a signed-in
+        // user joining with their existing login omits it. The handler enforces it for the new-login path.
+        RuleFor(x => x.Password).MinimumLength(8).When(x => !string.IsNullOrEmpty(x.Password));
         RuleFor(x => x.DisplayName).MaximumLength(120);
     }
 }
