@@ -16,13 +16,27 @@ import { ImportPage } from './pages/ImportPage'
 import { HelpPage } from './pages/HelpPage'
 import { Onboarding } from './onboarding/Onboarding'
 
+function AuthSplash() {
+  return (
+    <div className="flex min-h-screen items-center justify-center" role="status" aria-live="polite">
+      <span className="sr-only">Loading…</span>
+      <div
+        className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-500"
+        aria-hidden="true"
+      />
+    </div>
+  )
+}
+
 function RequireAuth({ children }: { children: JSX.Element }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, bootstrapping } = useAuth()
+  // Don't bounce to /login while we're still restoring the session from the refresh cookie.
+  if (bootstrapping) return <AuthSplash />
   return isAuthenticated ? children : <Navigate to="/login" replace />
 }
 
 export default function App() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, bootstrapping } = useAuth()
   const features = useFeatures()
 
   return (
@@ -30,7 +44,9 @@ export default function App() {
       <Routes>
         <Route
           path="/login"
-          element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+          element={
+            bootstrapping ? <AuthSplash /> : isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />
+          }
         />
         <Route path="/accept-invite" element={<AcceptInvitePage />} />
         <Route

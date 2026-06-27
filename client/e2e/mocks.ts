@@ -190,6 +190,10 @@ export async function mockApi(route: Route) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
 
   if (path === '/features') return json(FLAGS)
+  // Signed-out by default: the cookie-bootstrap refresh fails unless a test opts in via mockSignedIn.
+  if (path === '/auth/refresh') {
+    return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'No session.' }) })
+  }
   if (path === '/auth/me') return json(meResponse())
   if (path === '/access/members') return json(memberships())
   if (path === '/transactions') return json(transactions())
@@ -221,18 +225,34 @@ export const ONBOARDING_EMAIL = 'e2e@zerobudget.app'
 // the per-route scans (they're scanned on their own).
 const ONBOARDING_DONE = JSON.stringify({ v: 1, welcomeSeen: true, tourDone: true, checklistDismissed: true })
 
-/** Sign in as the Owner (token + email + completed onboarding) and stub the API. */
+/** The session body returned by /auth/refresh (and login) for the e2e user. */
+export function authResponse(email = 'e2e@zerobudget.app') {
+  return { token: 'e2e-token', expiresAtUtc: '2030-01-01T00:00:00Z', userId: 'u1', email, role: 0, displayName: 'Chris' }
+}
+
+/**
+ * Opt a page into a signed-in session: POST /auth/refresh restores it, which is how the SPA now
+ * bootstraps auth on a cold load (the access token lives in memory, not localStorage). Registered
+ * after the catch-all so it wins for the refresh route.
+ */
+export async function mockSignedIn(page: Page, email = 'e2e@zerobudget.app') {
+  await page.route('**/api/auth/refresh', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authResponse(email)) }),
+  )
+}
+
+/** Sign in as the Owner (refresh session + email + completed onboarding) and stub the API. */
 export async function authedSetup(page: Page, theme: 'light' | 'dark') {
   await page.addInitScript(
     ({ t, done }) => {
       localStorage.setItem('zbb.theme', t)
-      localStorage.setItem('zbb.token', 'e2e-token')
       localStorage.setItem('zbb.email', 'e2e@zerobudget.app')
       localStorage.setItem('zbb.onboarding:e2e@zerobudget.app', done)
     },
     { t: theme, done: ONBOARDING_DONE },
   )
   await page.route('**/api/**', mockApi)
+  await mockSignedIn(page)
 }
 
 /** The authenticated routes that render an AppShell page, for full-app scans. */

@@ -35,8 +35,13 @@ describe('AcceptInvitePage', () => {
   })
 
   it('redeems the invite token from the URL', async () => {
-    mockPost.mockResolvedValue({
-      data: { token: 'jwt', expiresAtUtc: '2030-01-01T00:00:00Z', userId: 'u2', email: 'liza@x.com', role: 2, displayName: 'Liza' },
+    mockPost.mockImplementation((url: string) => {
+      // The cookie-bootstrap refresh fails for a signed-out invitee, so the form (not the
+      // "already signed in" variant) renders.
+      if (url === '/auth/refresh') return Promise.reject({ response: { status: 401 } })
+      return Promise.resolve({
+        data: { token: 'jwt', expiresAtUtc: '2030-01-01T00:00:00Z', userId: 'u2', email: 'liza@x.com', role: 2, displayName: 'Liza' },
+      })
     })
     const user = userEvent.setup()
 
