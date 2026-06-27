@@ -1,12 +1,11 @@
 import type { ComponentType } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext'
 import { useFeatures } from '../features/FeatureContext'
 import { useHousehold } from '../features/HouseholdContext'
-import { AccessIcon, AccountsIcon, AllocationIcon, DashboardIcon, FundsIcon, MembersIcon, ReportsIcon, TransactionsIcon } from './icons'
+import { AccountsIcon, AllocationIcon, DashboardIcon, FundsIcon, MembersIcon, ReportsIcon, TransactionsIcon } from './icons'
 import { EVENTS, track } from '../analytics'
 
-export type NavKey = 'budget' | 'transactions' | 'accounts' | 'funds' | 'members' | 'allocation' | 'reports' | 'access'
+export type NavKey = 'budget' | 'transactions' | 'accounts' | 'funds' | 'members' | 'people' | 'allocation' | 'reports' | 'access'
 
 /**
  * The primary navigation, rendered as a vertical list inside the sidebar. The
@@ -24,7 +23,6 @@ export function AppNav({
   onNavigate?: () => void
 }) {
   const features = useFeatures()
-  const { canManageHousehold } = useAuth()
   const { isShared } = useHousehold()
 
   const items: {
@@ -38,10 +36,9 @@ export function AppNav({
     { key: 'transactions', to: '/transactions', label: 'Transactions', icon: TransactionsIcon, show: true },
     { key: 'accounts', to: '/accounts', label: 'Accounts', icon: AccountsIcon, show: features.accounts },
     { key: 'funds', to: '/funds', label: 'Funds', icon: FundsIcon, show: features.sinkingFunds },
-    { key: 'members', to: '/members', label: 'Members', icon: MembersIcon, show: features.householdAllocation && isShared },
+    { key: 'people', to: '/people', label: 'People', icon: MembersIcon, show: features.householdAllocation && isShared },
     { key: 'allocation', to: '/allocation', label: 'Allocation', icon: AllocationIcon, show: features.householdAllocation && isShared },
     { key: 'reports', to: '/reports', label: 'Reports', icon: ReportsIcon, show: features.reports },
-    { key: 'access', to: '/access', label: 'Members & access', icon: AccessIcon, show: features.householdAccess && canManageHousehold },
   ]
 
   return (

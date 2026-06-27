@@ -160,10 +160,10 @@ export function AllocationPage() {
         />
         <EmptyState
           icon={<AllocationIcon className="h-6 w-6" />}
-          title="Add household members first"
+          title="Add people first"
           description="Allocation pools everyone’s income and divides the surplus into each person’s savings, so it needs the people you share money with. Add them to set this up."
         >
-          <Button onClick={() => navigate('/members')}>Add household members</Button>
+          <Button onClick={() => navigate('/people')}>Add people</Button>
         </EmptyState>
       </AppShell>
     )

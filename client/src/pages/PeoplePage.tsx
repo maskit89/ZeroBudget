@@ -1,0 +1,754 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import axios from 'axios'
+import { AppShell } from '../components/AppShell'
+import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, Select, SegmentedControl } from '../components/ui'
+import { MembersIcon, CopyIcon } from '../components/icons'
+import { useAuth } from '../auth/AuthContext'
+import { useHousehold } from '../features/HouseholdContext'
+import { useFeatures } from '../features/FeatureContext'
+import { api } from '../lib/api'
+import { EVENTS, track } from '../analytics'
+import {
+  HouseholdRole,
+  HOUSEHOLD_ROLE_HINTS,
+  HOUSEHOLD_ROLE_LABELS,
+  InviteMethod,
+  MembershipStatus,
+  type AccountDto,
+  type HouseholdMemberDto,
+  type InviteResultDto,
+  type MemberSpendingDto,
+  type MembershipDto,
+} from '../types'
+import { formatMoney, fromAmount, parseMinor, toAmount, toEditString } from '../lib/money'
+
+/** Roles the owner can grant (everything except Owner itself). */
+const GRANTABLE_ROLES = [HouseholdRole.Admin, HouseholdRole.Limited, HouseholdRole.ReadOnly]
+
+function inviteLinkFor(token: string): string {
+  return `${window.location.origin}/accept-invite?code=${token}`
+}
+
+/** Parse a non-negative amount string into a wire decimal; '' → 0; null when invalid. */
+function parseAmount(input: string): number | null {
+  if (input.trim() === '') return 0
+  const minor = parseMinor(input)
+  return minor === null ? null : toAmount(minor)
+}
+
+function sharePct(share: number): string {
+  return `${(share * 100).toFixed(1)}%`
+}
+
+/**
+ * The household's people in one place: each person's budget details (income, savings, share)
+ * together with their sign-in and access level. Adding a person never requires an account —
+ * inviting them to sign in is a separate, optional step on the same row. Budget edits need
+ * Admin+ (canWrite); managing sign-ins/roles is owner-only (canManageHousehold).
+ */
+export function PeoplePage() {
+  const { canWrite, canManageHousehold, preferredCurrency } = useAuth()
+  const { refresh: refreshHousehold } = useHousehold()
+  const features = useFeatures()
+  const CURRENCY = preferredCurrency
+
+  const [members, setMembers] = useState<HouseholdMemberDto[]>([])
+  const [memberships, setMemberships] = useState<MembershipDto[]>([])
+  const [accounts, setAccounts] = useState<AccountDto[]>([])
+  const [spending, setSpending] = useState<MemberSpendingDto[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [savingId, setSavingId] = useState<string | null>(null)
+
+  // Add-a-person form.
+  const [name, setName] = useState('')
+  const [income, setIncome] = useState('')
+  const [savings, setSavings] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  // Inline budget edit.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [eName, setEName] = useState('')
+  const [eIncome, setEIncome] = useState('')
+  const [eSavings, setESavings] = useState('')
+
+  // Invite form (owner-only). `invitePersonId` links the new login to a budget person.
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [invitePersonId, setInvitePersonId] = useState('')
+  const [iEmail, setIEmail] = useState('')
+  const [iName, setIName] = useState('')
+  const [iRole, setIRole] = useState<number>(HouseholdRole.Admin)
+  const [iMethod, setIMethod] = useState<'direct' | 'link'>('link')
+  const [iTempPassword, setITempPassword] = useState('')
+  const [inviting, setInviting] = useState(false)
+  const [inviteLink, setInviteLink] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const canAccess = features.householdAccess && canManageHousehold
+
+  const reloadAll = useCallback(async () => {
+    const [m, acc, spend, mem] = await Promise.all([
+      api.get<HouseholdMemberDto[]>('/members'),
+      api.get<AccountDto[]>('/accounts').catch(() => ({ data: [] as AccountDto[] })),
+      api.get<MemberSpendingDto[]>('/members/spending').catch(() => ({ data: [] as MemberSpendingDto[] })),
+      api.get<MembershipDto[]>('/access/members').catch(() => ({ data: [] as MembershipDto[] })),
+    ])
+    setMembers(m.data)
+    setAccounts(Array.isArray(acc?.data) ? acc.data : [])
+    setSpending(Array.isArray(spend?.data) ? spend.data : [])
+    setMemberships(Array.isArray(mem?.data) ? mem.data : [])
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    reloadAll()
+      .catch(() => !cancelled && setError('Could not load your household.'))
+      .finally(() => !cancelled && setLoading(false))
+    return () => {
+      cancelled = true
+    }
+  }, [reloadAll])
+
+  // The login (membership) linked to a given budget person, if any.
+  const membershipByMember = useMemo(() => {
+    const map = new Map<string, MembershipDto>()
+    for (const m of memberships) if (m.memberId) map.set(m.memberId, m)
+    return map
+  }, [memberships])
+
+  // Logins not tied to any budget person (so their access isn't hidden).
+  const orphanLogins = useMemo(
+    () => memberships.filter((m) => !m.memberId),
+    [memberships],
+  )
+
+  function accountName(id: string | null): string {
+    if (!id) return '—'
+    return accounts.find((a) => a.id === id)?.name ?? '—'
+  }
+
+  function memberSpent(id: string): number {
+    return spending.find((s) => s.memberId === id)?.spent ?? 0
+  }
+
+  const addMember = useCallback(async () => {
+    if (name.trim() === '') {
+      setError('Give the person a name.')
+      return
+    }
+    const netMonthlyIncome = parseAmount(income)
+    if (netMonthlyIncome === null) {
+      setError('Enter a valid monthly income.')
+      return
+    }
+    setAdding(true)
+    setError(null)
+    try {
+      await api.post<HouseholdMemberDto>('/members', {
+        name: name.trim(),
+        netMonthlyIncome,
+        personalSavingsAccountId: savings || null,
+      })
+      track(EVENTS.memberAdded)
+      await reloadAll()
+      await refreshHousehold() // adding a 2nd person flips solo → shared
+      setName('')
+      setIncome('')
+      setSavings('')
+    } catch {
+      setError('Could not add that person.')
+    } finally {
+      setAdding(false)
+    }
+  }, [name, income, savings, reloadAll, refreshHousehold])
+
+  function startEdit(m: HouseholdMemberDto) {
+    setEditingId(m.id)
+    setEName(m.name)
+    setEIncome(toEditString(fromAmount(m.netMonthlyIncome)))
+    setESavings(m.personalSavingsAccountId ?? '')
+  }
+
+  const saveEdit = useCallback(
+    async (id: string) => {
+      if (eName.trim() === '') {
+        setError('Give the person a name.')
+        return
+      }
+      const netMonthlyIncome = parseAmount(eIncome)
+      if (netMonthlyIncome === null) {
+        setError('Enter a valid monthly income.')
+        return
+      }
+      setSavingId(id)
+      setError(null)
+      try {
+        await api.put<HouseholdMemberDto>(`/members/${id}`, {
+          name: eName.trim(),
+          netMonthlyIncome,
+          personalSavingsAccountId: eSavings || null,
+        })
+        track(EVENTS.memberEdited)
+        await reloadAll()
+        setEditingId(null)
+      } catch {
+        setError('Could not save that person.')
+      } finally {
+        setSavingId(null)
+      }
+    },
+    [eName, eIncome, eSavings, reloadAll],
+  )
+
+  const archive = useCallback(
+    async (id: string) => {
+      setSavingId(id)
+      setError(null)
+      try {
+        await api.put(`/members/${id}/archive`, { archived: true })
+        await reloadAll()
+        await refreshHousehold()
+      } catch {
+        setError('Could not archive that person.')
+      } finally {
+        setSavingId(null)
+      }
+    },
+    [reloadAll, refreshHousehold],
+  )
+
+  function openInviteFor(personId: string) {
+    setInvitePersonId(personId)
+    setInviteOpen(true)
+    setInviteLink(null)
+    setCopied(false)
+    const person = members.find((p) => p.id === personId)
+    setIName(person?.name ?? '')
+    setIEmail('')
+    setITempPassword('')
+    setIMethod('link')
+  }
+
+  const invite = useCallback(async () => {
+    if (iEmail.trim() === '') {
+      setError('Enter an email address.')
+      return
+    }
+    if (iMethod === 'direct' && iTempPassword.length < 8) {
+      setError('Set a temporary password of at least 8 characters.')
+      return
+    }
+    setInviting(true)
+    setError(null)
+    setInviteLink(null)
+    setCopied(false)
+    try {
+      const { data } = await api.post<InviteResultDto>('/access/invite', {
+        email: iEmail.trim(),
+        role: iRole,
+        method: iMethod === 'direct' ? InviteMethod.Direct : InviteMethod.Link,
+        tempPassword: iMethod === 'direct' ? iTempPassword : null,
+        displayName: iName.trim() || null,
+        memberId: invitePersonId || null,
+      })
+      if (data.inviteToken) setInviteLink(inviteLinkFor(data.inviteToken))
+      track(EVENTS.memberInvited, { method: iMethod })
+      await reloadAll()
+      setIEmail('')
+      setIName('')
+      setITempPassword('')
+    } catch (err) {
+      setError(inviteError(err))
+    } finally {
+      setInviting(false)
+    }
+  }, [iEmail, iName, iRole, iMethod, iTempPassword, invitePersonId, reloadAll])
+
+  const changeRole = useCallback(
+    async (id: string, role: number) => {
+      setSavingId(id)
+      setError(null)
+      try {
+        await api.put(`/access/members/${id}/role`, { role })
+        track(EVENTS.memberRoleChanged, { kind: HOUSEHOLD_ROLE_LABELS[role] ?? 'unknown' })
+        await reloadAll()
+      } catch {
+        setError('Could not change that role.')
+      } finally {
+        setSavingId(null)
+      }
+    },
+    [reloadAll],
+  )
+
+  const revoke = useCallback(
+    async (id: string) => {
+      setSavingId(id)
+      setError(null)
+      try {
+        await api.delete(`/access/members/${id}`)
+        track(EVENTS.memberRevoked)
+        await reloadAll()
+      } catch {
+        setError('Could not remove that sign-in.')
+      } finally {
+        setSavingId(null)
+      }
+    },
+    [reloadAll],
+  )
+
+  const linkLoginToPerson = useCallback(
+    async (membershipId: string, memberId: string) => {
+      setSavingId(membershipId)
+      setError(null)
+      try {
+        await api.put(`/access/members/${membershipId}/link`, { memberId: memberId || null })
+        await reloadAll()
+      } catch (err) {
+        setError(inviteError(err))
+      } finally {
+        setSavingId(null)
+      }
+    },
+    [reloadAll],
+  )
+
+  async function copyLink() {
+    if (!inviteLink) return
+    try {
+      await navigator.clipboard.writeText(inviteLink)
+      setCopied(true)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  return (
+    <AppShell active="people">
+      <PageHeader
+        title="People"
+        subtitle="Everyone in your budget. Add a person to track their income and share of costs — and, when you're ready, invite them to sign in with their own access level."
+      />
+
+      {error && <ErrorBanner>{error}</ErrorBanner>}
+
+      {canWrite && (
+        <Card className="p-4">
+          <h2 className="mb-3 text-sm font-semibold text-slate-700">Add a person</h2>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-slate-500">
+              Name
+              <Input
+                type="text"
+                value={name}
+                placeholder="First name"
+                aria-label="Person name"
+                onChange={(e) => setName(e.target.value)}
+                className="min-w-32"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+              Net monthly income
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={income}
+                placeholder="0,00"
+                aria-label="Net monthly income"
+                onChange={(e) => setIncome(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') addMember()
+                }}
+                className="w-36 text-right tabular-nums"
+              />
+            </label>
+            {accounts.length > 0 && (
+              <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+                Savings account
+                <Select
+                  value={savings}
+                  aria-label="Savings account"
+                  onChange={(e) => setSavings(e.target.value)}
+                  className="w-40"
+                >
+                  <option value="">None</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            )}
+            <Button onClick={addMember} disabled={adding} aria-label="Add person">
+              Add
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {loading && <p className="text-slate-500">Loading…</p>}
+
+      {!loading && members.length === 0 && (
+        <EmptyState
+          icon={<MembersIcon className="h-6 w-6" />}
+          title="Budgeting on your own?"
+          description="You don’t need anyone else to use ZeroBudget. If you share money with a partner or housemate, add them here to split shared costs, divide savings, and give them their own sign-in."
+        />
+      )}
+
+      {members.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <th className="px-4 py-2 font-medium">Person</th>
+                  <th className="px-4 py-2 text-right font-medium">Net monthly income</th>
+                  <th className="px-4 py-2 text-right font-medium">Income share</th>
+                  <th className="px-4 py-2 text-right font-medium">Spent</th>
+                  <th className="px-4 py-2 font-medium">Savings</th>
+                  <th className="px-4 py-2 font-medium">Sign-in &amp; access</th>
+                  <th className="px-4 py-2" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {members.map((m) => {
+                  const editing = editingId === m.id
+                  const login = membershipByMember.get(m.id)
+                  return (
+                    <tr key={m.id} className="hover:bg-slate-50 align-top">
+                      <td className="px-4 py-2.5 font-medium text-slate-700">
+                        {editing ? (
+                          <input
+                            type="text"
+                            value={eName}
+                            aria-label={`Name for ${m.name}`}
+                            onChange={(e) => setEName(e.target.value)}
+                            className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+                          />
+                        ) : (
+                          m.name
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">
+                        {editing ? (
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={eIncome}
+                            aria-label={`Net monthly income for ${m.name}`}
+                            onChange={(e) => setEIncome(e.target.value)}
+                            className="w-32 rounded-md border border-slate-300 px-2 py-1 text-right text-sm tabular-nums"
+                          />
+                        ) : (
+                          formatMoney(fromAmount(m.netMonthlyIncome), CURRENCY)
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-500">{sharePct(m.incomeSharePct)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">
+                        {formatMoney(fromAmount(memberSpent(m.id)), CURRENCY)}
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-500">
+                        {editing ? (
+                          <select
+                            value={eSavings}
+                            aria-label={`Savings account for ${m.name}`}
+                            onChange={(e) => setESavings(e.target.value)}
+                            className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-600"
+                          >
+                            <option value="">None</option>
+                            {accounts.map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {a.name}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          accountName(m.personalSavingsAccountId)
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {login ? (
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-700">{login.email}</span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {login.status === MembershipStatus.Invited && <Badge tone="amber">Invited</Badge>}
+                              {canAccess && !login.isOwner && !login.isSelf ? (
+                                <select
+                                  value={String(login.role)}
+                                  aria-label={`Access level for ${m.name}`}
+                                  disabled={savingId === login.id}
+                                  onChange={(e) => changeRole(login.id, Number(e.target.value))}
+                                  className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600"
+                                >
+                                  {GRANTABLE_ROLES.map((r) => (
+                                    <option key={r} value={r}>
+                                      {HOUSEHOLD_ROLE_LABELS[r]}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <Badge tone={login.isOwner ? 'brand' : 'neutral'}>{HOUSEHOLD_ROLE_LABELS[login.role]}</Badge>
+                              )}
+                              {canAccess && !login.isOwner && !login.isSelf && (
+                                <button
+                                  type="button"
+                                  onClick={() => revoke(login.id)}
+                                  disabled={savingId === login.id}
+                                  aria-label={`Remove sign-in for ${m.name}`}
+                                  className="rounded-md px-1.5 py-0.5 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ) : canAccess ? (
+                          <button
+                            type="button"
+                            onClick={() => openInviteFor(m.id)}
+                            className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                          >
+                            Invite to sign in
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-400">No sign-in</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        {canWrite && (
+                          <div className="flex justify-end gap-1">
+                            {editing ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => saveEdit(m.id)}
+                                  disabled={savingId === m.id}
+                                  aria-label={`Save ${m.name}`}
+                                  className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingId(null)}
+                                  aria-label="Cancel edit"
+                                  className="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-100"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => startEdit(m)}
+                                  aria-label={`Edit ${m.name}`}
+                                  title="Edit person"
+                                  className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                                >
+                                  ✎
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => archive(m.id)}
+                                  disabled={savingId === m.id}
+                                  aria-label={`Archive ${m.name}`}
+                                  title="Archive person"
+                                  className="rounded-md px-2 py-1 text-slate-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                                >
+                                  ✕
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* Invite form — opened from a person's "Invite to sign in", owner-only. */}
+      {canAccess && inviteOpen && (
+        <Card as="section" className="p-5" aria-labelledby="invite-heading">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 id="invite-heading" className="text-sm font-semibold text-slate-700">
+              Invite {members.find((p) => p.id === invitePersonId)?.name ?? 'someone'} to sign in
+            </h2>
+            <button
+              type="button"
+              onClick={() => setInviteOpen(false)}
+              className="text-xs font-medium text-slate-500 hover:text-slate-700"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+              Email
+              <Input
+                type="email"
+                value={iEmail}
+                onChange={(e) => setIEmail(e.target.value)}
+                placeholder="liza@example.eu"
+                aria-label="Invitee email"
+                className="w-full"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+              Access level
+              <Select
+                value={String(iRole)}
+                onChange={(e) => setIRole(Number(e.target.value))}
+                aria-label="Access level"
+                className="w-full"
+              >
+                {GRANTABLE_ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {HOUSEHOLD_ROLE_LABELS[r]}
+                  </option>
+                ))}
+              </Select>
+              <span className="text-xs font-normal text-slate-500">{HOUSEHOLD_ROLE_HINTS[iRole]}</span>
+            </label>
+          </div>
+
+          <div className="mt-4">
+            <div className="mb-2 text-xs font-medium text-slate-500">How should they get access?</div>
+            <SegmentedControl
+              ariaLabel="Invite method"
+              value={iMethod}
+              onChange={setIMethod}
+              options={[
+                { value: 'link', label: 'Generate an invite link' },
+                { value: 'direct', label: 'Set a temporary password' },
+              ]}
+            />
+          </div>
+
+          {iMethod === 'direct' ? (
+            <label className="mt-4 flex max-w-xs flex-col gap-1 text-xs font-medium text-slate-500">
+              Temporary password
+              <Input
+                type="text"
+                value={iTempPassword}
+                onChange={(e) => setITempPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                aria-label="Temporary password"
+                className="w-full"
+              />
+              <span className="font-normal text-slate-500">Only works for someone without an account yet.</span>
+            </label>
+          ) : (
+            <p className="mt-4 max-w-md text-xs text-slate-500">
+              A one-time link is created for you to copy and send. If they already have an account, they accept it
+              while signed in; otherwise they set a password when they open it.
+            </p>
+          )}
+
+          <div className="mt-5">
+            <Button onClick={invite} disabled={inviting}>
+              {inviting ? 'Inviting…' : iMethod === 'direct' ? 'Create login' : 'Create invite link'}
+            </Button>
+          </div>
+
+          {inviteLink && (
+            <div className="mt-4 rounded-lg border border-brand-200 bg-brand-50 p-4 dark:border-brand-500/30 dark:bg-brand-500/10">
+              <p className="text-sm font-medium text-brand-800 dark:text-brand-200">Invite link created</p>
+              <p className="mt-1 text-xs text-brand-700/80 dark:text-brand-200/80">
+                Copy this and send it to them — it works once and expires in 7 days.
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <Input readOnly value={inviteLink} aria-label="Invite link" className="w-full font-mono text-xs" />
+                <Button variant="secondary" size="sm" onClick={copyLink} aria-label="Copy invite link">
+                  <CopyIcon className="h-4 w-4" />
+                  {copied ? 'Copied' : 'Copy'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Sign-ins not tied to a budget person — so their access is never hidden. */}
+      {canAccess && orphanLogins.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Other sign-ins
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-slate-100">
+                {orphanLogins.map((login) => (
+                  <tr key={login.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-2.5">
+                      <div className="font-medium text-slate-700">{login.displayName ?? login.email}</div>
+                      {login.displayName && <div className="text-xs text-slate-500">{login.email}</div>}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {login.status === MembershipStatus.Invited ? <Badge tone="amber">Invited</Badge> : <Badge tone="brand">Active</Badge>}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Badge tone={login.isOwner ? 'brand' : 'neutral'}>{HOUSEHOLD_ROLE_LABELS[login.role]}</Badge>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {!login.isOwner && (
+                        <select
+                          value=""
+                          aria-label={`Link ${login.email} to a person`}
+                          disabled={savingId === login.id}
+                          onChange={(e) => e.target.value && linkLoginToPerson(login.id, e.target.value)}
+                          className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600"
+                        >
+                          <option value="">Link to a person…</option>
+                          {members
+                            .filter((p) => !membershipByMember.has(p.id))
+                            .map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                        </select>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      {!login.isOwner && !login.isSelf && (
+                        <button
+                          type="button"
+                          onClick={() => revoke(login.id)}
+                          disabled={savingId === login.id}
+                          aria-label={`Remove ${login.displayName ?? login.email}`}
+                          className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+    </AppShell>
+  )
+}
+
+function inviteError(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as { title?: string; error?: string; errors?: Record<string, string[]> } | undefined
+    const fieldError = data?.errors ? Object.values(data.errors).flat().join(' ') : undefined
+    return fieldError ?? data?.error ?? data?.title ?? 'Could not complete that request.'
+  }
+  return 'Could not complete that request.'
+}

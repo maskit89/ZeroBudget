@@ -5,12 +5,11 @@ import { useFeatures } from './features/FeatureContext'
 import { LoginPage } from './pages/LoginPage'
 import { AcceptInvitePage } from './pages/AcceptInvitePage'
 import { AccountPage } from './pages/AccountPage'
-import { HouseholdAccessPage } from './pages/HouseholdAccessPage'
+import { PeoplePage } from './pages/PeoplePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { TransactionsPage } from './pages/TransactionsPage'
 import { AccountsPage } from './pages/AccountsPage'
 import { FundsPage } from './pages/FundsPage'
-import { MembersPage } from './pages/MembersPage'
 import { AllocationPage } from './pages/AllocationPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { ImportPage } from './pages/ImportPage'
@@ -72,14 +71,17 @@ export default function App() {
         )}
         {features.householdAllocation && (
           <Route
-            path="/members"
+            path="/people"
             element={
               <RequireAuth>
-                <MembersPage />
+                <PeoplePage />
               </RequireAuth>
             }
           />
         )}
+        {/* The People page replaces the old Members + Members & access pages. */}
+        <Route path="/members" element={<Navigate to="/people" replace />} />
+        <Route path="/access" element={<Navigate to="/people" replace />} />
         {features.householdAllocation && (
           <Route
             path="/allocation"
@@ -96,16 +98,6 @@ export default function App() {
             element={
               <RequireAuth>
                 <ReportsPage />
-              </RequireAuth>
-            }
-          />
-        )}
-        {features.householdAccess && (
-          <Route
-            path="/access"
-            element={
-              <RequireAuth>
-                <HouseholdAccessPage />
               </RequireAuth>
             }
           />

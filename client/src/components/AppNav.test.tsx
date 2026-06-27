@@ -79,7 +79,7 @@ describe('AppNav (feature flags)', () => {
     expect(screen.queryByText('Reports')).not.toBeInTheDocument()
   })
 
-  it('hides Members and Allocation for a solo household (no members)', { timeout: 15000 }, async () => {
+  it('hides People and Allocation for a solo household (no members)', { timeout: 15000 }, async () => {
     flagsValue = flags({})
     membersData = []
 
@@ -88,10 +88,10 @@ describe('AppNav (feature flags)', () => {
     expect(await screen.findByText('Dashboard', {}, { timeout: 5000 })).toBeInTheDocument()
     // Multi-member surfaces stay hidden until the budget is actually shared.
     await waitFor(() => expect(screen.queryByText('Allocation')).not.toBeInTheDocument())
-    expect(screen.queryByText('Members')).not.toBeInTheDocument()
+    expect(screen.queryByText('People')).not.toBeInTheDocument()
   })
 
-  it('keeps Members and Allocation hidden for a single-member household (still solo)', { timeout: 15000 }, async () => {
+  it('keeps People and Allocation hidden for a single-member household (still solo)', { timeout: 15000 }, async () => {
     flagsValue = flags({})
     membersData = [member()] // one member is still solo — a person is a member
 
@@ -99,16 +99,16 @@ describe('AppNav (feature flags)', () => {
 
     expect(await screen.findByText('Dashboard', {}, { timeout: 5000 })).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByText('Allocation')).not.toBeInTheDocument())
-    expect(screen.queryByText('Members')).not.toBeInTheDocument()
+    expect(screen.queryByText('People')).not.toBeInTheDocument()
   })
 
-  it('reveals Members and Allocation once the household is shared (2+ members)', { timeout: 15000 }, async () => {
+  it('reveals People and Allocation once the household is shared (2+ members)', { timeout: 15000 }, async () => {
     flagsValue = flags({})
     membersData = [member(), member({ id: 'm2', name: 'Liza' })]
 
     renderNav()
 
-    expect(await screen.findByText('Members', {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(await screen.findByText('People', {}, { timeout: 5000 })).toBeInTheDocument()
     expect(screen.getByText('Allocation')).toBeInTheDocument()
   })
 })
