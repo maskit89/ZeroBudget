@@ -89,6 +89,22 @@ jobs:
           printf '%s\n' "$KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
+      # The scp below writes straight into C:\deploy\incoming, so that folder (and
+      # the staging folder the extract step expands into) must exist. They normally
+      # persist on the VPS, but if either goes missing the scp fails with
+      # "dest open ...: No such file or directory" and blocks every deploy. Create
+      # them first so a transient missing dir can't break the pipeline.
+      - name: Ensure VPS deploy dirs exist
+        env:
+          PORT: ${{ secrets.VPS_SSH_PORT }}
+          USER: ${{ secrets.VPS_SSH_USER }}
+          HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$PORT" \
+            -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            "$USER@$HOST" \
+            'powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path C:\deploy\incoming, C:\deploy\staging | Out-Null"'
+
       - name: Copy release to VPS
         env:
           PORT: ${{ secrets.VPS_SSH_PORT }}
