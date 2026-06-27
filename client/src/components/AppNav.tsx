@@ -5,7 +5,7 @@ import { useHousehold } from '../features/HouseholdContext'
 import { AccountsIcon, AllocationIcon, DashboardIcon, FundsIcon, MembersIcon, ReportsIcon, TransactionsIcon } from './icons'
 import { EVENTS, track } from '../analytics'
 
-export type NavKey = 'budget' | 'transactions' | 'accounts' | 'funds' | 'members' | 'people' | 'allocation' | 'reports' | 'access'
+export type NavKey = 'budget' | 'transactions' | 'accounts' | 'funds' | 'people' | 'allocation' | 'reports'
 
 /**
  * The primary navigation, rendered as a vertical list inside the sidebar. The
