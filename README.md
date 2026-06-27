@@ -81,11 +81,12 @@ public bool    IsBalanced        => RemainingToBudget == 0m;
 on every edit so the banner updates dynamically. It handles zero/absent income
 gracefully (it simply returns the negated total planned, never dividing).
 
-A line's **`ActualAmount`** is likewise never authored directly — it is derived at
-read time (see `ZeroBudget.Application.Budgets.BudgetActuals`): the sum of the line's
-assigned transactions when it is in `Tracked` mode, otherwise the user's typed
-`ManualActualAmount`. New lines default to `Manual` so people who don't log
-individual transactions can still record actuals.
+A line's **`ActualAmount`** is likewise never authored directly — it is always derived
+at read time (see `ZeroBudget.Application.Budgets.BudgetActuals`) from the transactions
+assigned to the line: whole transactions of the line's own kind (income lines roll up
+income, expense/fund lines roll up expenses) plus any split slices. A line with no
+transactions reads zero. There is no manual entry — recomputing from the register every
+load keeps a single source of truth that can't drift.
 
 ---
 
@@ -299,6 +300,8 @@ transaction splits, fund ids, bill tracking, and accounts (with `Transaction.Acc
 on delete set null). When the paychecks and rules features were retired,
 `SimplifyRemovePaychecksAndRules` dropped the `Paychecks`, `PaycheckAllocations` and
 `CategorizationRules` tables (the multi-currency schema was deliberately preserved).
+Later, when per-line actuals became transaction-only, `RemoveManualActualEntry` dropped
+the `ManualActualAmount` and `ActualEntryMode` columns.
 The current `DbContext` exposes `BudgetMonths`, `BudgetCategories`, `BudgetItems`,
 `Transactions`, `TransactionSplits` and `Accounts`.
 

@@ -107,8 +107,6 @@ public class SplitTransactionCommandHandler : IRequestHandler<SplitTransactionCo
         foreach (var allocation in request.Allocations)
         {
             var item = items[allocation.BudgetItemId];
-            // Putting spending on a line means it's tracked by transactions.
-            item.ActualEntryMode = ActualEntryMode.Tracked;
 
             _db.TransactionSplits.Add(new TransactionSplit
             {

@@ -13,10 +13,6 @@ interface Props {
   onRename?: (itemId: string, name: string) => void
   /** When provided, a delete affordance is shown. */
   onDelete?: (itemId: string) => void
-  /** When provided, the spent amount is manually editable (unless transaction-tracked). */
-  onCommitActual?: (itemId: string, actualMinor: Minor) => void
-  /** When provided, a toggle switches the line between manual entry and transaction tracking. */
-  onSetActualMode?: (itemId: string, trackByTransactions: boolean) => void
   /** When provided, the line can be tracked as a bill with a due day (null clears it). */
   onSetBill?: (itemId: string, dueDay: number | null) => void
   /** When provided, a bill line shows a paid checkbox. */
@@ -37,8 +33,9 @@ interface Props {
 /**
  * A single budget line: an (optionally) editable name, an inline-editable
  * planned amount parsed straight to integer minor units (no floating point),
- * its actual + remaining, and an optional delete. Commits on blur or Enter
- * (Escape reverts), only when the value actually changed and is valid.
+ * its (read-only, transaction-derived) actual + remaining, and an optional
+ * delete. Commits on blur or Enter (Escape reverts), only when the value
+ * actually changed and is valid.
  */
 export function BudgetItemRow({
   item,
@@ -47,8 +44,6 @@ export function BudgetItemRow({
   onCommit,
   onRename,
   onDelete,
-  onCommitActual,
-  onSetActualMode,
   onSetBill,
   onSetPaid,
   onMove,
@@ -61,14 +56,12 @@ export function BudgetItemRow({
   const { canWrite, canEnterData } = useAuth()
   const [name, setName] = useState(item.name)
   const [draft, setDraft] = useState(toEditString(item.plannedMinor))
-  const [actualDraft, setActualDraft] = useState(toEditString(item.actualMinor))
   const [billEditing, setBillEditing] = useState(false)
   const [billDraft, setBillDraft] = useState(item.dueDay?.toString() ?? '')
 
   // Re-sync when the underlying values change (optimistic update or rollback).
   useEffect(() => setName(item.name), [item.name])
   useEffect(() => setDraft(toEditString(item.plannedMinor)), [item.plannedMinor])
-  useEffect(() => setActualDraft(toEditString(item.actualMinor)), [item.actualMinor])
   useEffect(() => setBillDraft(item.dueDay?.toString() ?? ''), [item.dueDay])
 
   function commitBill() {
@@ -106,20 +99,8 @@ export function BudgetItemRow({
     if (parsed !== item.plannedMinor) onCommit(item.id, parsed)
   }
 
-  function commitActual() {
-    if (!onCommitActual) return
-    const parsed = parseMinor(actualDraft)
-    if (parsed === null) {
-      setActualDraft(toEditString(item.actualMinor)) // revert invalid input
-      return
-    }
-    if (parsed !== item.actualMinor) onCommitActual(item.id, parsed)
-  }
-
   const remaining = itemRemaining(item)
   const overspent = remaining < 0
-  // The spent cell is editable only when manual (no transactions drive it) and you can write.
-  const actualEditable = canWrite && Boolean(onCommitActual) && !item.actualIsTracked
   // A fund line shows its rolled-over available balance instead of the remaining.
   const showAvailable = availableMinor !== undefined && availableMinor !== null
   const fundOverdrawn = showAvailable && (availableMinor as Minor) < 0
@@ -306,48 +287,13 @@ export function BudgetItemRow({
         )}
       </div>
 
-      <div className="col-span-2 flex items-center justify-end gap-1">
-        {canWrite && onSetActualMode && (
-          <button
-            type="button"
-            onClick={() => onSetActualMode(item.id, !item.actualIsTracked)}
-            aria-label={
-              item.actualIsTracked
-                ? `Enter ${item.name} spent manually`
-                : `Track ${item.name} by transactions`
-            }
-            title={
-              item.actualIsTracked
-                ? 'Tracked by transactions — switch to manual entry'
-                : 'Manual entry — switch to transaction tracking'
-            }
-            className="shrink-0 rounded px-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-600"
-          >
-            {item.actualIsTracked ? '🔗' : '✎'}
-          </button>
-        )}
-        {actualEditable ? (
-          <input
-            type="text"
-            inputMode="decimal"
-            value={actualDraft}
-            aria-label={`Spent for ${item.name}`}
-            onChange={(e) => setActualDraft(e.target.value)}
-            onBlur={commitActual}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-              if (e.key === 'Escape') setActualDraft(toEditString(item.actualMinor))
-            }}
-            className="w-16 rounded-lg border border-transparent bg-transparent px-2 py-1 text-right text-sm tabular-nums text-slate-600 transition hover:bg-slate-100 focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-          />
-        ) : (
-          <span
-            className="text-sm tabular-nums text-slate-500"
-            title="Tracked from transactions"
-          >
-            {formatMoney(item.actualMinor, currency)}
-          </span>
-        )}
+      <div className="col-span-2 flex items-center justify-end">
+        <span
+          className="text-sm tabular-nums text-slate-500"
+          title="Total of the transactions assigned to this line"
+        >
+          {formatMoney(item.actualMinor, currency)}
+        </span>
       </div>
 
       {showAvailable ? (

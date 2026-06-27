@@ -13,7 +13,7 @@ ZeroBudget is a zero-based budgeting app for Europe: every euro of income gets a
    - [The Remaining-to-Budget banner](#the-remaining-to-budget-banner)
    - [Income](#income)
    - [Expense groups and lines](#expense-groups-and-lines)
-   - [Spent: manual entry vs transaction tracking](#spent-manual-entry-vs-transaction-tracking)
+   - [Spent: tracked from transactions](#spent-tracked-from-transactions)
    - [Funds (sinking funds)](#funds-sinking-funds)
    - [Bills and reminders](#bills-and-reminders)
    - [Organising groups and lines](#organising-groups-and-lines)
@@ -77,7 +77,7 @@ The large coloured banner shows **Income**, **Assigned**, and the difference —
 The Income group is pinned to the top and can't be deleted. Each income line (e.g. "Salary", "Freelance") has:
 
 - **Planned** — what you expect to receive. This feeds the pool the banner divides up.
-- **Received** — what actually arrived. Type it yourself, or click the **✎ / 🔗** toggle to switch the line to *transaction tracking*, where it totals the income transactions you've assigned to it instead.
+- **Received** — what actually arrived, totalled from the income transactions you've assigned to this line (read-only; €0 until you assign some).
 
 If your pay arrives in several deposits, just add an income line per source (e.g. "Salary", "Benefits") — each has its own planned and received amount.
 
@@ -89,14 +89,9 @@ Below Income come your expense groups ("Housing", "Food", …). Each line shows 
 - Each group has an "add line" affordance for new lines within it.
 - Delete a line or group with **✕** — any transactions assigned to a deleted line simply become unassigned, they are not lost.
 
-### Spent: manual entry vs transaction tracking
+### Spent: tracked from transactions
 
-Every line's **Spent** value comes from one of two modes, toggled per line:
-
-- **Manual (✎)** — you type the spent amount yourself. Perfect if you don't want to log individual transactions.
-- **Tracked (🔗)** — the spent amount is the live total of the transactions assigned to that line, and the cell becomes read-only.
-
-You don't usually need to think about this: the moment you assign a transaction to a line, the line switches itself to Tracked. You can always toggle back.
+Every line's **Spent** value is the live total of the transactions assigned to that line — it's always read-only. To fill it in, assign transactions to the line (or split one across several lines); a line with no transactions shows **€0**.
 
 **How it works:** spent values are never stored as a separate number that can drift — they're recomputed from your transaction register every time the page loads. Income lines total *income* transactions; expense lines total *expense* transactions; split transactions contribute exactly their slice.
 
@@ -106,7 +101,7 @@ A **Fund** group (shown in violet) holds savings goals — "Car repairs", "Holid
 
 - The **Planned** amount on a fund line is this month's *contribution*. It counts toward Assigned, just like an expense.
 - The violet **Available** column is the fund's running balance: every contribution you've ever planned, minus everything you've ever spent from the fund, across all months up to the one you're viewing.
-- Spend from a fund the same way you spend from any line — assign a transaction to it (or enter a manual actual). The Available balance falls accordingly.
+- Spend from a fund the same way you spend from any line — assign a transaction to it. The Available balance falls accordingly.
 
 When you copy a month, fund lines keep their identity, so the balance keeps accumulating.
 
@@ -140,10 +135,7 @@ If you don't pick a budget line, ZeroBudget quietly fills one in for you: it ass
 
 ### Assigning to a budget line
 
-Every transaction row has an assignment dropdown grouped by category. Assigning does two things:
-
-1. The line's Spent (or an income line's Received) now includes this transaction.
-2. The line switches to transaction tracking, if it wasn't already.
+Every transaction row has an assignment dropdown grouped by category. Once assigned, the line's Spent (or an income line's Received) includes this transaction — Spent is always the live total of a line's assigned transactions.
 
 Choose "Unassigned" to detach a transaction again.
 
@@ -182,7 +174,7 @@ The **Reports** page summarises your recent months (up to the last six budgets):
 - **Annual overview** — a January-to-December table for any year (◀ / ▶ to change year): income, spent and net per month, with year totals. Months without a budget show as dashes.
 - **Spending by category** — a breakdown of where the money went in a chosen month (pick any month from the dropdown), sorted largest first with each category's share. Funds count as spending here; income groups don't.
 
-All report figures use the same derivations as the Budget page — spending comes from your actuals (transactions or manual entries), so the reports always agree with the budget.
+All report figures use the same derivations as the Budget page — spending comes from your assigned transactions, so the reports always agree with the budget.
 
 ## 7. Feature flags (for self-hosters)
 
@@ -212,4 +204,4 @@ All flags default to **on**. A disabled feature is enforced server-side too — 
 - **Inline editing everywhere:** click a value, type, press **Enter** (or click away) to save, **Escape** to cancel. A small pulsing dot means a save is in flight; failed saves roll back and show an error.
 - **Don't fear deletes:** deleting budget lines or accounts never deletes transactions — they just become unassigned/untagged.
 - **The banner won't balance?** Remember funds count as assignments. If you're over-budgeted, trimming a fund contribution is often the easiest fix.
-- **A line's Spent cell is read-only?** It's in transaction-tracking mode (🔗). That's by design — its value is the sum of its transactions. Toggle to ✎ if you'd rather type a number.
+- **A line's Spent cell is read-only?** That's by design — every line's Spent is the sum of the transactions assigned to it. To change it, assign (or unassign) transactions on the Transactions page.

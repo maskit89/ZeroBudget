@@ -147,23 +147,6 @@ public class AutoCategorizationTests
         tx.BudgetItemId.Should().Be(dining.Id);
     }
 
-    [Fact]
-    public async Task Apply_FlipsTheInheritedLineToTracked()
-    {
-        await using var db = NewContext();
-        var groceries = SeedMonthWithFood(db, "user-1", 2026, 6);
-        groceries.ActualEntryMode = ActualEntryMode.Manual;
-        await db.SaveChangesAsync();
-        SeedAssignedTransaction(db, "user-1", "REWE", groceries.Id, new DateOnly(2026, 6, 1));
-
-        var tx = new Transaction { OwnerId = "user-1", Payee = "REWE", Date = new DateOnly(2026, 6, 5), Type = TransactionType.Expense };
-        await AutoCategorizer.ApplyAsync(db, "user-1", new[] { tx }, CancellationToken.None);
-        await db.SaveChangesAsync();
-
-        var reloaded = await db.BudgetItems.AsNoTracking().SingleAsync(i => i.Id == groceries.Id);
-        reloaded.ActualEntryMode.Should().Be(ActualEntryMode.Tracked);
-    }
-
     // --- Manual create integration ------------------------------------------
 
     [Fact]

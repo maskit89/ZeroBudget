@@ -9,7 +9,7 @@ namespace ZeroBudget.Application.Transactions.Commands.SplitTransaction;
 /// must sum to the transaction's total, and each target line must match the
 /// transaction's direction (an expense splits across expense lines, income
 /// across income lines). The whole-transaction assignment is replaced by the
-/// slices, and each target line switches to transaction tracking.
+/// slices, each of which counts toward its target line's Spent.
 /// </summary>
 [AllowLimited]
 public record SplitTransactionCommand(

@@ -28,13 +28,13 @@ function budget(): BudgetMonthDto {
       {
         id: 'c1', name: 'Housing', kind: 'Expense', displayOrder: 0, totalPlanned: 1000, totalActual: 0,
         items: [
-          { id: 'i-rent', name: 'Rent', displayOrder: 0, plannedAmount: 1000, actualAmount: 0, remaining: 1000, isActualTracked: false },
+          { id: 'i-rent', name: 'Rent', displayOrder: 0, plannedAmount: 1000, actualAmount: 0, remaining: 1000},
         ],
       },
       {
         id: 'c2', name: 'Food', kind: 'Expense', displayOrder: 1, totalPlanned: 0, totalActual: 0,
         items: [
-          { id: 'i-food', name: 'Groceries', displayOrder: 0, plannedAmount: 0, actualAmount: 0, remaining: 0, isActualTracked: false },
+          { id: 'i-food', name: 'Groceries', displayOrder: 0, plannedAmount: 0, actualAmount: 0, remaining: 0},
         ],
       },
     ],

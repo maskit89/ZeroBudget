@@ -28,10 +28,10 @@ public class CreateBudgetMonthTests
             .UseInMemoryDatabase($"zbb-{Guid.NewGuid()}")
             .Options);
 
-    // Seeds June 2026: Income(Pay 3000) + Housing(Rent 1000, manual spent 250) in GBP.
+    // Seeds June 2026: Income(Pay 3000) + Housing(Rent 1000, spent 250 via a transaction) in GBP.
     private static void SeedJune(ApplicationDbContext db, string ownerId)
     {
-        db.BudgetMonths.Add(new BudgetMonth
+        var june = new BudgetMonth
         {
             OwnerId = ownerId,
             Year = 2026,
@@ -49,10 +49,20 @@ public class CreateBudgetMonthTests
                     Name = "Housing", DisplayOrder = 1,
                     Items = new List<BudgetItem>
                     {
-                        new() { Name = "Rent", PlannedAmount = 1000m, ManualActualAmount = 250m },
+                        new() { Name = "Rent", PlannedAmount = 1000m },
                     },
                 },
             },
+        };
+        db.BudgetMonths.Add(june);
+        db.SaveChanges();
+
+        // June's Rent has 250 spent — recorded as an assigned transaction, so we can
+        // prove the copied July resets actuals (transactions don't carry over).
+        var rent = june.Categories.Single(c => c.Name == "Housing").Items.Single();
+        db.Transactions.Add(new Transaction
+        {
+            OwnerId = ownerId, BudgetItemId = rent.Id, Amount = 250m, Type = TransactionType.Expense,
         });
         db.SaveChanges();
     }

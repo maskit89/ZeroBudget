@@ -186,8 +186,6 @@ public class ImportPreviewCommitTests
         var saved = await db.Transactions.SingleAsync(t => t.Payee == "AUTOMARKET SER STATION");
         saved.BudgetItemId.Should().Be(groceries.Id);
         saved.MemberId.Should().Be(member.Id);
-        var line = await db.BudgetItems.SingleAsync(i => i.Id == groceries.Id);
-        line.ActualEntryMode.Should().Be(ActualEntryMode.Tracked);
     }
 
     [Fact]
@@ -271,8 +269,6 @@ public class ImportPreviewCommitTests
         saved.Splits.Should().HaveCount(2);
         saved.Splits.Sum(s => s.Amount).Should().Be(35m);
         saved.Splits.Select(s => s.BudgetItemId).Should().BeEquivalentTo(new Guid?[] { food.Id, soap.Id });
-        (await db.BudgetItems.SingleAsync(i => i.Id == soap.Id))
-            .ActualEntryMode.Should().Be(ActualEntryMode.Tracked);
     }
 
     [Fact]

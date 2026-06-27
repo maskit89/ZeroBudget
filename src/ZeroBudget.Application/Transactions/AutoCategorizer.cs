@@ -42,26 +42,12 @@ public static partial class AutoCategorizer
         }
 
         var assigned = 0;
-        var touchedItemIds = new HashSet<Guid>();
         foreach (var tx in candidates)
         {
             if (lineByDescription.TryGetValue(NormalizeDescription(tx.Payee), out var itemId))
             {
                 tx.BudgetItemId = itemId;
-                touchedItemIds.Add(itemId);
                 assigned++;
-            }
-        }
-
-        // A line that now has a transaction on it is tracked by its transactions.
-        if (touchedItemIds.Count > 0)
-        {
-            var items = await db.BudgetItems
-                .Where(i => touchedItemIds.Contains(i.Id))
-                .ToListAsync(cancellationToken);
-            foreach (var item in items)
-            {
-                item.ActualEntryMode = ActualEntryMode.Tracked;
             }
         }
 

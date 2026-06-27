@@ -19,35 +19,12 @@ public class BudgetItem : BaseEntity
     public decimal PlannedAmount { get; set; }
 
     /// <summary>
-    /// The displayed amount spent so far. Derived at read time (see
-    /// ZeroBudget.Application.Budgets.BudgetActuals): the sum of the line's
-    /// assigned expense transactions when it has any, otherwise the user's
-    /// <see cref="ManualActualAmount"/>. Not authored directly.
+    /// The amount spent (or, for an income line, received) so far. Always derived
+    /// at read time (see ZeroBudget.Application.Budgets.BudgetActuals) from the
+    /// transactions assigned to this line — whole transactions of the line's kind
+    /// plus any split slices. Never authored directly.
     /// </summary>
     public decimal ActualAmount { get; set; }
-
-    /// <summary>
-    /// The amount the user typed in manually for this line. Used as the spent
-    /// value when the line has no transactions to roll up — so people who don't
-    /// import or log individual transactions can still track actuals. Mapped to
-    /// decimal(18,4).
-    /// </summary>
-    public decimal ManualActualAmount { get; set; }
-
-    /// <summary>
-    /// The user's chosen way of determining this line's spent amount — type it in
-    /// (<see cref="ActualEntryMode.Manual"/>) or roll it up from assigned
-    /// transactions (<see cref="ActualEntryMode.Tracked"/>). New lines default to
-    /// Manual so people who don't track transactions can just type a value.
-    /// </summary>
-    public ActualEntryMode ActualEntryMode { get; set; } = ActualEntryMode.Manual;
-
-    /// <summary>
-    /// Transient (not persisted): true when <see cref="ActualAmount"/> is being
-    /// driven by transactions rather than the manual value (i.e. mode is Tracked).
-    /// Lets the UI show the spent cell as read-only vs editable.
-    /// </summary>
-    public bool IsActualTracked { get; set; }
 
     /// <summary>
     /// For a line in a <see cref="CategoryKind.Fund"/> group: a stable id shared by

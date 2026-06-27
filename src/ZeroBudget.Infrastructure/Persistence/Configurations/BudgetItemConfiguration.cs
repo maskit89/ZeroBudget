@@ -22,18 +22,9 @@ public class BudgetItemConfiguration : IEntityTypeConfiguration<BudgetItem>
         builder.Property(i => i.ActualAmount)
             .HasPrecision(18, 4);
 
-        builder.Property(i => i.ManualActualAmount)
-            .HasPrecision(18, 4);
-
-        // Stored as the enum's int value; defaults to Manual (0).
-        builder.Property(i => i.ActualEntryMode)
-            .HasConversion<int>()
-            .HasDefaultValue(Domain.Enums.ActualEntryMode.Manual);
-
         builder.Ignore(i => i.Remaining);
 
-        // Transient presentation values derived at read time, never persisted.
-        builder.Ignore(i => i.IsActualTracked);
+        // Transient presentation value derived at read time, never persisted.
         builder.Ignore(i => i.FundAvailable);
 
         // IsBill is derived from DueDay; the columns themselves map by convention.

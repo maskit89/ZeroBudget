@@ -12,8 +12,6 @@ interface Props {
   savingItemId: string | null
   onRenameItem: (itemId: string, name: string) => void
   onCommitPlanned: (itemId: string, plannedMinor: Minor) => void
-  onCommitReceived: (itemId: string, actualMinor: Minor) => void
-  onSetActualMode: (itemId: string, trackByTransactions: boolean) => void
   onDeleteItem: (itemId: string) => void
   onAddItem: (categoryId: string, name: string) => void
 }
@@ -29,8 +27,6 @@ export function IncomeGroup({
   savingItemId,
   onRenameItem,
   onCommitPlanned,
-  onCommitReceived,
-  onSetActualMode,
   onDeleteItem,
   onAddItem,
 }: Props) {
@@ -87,8 +83,6 @@ export function IncomeGroup({
                 saving={savingItemId === item.id}
                 onRename={onRenameItem}
                 onCommitPlanned={onCommitPlanned}
-                onCommitReceived={onCommitReceived}
-                onSetActualMode={onSetActualMode}
                 onDelete={onDeleteItem}
               />
             ))}

@@ -69,9 +69,9 @@ export function HelpPage() {
           and delete with ✕ (deleting a line never deletes its transactions — they just become unassigned).
         </p>
         <p>
-          A line's <strong>Spent</strong> is either typed in by hand (✎) or totalled live from the
-          transactions assigned to it (🔗) — assigning a transaction switches the line to tracking
-          automatically.
+          A line's <strong>Spent</strong> is totalled live from the transactions assigned to it — so it's
+          read-only and always matches your register. Assign transactions to a line (or split one across
+          several) to fill it in; a line with no transactions shows €0.
         </p>
       </Section>
 

@@ -14,7 +14,6 @@ import {
   isBalanced,
   billsSummary,
   withItemPlanned,
-  withItemActual,
   withItemBill,
   withItemName,
   withItemPaid,
@@ -48,7 +47,7 @@ function dto(): BudgetMonthDto {
         totalPlanned: 3000,
         totalActual: 0,
         items: [
-          { id: 'pay', name: 'Take-home Pay', displayOrder: 0, plannedAmount: 3000, actualAmount: 0, remaining: 3000, isActualTracked: false },
+          { id: 'pay', name: 'Take-home Pay', displayOrder: 0, plannedAmount: 3000, actualAmount: 0, remaining: 3000},
         ],
       },
       {
@@ -59,7 +58,7 @@ function dto(): BudgetMonthDto {
         totalPlanned: 1100,
         totalActual: 0,
         items: [
-          { id: 'i1', name: 'Rent', displayOrder: 0, plannedAmount: 1100, actualAmount: 200, remaining: 900, isActualTracked: false },
+          { id: 'i1', name: 'Rent', displayOrder: 0, plannedAmount: 1100, actualAmount: 200, remaining: 900},
         ],
       },
       {
@@ -70,7 +69,7 @@ function dto(): BudgetMonthDto {
         totalPlanned: 200,
         totalActual: 0,
         items: [
-          { id: 'i2', name: 'Groceries', displayOrder: 0, plannedAmount: 200, actualAmount: 0, remaining: 200, isActualTracked: false },
+          { id: 'i2', name: 'Groceries', displayOrder: 0, plannedAmount: 200, actualAmount: 0, remaining: 200},
         ],
       },
     ],
@@ -120,7 +119,6 @@ describe('budgetModel selectors', () => {
       displayOrder: 1,
       plannedMinor: fromAmount(500),
       actualMinor: 0,
-      actualIsTracked: false,
     })
 
     expect(totalIncome(next)).toBe(fromAmount(3500))
@@ -134,16 +132,6 @@ describe('budgetModel selectors', () => {
 
     expect(totalIncome(next)).toBe(0)
     expect(remainingToBudget(next)).toBe(fromAmount(-1300)) // 0 income, 1300 planned
-  })
-
-  it('withItemActual sets a line spent immutably; the pool is unaffected', () => {
-    const vm = fromDto(dto())
-    const next = withItemActual(vm, 'i2', fromAmount(50)) // Groceries spent 50
-
-    expect(findItem(vm, 'i2')!.actualMinor).toBe(0) // original untouched
-    expect(findItem(next, 'i2')!.actualMinor).toBe(fromAmount(50))
-    expect(itemRemaining(findItem(next, 'i2')!)).toBe(fromAmount(150)) // 200 planned - 50 spent
-    expect(remainingToBudget(next)).toBe(fromAmount(1700)) // unchanged: spending isn't planning
   })
 
   it('withItemName renames one line immutably', () => {
@@ -199,7 +187,7 @@ describe('budgetModel selectors', () => {
       items: [
         {
           id: 'car', name: 'Car', displayOrder: 0, plannedAmount: 100, actualAmount: 30,
-          remaining: 70, isActualTracked: true, fundId: 'fund-car', fundAvailable: 170,
+          remaining: 70, fundId: 'fund-car', fundAvailable: 170,
         },
       ],
     })
@@ -245,7 +233,7 @@ describe('budgetModel selectors', () => {
 describe('bill reminders', () => {
   const item = (dueDay: number | null, isPaid = false): ItemVM => ({
     id: 'x', name: 'Rent', displayOrder: 0, plannedMinor: 0, actualMinor: 0,
-    actualIsTracked: false, fundAvailableMinor: null, dueDay, isPaid,
+    fundAvailableMinor: null, dueDay, isPaid,
   })
   // Mid-June 2026 — the month under test is 2026-06.
   const today = new Date(2026, 5, 15)

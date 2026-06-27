@@ -5,10 +5,9 @@ export interface BudgetItemDto {
   name: string
   displayOrder: number
   plannedAmount: number
+  /** Spent (or, for income, received) — always derived from the line's assigned transactions. */
   actualAmount: number
   remaining: number
-  /** True when actualAmount is transaction-driven (read-only); false when it's the manual value (editable). */
-  isActualTracked: boolean
   /** Sinking-fund identity for a fund line; null for ordinary lines. */
   fundId: string | null
   /** For a fund line, the running available balance (rolled over from prior months); null otherwise. */

@@ -64,10 +64,6 @@ public class AssignTransactionCommandHandler : IRequestHandler<AssignTransaction
 
             transaction.BudgetItem = item;
             transaction.BudgetItemId = item.Id;
-
-            // Putting a transaction on a line means the user is tracking it by
-            // transactions — switch it out of manual entry so the roll-up shows.
-            item.ActualEntryMode = ActualEntryMode.Tracked;
         }
         else
         {

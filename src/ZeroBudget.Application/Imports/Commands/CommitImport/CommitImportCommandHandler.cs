@@ -64,7 +64,6 @@ public class CommitImportCommandHandler : IRequestHandler<CommitImportCommand, I
 
         int imported = 0, skipped = 0, credits = 0, debits = 0, transfers = 0;
         var created = new List<Transaction>();
-        var touchedItemIds = new HashSet<Guid>();
 
         foreach (var item in request.Items)
         {
@@ -152,12 +151,7 @@ public class CommitImportCommandHandler : IRequestHandler<CommitImportCommand, I
                         MemberId = slice.MemberId,
                         Amount = slice.Amount,
                     });
-                    touchedItemIds.Add(slice.BudgetItemId);
                 }
-            }
-            else if (item.BudgetItemId is Guid lineId)
-            {
-                touchedItemIds.Add(lineId);
             }
 
             _db.Transactions.Add(transaction);
@@ -169,18 +163,6 @@ public class CommitImportCommandHandler : IRequestHandler<CommitImportCommand, I
 
         if (created.Count > 0)
         {
-            // A line that now has a transaction on it is tracked by its transactions.
-            if (touchedItemIds.Count > 0)
-            {
-                var lines = await _db.BudgetItems
-                    .Where(i => touchedItemIds.Contains(i.Id))
-                    .ToListAsync(cancellationToken);
-                foreach (var line in lines)
-                {
-                    line.ActualEntryMode = ActualEntryMode.Tracked;
-                }
-            }
-
             await FxRateResolver.ApplyAsync(_db, _exchangeRates, userId, created, cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
         }

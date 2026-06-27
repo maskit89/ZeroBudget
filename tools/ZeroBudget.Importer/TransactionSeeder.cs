@@ -126,7 +126,6 @@ internal static class TransactionSeeder
             if (target != null)
             {
                 budgetItemId = target.Id;
-                target.ActualEntryMode = ActualEntryMode.Tracked; // assigned spends drive the line's actual
             }
 
             db.Transactions.Add(new Transaction

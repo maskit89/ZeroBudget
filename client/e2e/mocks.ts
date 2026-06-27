@@ -61,15 +61,15 @@ function budgetMonth(year: number, month: number) {
     categories: [
       {
         id: 'inc', name: 'Income', kind: 'Income', displayOrder: 0, totalPlanned: 3000, totalActual: 3000,
-        items: [{ id: 'i-pay', name: 'Take-home Pay', displayOrder: 0, plannedAmount: 3000, actualAmount: 3000, remaining: 0, isActualTracked: false, fundId: null, fundAvailable: null, dueDay: null, isPaid: false }],
+        items: [{ id: 'i-pay', name: 'Take-home Pay', displayOrder: 0, plannedAmount: 3000, actualAmount: 3000, remaining: 0, fundId: null, fundAvailable: null, dueDay: null, isPaid: false }],
       },
       {
         id: 'c1', name: 'Housing', kind: 'Expense', displayOrder: 0, totalPlanned: 1100, totalActual: 200,
-        items: [{ id: 'i-rent', name: 'Rent', displayOrder: 0, plannedAmount: 1100, actualAmount: 200, remaining: 900, isActualTracked: false, fundId: null, fundAvailable: null, dueDay: 1, isPaid: false }],
+        items: [{ id: 'i-rent', name: 'Rent', displayOrder: 0, plannedAmount: 1100, actualAmount: 200, remaining: 900, fundId: null, fundAvailable: null, dueDay: 1, isPaid: false }],
       },
       {
         id: 'f1', name: 'Sinking Funds', kind: 'Fund', displayOrder: 1, totalPlanned: 200, totalActual: 0,
-        items: [{ id: 'i-car', name: 'Car', displayOrder: 0, plannedAmount: 200, actualAmount: 0, remaining: 200, isActualTracked: false, fundId: 'fund-car', fundAvailable: 600, dueDay: null, isPaid: false }],
+        items: [{ id: 'i-car', name: 'Car', displayOrder: 0, plannedAmount: 200, actualAmount: 0, remaining: 200, fundId: 'fund-car', fundAvailable: 600, dueDay: null, isPaid: false }],
       },
     ],
   }

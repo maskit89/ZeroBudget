@@ -19,8 +19,6 @@ interface Props {
   isLast?: boolean
   onMove?: (categoryId: string, direction: -1 | 1) => void
   onCommitItem: (itemId: string, plannedMinor: Minor) => void
-  onCommitActual: (itemId: string, actualMinor: Minor) => void
-  onSetActualMode: (itemId: string, trackByTransactions: boolean) => void
   onSetBill: (itemId: string, dueDay: number | null) => void
   onSetPaid: (itemId: string, isPaid: boolean) => void
   onRenameItem: (itemId: string, name: string) => void
@@ -48,8 +46,6 @@ export function CategoryAccordion({
   isLast = false,
   onMove,
   onCommitItem,
-  onCommitActual,
-  onSetActualMode,
   onSetBill,
   onSetPaid,
   onRenameItem,
@@ -211,8 +207,6 @@ export function CategoryAccordion({
                 isLast={i === arr.length - 1}
                 onMove={moveItem}
                 onCommit={onCommitItem}
-                onCommitActual={onCommitActual}
-                onSetActualMode={onSetActualMode}
                 onSetBill={onSetBill}
                 onSetPaid={onSetPaid}
                 onRename={onRenameItem}
