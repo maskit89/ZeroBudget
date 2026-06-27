@@ -117,11 +117,17 @@ export function PeoplePage() {
     return map
   }, [memberships])
 
-  // Logins not tied to any budget person (so their access isn't hidden).
+  // Logins not tied to any budget person (so their access isn't hidden) — excluding the current
+  // login, which is claimed via "This is me" on the rows below instead.
   const orphanLogins = useMemo(
-    () => memberships.filter((m) => !m.memberId),
+    () => memberships.filter((m) => !m.memberId && !m.isSelf),
     [memberships],
   )
+
+  // The current login, and whether it still needs connecting to a budget person (common for
+  // imported/pre-existing households, where the owner login was never linked to a person).
+  const myMembership = useMemo(() => memberships.find((m) => m.isSelf) ?? null, [memberships])
+  const myUnlinked = myMembership !== null && !myMembership.memberId
 
   function accountName(id: string | null): string {
     if (!id) return '—'
@@ -507,13 +513,26 @@ export function PeoplePage() {
                             </div>
                           </div>
                         ) : canAccess ? (
-                          <button
-                            type="button"
-                            onClick={() => openInviteFor(m.id)}
-                            className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                          >
-                            Invite to sign in
-                          </button>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {myUnlinked && (
+                              <button
+                                type="button"
+                                onClick={() => myMembership && linkLoginToPerson(myMembership.id, m.id)}
+                                disabled={savingId === myMembership?.id}
+                                title="Connect your sign-in to this person"
+                                className="rounded-md bg-brand-600 px-2 py-1 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                              >
+                                This is me
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => openInviteFor(m.id)}
+                              className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                            >
+                              Invite to sign in
+                            </button>
+                          </div>
                         ) : (
                           <span className="text-xs text-slate-400">No sign-in</span>
                         )}
