@@ -43,7 +43,7 @@ function budget(): BudgetMonthDto {
         totalPlanned: 3000,
         totalActual: 0,
         items: [
-          { id: 'i-pay', name: 'Take-home Pay', displayOrder: 0, plannedAmount: 3000, actualAmount: 0, remaining: 3000, isActualTracked: false },
+          { id: 'i-pay', name: 'Take-home Pay', displayOrder: 0, plannedAmount: 3000, actualAmount: 0, remaining: 3000 },
         ],
       },
       {
@@ -54,7 +54,7 @@ function budget(): BudgetMonthDto {
         totalPlanned: 1100,
         totalActual: 0,
         items: [
-          { id: 'i-rent', name: 'Rent', displayOrder: 0, plannedAmount: 1100, actualAmount: 0, remaining: 1100, isActualTracked: false },
+          { id: 'i-rent', name: 'Rent', displayOrder: 0, plannedAmount: 1100, actualAmount: 0, remaining: 1100 },
         ],
       },
     ],
@@ -137,7 +137,7 @@ describe('DashboardPage optimistic editing', () => {
     )
     const withFreelance = budget()
     withFreelance.categories[0].items.push({
-      id: 'i-free', name: 'Freelance', displayOrder: 1, plannedAmount: 0, actualAmount: 0, remaining: 0, isActualTracked: false,
+      id: 'i-free', name: 'Freelance', displayOrder: 1, plannedAmount: 0, actualAmount: 0, remaining: 0,
     })
     mockPost.mockResolvedValue({ data: withFreelance })
     const user = userEvent.setup()
@@ -174,61 +174,17 @@ describe('DashboardPage optimistic editing', () => {
     await waitFor(() => expect(mockDelete).toHaveBeenCalledWith('/budget/items/i-pay'))
   })
 
-  it('saves a manually-entered spent amount for a line', { timeout: 15000 }, async () => {
+  it('shows the transaction-derived spent amount as read-only', { timeout: 15000 }, async () => {
     mockGet.mockImplementation((url: string) =>
       url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
     )
-    mockPut.mockResolvedValue({ data: {} })
-    const user = userEvent.setup()
 
     renderPage()
 
-    const spent = (await screen.findByLabelText('Spent for Rent', {}, { timeout: 5000 })) as HTMLInputElement
-    await user.clear(spent)
-    await user.type(spent, '250')
-    await user.tab() // blur -> commit
-
-    await waitFor(() =>
-      expect(mockPut).toHaveBeenCalledWith('/budget/items/i-rent/actual', { actualAmount: 250 }),
-    )
-  })
-
-  it('saves a manually-entered received amount for an income line', { timeout: 15000 }, async () => {
-    mockGet.mockImplementation((url: string) =>
-      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
-    )
-    mockPut.mockResolvedValue({ data: {} })
-    const user = userEvent.setup()
-
-    renderPage()
-
-    const received = (await screen.findByLabelText('Received for Take-home Pay', {}, { timeout: 5000 })) as HTMLInputElement
-    await user.clear(received)
-    await user.type(received, '1800')
-    await user.tab()
-
-    await waitFor(() =>
-      expect(mockPut).toHaveBeenCalledWith('/budget/items/i-pay/actual', { actualAmount: 1800 }),
-    )
-  })
-
-  it('switches a line to transaction tracking via the mode toggle', { timeout: 15000 }, async () => {
-    mockGet.mockImplementation((url: string) =>
-      url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: budget() }),
-    )
-    const tracked = budget()
-    tracked.categories[1].items[0].isActualTracked = true
-    mockPut.mockResolvedValue({ data: tracked })
-    const user = userEvent.setup()
-
-    renderPage()
-
-    const toggle = await screen.findByLabelText('Track Rent by transactions', {}, { timeout: 5000 })
-    await user.click(toggle)
-
-    await waitFor(() =>
-      expect(mockPut).toHaveBeenCalledWith('/budget/items/i-rent/actual-mode', { trackByTransactions: true }),
-    )
+    // Spent/Received are never editable now — they're totalled from assigned transactions.
+    await screen.findByLabelText('Planned amount for Rent', {}, { timeout: 5000 })
+    expect(screen.queryByLabelText('Spent for Rent')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Received for Take-home Pay')).not.toBeInTheDocument()
   })
 
   it('adds a category group and reconciles from the server response', { timeout: 15000 }, async () => {
@@ -264,7 +220,7 @@ describe('DashboardPage optimistic editing', () => {
     )
     const withFuel = budget()
     withFuel.categories[1].items.push({
-      id: 'i-fuel', name: 'Fuel', displayOrder: 1, plannedAmount: 0, actualAmount: 0, remaining: 0, isActualTracked: false,
+      id: 'i-fuel', name: 'Fuel', displayOrder: 1, plannedAmount: 0, actualAmount: 0, remaining: 0,
     })
     mockPost.mockResolvedValue({ data: withFuel })
     const user = userEvent.setup()
@@ -325,7 +281,7 @@ describe('DashboardPage optimistic editing', () => {
     const b = budget()
     b.categories[1].items.push({
       id: 'i-util', name: 'Utilities', displayOrder: 1,
-      plannedAmount: 100, actualAmount: 0, remaining: 100, isActualTracked: false,
+      plannedAmount: 100, actualAmount: 0, remaining: 100,
     })
     mockGet.mockImplementation((url: string) =>
       url === '/budget/months' ? Promise.resolve({ data: [] }) : Promise.resolve({ data: b }),
@@ -351,7 +307,7 @@ describe('DashboardPage optimistic editing', () => {
       items: [
         {
           id: 'i-car', name: 'Car', displayOrder: 0, plannedAmount: 100, actualAmount: 30,
-          remaining: 70, isActualTracked: true, fundId: 'fund-car', fundAvailable: 170,
+          remaining: 70, fundId: 'fund-car', fundAvailable: 170,
         },
       ],
     })

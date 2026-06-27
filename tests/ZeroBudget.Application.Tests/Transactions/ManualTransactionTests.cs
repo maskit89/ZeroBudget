@@ -15,7 +15,7 @@ namespace ZeroBudget.Application.Tests.Transactions;
 
 /// <summary>
 /// Manually created/deleted transactions, and the rule that assigning a
-/// transaction to a line switches that line to transaction tracking.
+/// transaction to a line rolls it into that line's Spent.
 /// </summary>
 public class ManualTransactionTests
 {
@@ -63,11 +63,10 @@ public class ManualTransactionTests
         dto.Amount.Should().Be(750m);
         dto.BudgetItemId.Should().Be(rentId);
 
-        // The line now tracks transactions and rolls the 750 up as its spent.
+        // The line rolls the 750 up as its spent.
         var month = await new GetBudgetMonthQueryHandler(db, user)
             .Handle(new GetBudgetMonthQuery(2026, 6), CancellationToken.None);
         var rent = month.Categories.SelectMany(c => c.Items).Single(i => i.Id == rentId);
-        rent.IsActualTracked.Should().BeTrue();
         rent.ActualAmount.Should().Be(750m);
     }
 
@@ -113,13 +112,13 @@ public class ManualTransactionTests
     }
 
     [Fact]
-    public async Task Assign_SwitchesAManualLineToTracked()
+    public async Task Assign_RollsTheTransactionIntoTheLineActual()
     {
         await using var db = NewContext();
         var rentId = Seed(db, "user-1");
         var user = new CurrentUserStub("user-1");
 
-        // A standalone transaction, then assigned to the (manual) Rent line.
+        // A standalone transaction, then assigned to the (empty) Rent line.
         var tx = new Transaction
         {
             OwnerId = "user-1",
@@ -137,7 +136,6 @@ public class ManualTransactionTests
         var month = await new GetBudgetMonthQueryHandler(db, user)
             .Handle(new GetBudgetMonthQuery(2026, 6), CancellationToken.None);
         var rent = month.Categories.SelectMany(c => c.Items).Single(i => i.Id == rentId);
-        rent.IsActualTracked.Should().BeTrue();
         rent.ActualAmount.Should().Be(300m);
     }
 

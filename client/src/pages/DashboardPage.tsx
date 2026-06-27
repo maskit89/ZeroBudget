@@ -19,7 +19,6 @@ import {
   remainingToBudget,
   totalIncome,
   withCategoryName,
-  withItemActual,
   withItemBill,
   withItemName,
   withItemPaid,
@@ -194,56 +193,6 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
     [month],
   )
 
-  // Set a line's manual spent amount (for users tracking actuals by hand).
-  // The banner is unaffected — Remaining-to-Budget is about planning, not spending —
-  // but the line's own Remaining recomputes instantly.
-  const commitActual = useCallback(
-    async (itemId: string, actualMinor: Minor) => {
-      if (!month) return
-
-      const snapshot = month
-      setError(null)
-      setSavingItemId(itemId)
-      setMonth(withItemActual(month, itemId, actualMinor)) // optimistic
-
-      try {
-        await api.put(`/budget/items/${itemId}/actual`, { actualAmount: toAmount(actualMinor) })
-      } catch {
-        setMonth(snapshot)
-        setError('Could not save that spent amount — reverted to the previous value.')
-      } finally {
-        setSavingItemId(null)
-      }
-    },
-    [month],
-  )
-
-  // Switch a line between manual spent entry and transaction tracking. The new
-  // actual is server-derived (we don't know the transaction sum client-side), so
-  // we reconcile from the response rather than guessing optimistically.
-  const setActualMode = useCallback(
-    async (itemId: string, trackByTransactions: boolean) => {
-      if (!month) return
-
-      const snapshot = month
-      setError(null)
-      setSavingItemId(itemId)
-
-      try {
-        const { data } = await api.put<BudgetMonthDto>(`/budget/items/${itemId}/actual-mode`, {
-          trackByTransactions,
-        })
-        setMonth(fromDto(data))
-      } catch {
-        setMonth(snapshot)
-        setError('Could not change how that line is tracked — reverted.')
-      } finally {
-        setSavingItemId(null)
-      }
-    },
-    [month],
-  )
-
   // Mark a line as a bill due on a day of the month (or clear it with null).
   const setBill = useCallback(
     async (itemId: string, dueDay: number | null) => {
@@ -332,7 +281,6 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
           displayOrder: Number.MAX_SAFE_INTEGER,
           plannedMinor: 0,
           actualMinor: 0,
-          actualIsTracked: false,
           fundAvailableMinor: null,
           dueDay: null,
           isPaid: false,
@@ -671,8 +619,6 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
                   savingItemId={savingItemId}
                   onRenameItem={renameItem}
                   onCommitPlanned={commitItem}
-                  onCommitReceived={commitActual}
-                  onSetActualMode={setActualMode}
                   onDeleteItem={deleteItem}
                   onAddItem={addItem}
                 />
@@ -691,8 +637,6 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
                     isFirst={i === 0}
                     isLast={i === arr.length - 1}
                     onCommitItem={commitItem}
-                    onCommitActual={commitActual}
-                    onSetActualMode={setActualMode}
                     onSetBill={setBill}
                     onSetPaid={setPaid}
                     onRenameItem={renameItem}
@@ -713,8 +657,6 @@ export function DashboardPage({ today = new Date() }: { today?: Date } = {}) {
                   currency={month.currency}
                   savingItemId={savingItemId}
                   onCommitItem={commitItem}
-                  onCommitActual={commitActual}
-                  onSetActualMode={setActualMode}
                   onRenameItem={renameItem}
                   onDeleteItem={deleteItem}
                   onAddItem={addItem}

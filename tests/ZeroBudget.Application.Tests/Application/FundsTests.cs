@@ -63,7 +63,6 @@ public class FundsTests
             Name = "Car",
             FundId = fundId,
             PlannedAmount = 100m,
-            ActualEntryMode = ActualEntryMode.Tracked,
         };
         june.Categories.Add(new BudgetCategory
         {

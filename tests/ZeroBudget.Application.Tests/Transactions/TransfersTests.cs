@@ -79,7 +79,7 @@ public class TransfersTests
                 new()
                 {
                     Name = "Income", Kind = CategoryKind.Income,
-                    Items = new List<BudgetItem> { new() { Name = "Pay", PlannedAmount = 1000m, ActualEntryMode = ActualEntryMode.Tracked } },
+                    Items = new List<BudgetItem> { new() { Name = "Pay", PlannedAmount = 1000m } },
                 },
             },
         });

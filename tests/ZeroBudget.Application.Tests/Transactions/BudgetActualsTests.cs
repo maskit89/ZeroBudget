@@ -31,7 +31,7 @@ public class BudgetActualsTests
     {
         await using var db = NewContext();
 
-        var rent = new BudgetItem { Name = "Rent", PlannedAmount = 1100m, ActualEntryMode = ActualEntryMode.Tracked };
+        var rent = new BudgetItem { Name = "Rent", PlannedAmount = 1100m };
         var month = new BudgetMonth
         {
             OwnerId = "user-1",
@@ -68,7 +68,7 @@ public class BudgetActualsTests
     {
         await using var db = NewContext();
 
-        var travel = new BudgetItem { Name = "Travel", PlannedAmount = 100m, ActualEntryMode = ActualEntryMode.Tracked };
+        var travel = new BudgetItem { Name = "Travel", PlannedAmount = 100m };
         db.BudgetMonths.Add(new BudgetMonth
         {
             OwnerId = "user-1",

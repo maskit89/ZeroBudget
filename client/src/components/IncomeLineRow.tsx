@@ -9,16 +9,14 @@ interface Props {
   saving: boolean
   onRename: (itemId: string, name: string) => void
   onCommitPlanned: (itemId: string, plannedMinor: Minor) => void
-  onCommitReceived: (itemId: string, actualMinor: Minor) => void
-  onSetActualMode: (itemId: string, trackByTransactions: boolean) => void
   onDelete: (itemId: string) => void
 }
 
 /**
  * A single income source: an editable name, an inline-editable planned amount,
- * a received amount (typed manually, or rolled up from assigned income
- * transactions), plus a tracking toggle and delete. Planned income feeds the
- * pool to allocate; received is just this line's actual inflow.
+ * a (read-only) received amount rolled up from the assigned income
+ * transactions, plus a delete. Planned income feeds the pool to allocate;
+ * received is just this line's actual inflow.
  */
 export function IncomeLineRow({
   item,
@@ -26,19 +24,15 @@ export function IncomeLineRow({
   saving,
   onRename,
   onCommitPlanned,
-  onCommitReceived,
-  onSetActualMode,
   onDelete,
 }: Props) {
   // Editing income lines (structure + amounts) needs Admin+ (canWrite).
   const { canWrite } = useAuth()
   const [name, setName] = useState(item.name)
   const [draft, setDraft] = useState(toEditString(item.plannedMinor))
-  const [receivedDraft, setReceivedDraft] = useState(toEditString(item.actualMinor))
 
   useEffect(() => setName(item.name), [item.name])
   useEffect(() => setDraft(toEditString(item.plannedMinor)), [item.plannedMinor])
-  useEffect(() => setReceivedDraft(toEditString(item.actualMinor)), [item.actualMinor])
 
   function commitName() {
     const trimmed = name.trim()
@@ -57,17 +51,6 @@ export function IncomeLineRow({
     }
     if (parsed !== item.plannedMinor) onCommitPlanned(item.id, parsed)
   }
-
-  function commitReceived() {
-    const parsed = parseMinor(receivedDraft)
-    if (parsed === null) {
-      setReceivedDraft(toEditString(item.actualMinor))
-      return
-    }
-    if (parsed !== item.actualMinor) onCommitReceived(item.id, parsed)
-  }
-
-  const receivedEditable = canWrite && !item.actualIsTracked
 
   return (
     <div className="grid grid-cols-12 items-center gap-2 px-4 py-2.5 hover:bg-emerald-50/40">
@@ -120,45 +103,13 @@ export function IncomeLineRow({
         )}
       </div>
 
-      <div className="col-span-3 flex items-center justify-end gap-1">
-        {canWrite && (
-          <button
-            type="button"
-            onClick={() => onSetActualMode(item.id, !item.actualIsTracked)}
-            aria-label={
-              item.actualIsTracked
-                ? `Enter ${item.name} received manually`
-                : `Track ${item.name} by transactions`
-            }
-            title={
-              item.actualIsTracked
-                ? 'Received from transactions — switch to manual entry'
-                : 'Manual entry — switch to transaction tracking'
-            }
-            className="shrink-0 rounded px-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-600"
-          >
-            {item.actualIsTracked ? '🔗' : '✎'}
-          </button>
-        )}
-        {receivedEditable ? (
-          <input
-            type="text"
-            inputMode="decimal"
-            value={receivedDraft}
-            aria-label={`Received for ${item.name}`}
-            onChange={(e) => setReceivedDraft(e.target.value)}
-            onBlur={commitReceived}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-              if (e.key === 'Escape') setReceivedDraft(toEditString(item.actualMinor))
-            }}
-            className="w-20 rounded-lg border border-transparent bg-transparent px-2 py-1 text-right text-sm tabular-nums text-slate-600 transition hover:bg-slate-100 focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-          />
-        ) : (
-          <span className="text-sm tabular-nums text-slate-500" title="Received from transactions">
-            {formatMoney(item.actualMinor, currency)}
-          </span>
-        )}
+      <div className="col-span-3 flex items-center justify-end">
+        <span
+          className="text-sm tabular-nums text-slate-500"
+          title="Total of the income transactions assigned to this line"
+        >
+          {formatMoney(item.actualMinor, currency)}
+        </span>
       </div>
 
       <div className="col-span-1 flex justify-end">

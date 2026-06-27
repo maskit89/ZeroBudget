@@ -9,8 +9,6 @@ using ZeroBudget.Application.Budgets.Commands.DeleteBudgetItem;
 using ZeroBudget.Application.Budgets.Commands.RenameBudgetCategory;
 using ZeroBudget.Application.Budgets.Commands.ReorderBudgetCategories;
 using ZeroBudget.Application.Budgets.Commands.ReorderBudgetItems;
-using ZeroBudget.Application.Budgets.Commands.SetBudgetItemActual;
-using ZeroBudget.Application.Budgets.Commands.SetBudgetItemActualMode;
 using ZeroBudget.Application.Budgets.Commands.SetBudgetItemBill;
 using ZeroBudget.Application.Budgets.Commands.SetBudgetItemPaid;
 using ZeroBudget.Application.Budgets.Commands.UpdateBudgetItem;
@@ -205,43 +203,6 @@ public class BudgetController : ControllerBase
     }
 
     /// <summary>
-    /// Sets a line's manually-entered spent amount (for users tracking actuals by
-    /// hand) and returns the recomputed month. Ignored on lines that have
-    /// transactions — those drive the displayed actual.
-    /// </summary>
-    [HttpPut("items/{id:guid}/actual")]
-    [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BudgetMonthDto>> SetItemActual(
-        Guid id,
-        SetBudgetItemActualRequest request,
-        CancellationToken ct)
-    {
-        var result = await _mediator.Send(new SetBudgetItemActualCommand(id, request.ActualAmount), ct);
-        return Ok(result);
-    }
-
-    /// <summary>
-    /// Switches a line between manual spent entry and transaction tracking, and
-    /// returns the recomputed month.
-    /// </summary>
-    [HttpPut("items/{id:guid}/actual-mode")]
-    [ProducesResponseType(typeof(BudgetMonthDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BudgetMonthDto>> SetItemActualMode(
-        Guid id,
-        SetBudgetItemActualModeRequest request,
-        CancellationToken ct)
-    {
-        var result = await _mediator.Send(
-            new SetBudgetItemActualModeCommand(id, request.TrackByTransactions), ct);
-        return Ok(result);
-    }
-
-    /// <summary>
     /// Marks a line as a bill due on a day of the month (1–31), or clears the bill
     /// when dueDay is null. Returns the recomputed month.
     /// </summary>
@@ -293,12 +254,6 @@ public record UpdateBudgetItemRequest(decimal PlannedAmount, string? Name = null
 
 /// <summary>Request body for adding a budget line (the category id comes from the route).</summary>
 public record AddBudgetItemRequest(string Name, decimal PlannedAmount = 0m);
-
-/// <summary>Request body for setting a line's manual spent amount (the id comes from the route).</summary>
-public record SetBudgetItemActualRequest(decimal ActualAmount);
-
-/// <summary>Request body for switching a line's actual-entry mode (the id comes from the route).</summary>
-public record SetBudgetItemActualModeRequest(bool TrackByTransactions);
 
 /// <summary>Request body for setting/clearing a line's bill due day (null clears the bill).</summary>
 public record SetBudgetItemBillRequest(int? DueDay);

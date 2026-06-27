@@ -6,15 +6,14 @@ using ZeroBudget.Domain.Enums;
 namespace ZeroBudget.Application.Budgets;
 
 /// <summary>
-/// Derives each budget line's <see cref="BudgetItem.ActualAmount"/> from its
-/// chosen <see cref="BudgetItem.ActualEntryMode"/>:
-///   Tracked — the sum of the assigned transactions of the line's own kind
-///             (income lines roll up income transactions, expense lines roll up
-///             expense transactions), in the budget's base currency via
-///             Amount × ExchangeRate;
-///   Manual  — the user's <see cref="BudgetItem.ManualActualAmount"/>.
-/// So an income line's "received" and an expense line's "spent" both work the
-/// same way. Computing at read time keeps a single, deterministic source of truth.
+/// Derives each budget line's <see cref="BudgetItem.ActualAmount"/> from the
+/// transactions assigned to it: the sum of the assigned transactions of the
+/// line's own kind (income lines roll up income transactions, expense lines roll
+/// up expense transactions), in the budget's base currency via
+/// Amount × ExchangeRate, plus any split slices. So an income line's "received"
+/// and an expense line's "spent" both work the same way. A line with no
+/// transactions reads zero. Computing at read time keeps a single, deterministic
+/// source of truth that can never drift.
 ///
 /// It also derives each fund line's rolling <see cref="BudgetItem.FundAvailable"/>
 /// balance — the sum of every contribution (planned) minus every spend (actual)
@@ -72,23 +71,14 @@ public static class BudgetActuals
 
         foreach (var item in items)
         {
-            if (item.ActualEntryMode == ActualEntryMode.Tracked)
-            {
-                var wantType = incomeItemIds.Contains(item.Id)
-                    ? TransactionType.Income
-                    : TransactionType.Expense;
-                var whole = sums
-                    .Where(s => s.ItemId == item.Id && s.Type == wantType)
-                    .Sum(s => s.Total);
-                var fromSplits = splitSums.TryGetValue((item.Id, wantType), out var v) ? v : 0m;
-                item.ActualAmount = whole + fromSplits;
-                item.IsActualTracked = true;
-            }
-            else
-            {
-                item.ActualAmount = item.ManualActualAmount;
-                item.IsActualTracked = false;
-            }
+            var wantType = incomeItemIds.Contains(item.Id)
+                ? TransactionType.Income
+                : TransactionType.Expense;
+            var whole = sums
+                .Where(s => s.ItemId == item.Id && s.Type == wantType)
+                .Sum(s => s.Total);
+            var fromSplits = splitSums.TryGetValue((item.Id, wantType), out var v) ? v : 0m;
+            item.ActualAmount = whole + fromSplits;
         }
 
         await ApplyFundBalancesAsync(db, ownerId, month, cancellationToken);
@@ -134,8 +124,6 @@ public static class BudgetActuals
                 FundId = i.FundId!.Value,
                 ItemId = i.Id,
                 i.PlannedAmount,
-                i.ActualEntryMode,
-                i.ManualActualAmount,
             })
             .ToListAsync(cancellationToken);
 
@@ -168,17 +156,9 @@ public static class BudgetActuals
         var balanceByFund = new Dictionary<Guid, decimal>();
         foreach (var line in lines)
         {
-            decimal spent;
-            if (line.ActualEntryMode == ActualEntryMode.Tracked)
-            {
-                var whole = txByItem.TryGetValue(line.ItemId, out var w) ? w : 0m;
-                var split = splitByItem.TryGetValue(line.ItemId, out var sp) ? sp : 0m;
-                spent = whole + split;
-            }
-            else
-            {
-                spent = line.ManualActualAmount;
-            }
+            var whole = txByItem.TryGetValue(line.ItemId, out var w) ? w : 0m;
+            var split = splitByItem.TryGetValue(line.ItemId, out var sp) ? sp : 0m;
+            var spent = whole + split;
 
             balanceByFund.TryGetValue(line.FundId, out var running);
             balanceByFund[line.FundId] = running + line.PlannedAmount - spent;

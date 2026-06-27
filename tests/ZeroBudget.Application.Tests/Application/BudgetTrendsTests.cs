@@ -26,7 +26,8 @@ public class BudgetTrendsTests
             .UseInMemoryDatabase($"zbb-trends-{Guid.NewGuid()}")
             .Options);
 
-    /// <summary>A month with a 1000 income line and an 800 Rent line spending `spent` (manual).</summary>
+    /// <summary>A month with a 1000 income line and an 800 Rent line spending `spent`
+    /// (recorded as an assigned expense transaction).</summary>
     private static BudgetMonth SeedMonth(
         ApplicationDbContext db, string ownerId, int year, int month, decimal spent)
     {
@@ -48,17 +49,24 @@ public class BudgetTrendsTests
                     Name = "Housing", Kind = CategoryKind.Expense,
                     Items = new List<BudgetItem>
                     {
-                        new()
-                        {
-                            Name = "Rent", PlannedAmount = 800m,
-                            ActualEntryMode = ActualEntryMode.Manual, ManualActualAmount = spent,
-                        },
+                        new() { Name = "Rent", PlannedAmount = 800m },
                     },
                 },
             },
         };
         db.BudgetMonths.Add(m);
         db.SaveChanges();
+
+        if (spent != 0m)
+        {
+            var rent = m.Categories.Single(c => c.Kind == CategoryKind.Expense).Items.Single();
+            db.Transactions.Add(new Transaction
+            {
+                OwnerId = ownerId, BudgetItemId = rent.Id, Amount = spent, Type = TransactionType.Expense,
+            });
+            db.SaveChanges();
+        }
+
         return m;
     }
 
@@ -91,7 +99,6 @@ public class BudgetTrendsTests
         await using var db = NewContext();
         var june = SeedMonth(db, "user-1", 2026, 6, spent: 0m);
         var salary = june.Categories.Single(c => c.Kind == CategoryKind.Income).Items.Single();
-        salary.ActualEntryMode = ActualEntryMode.Tracked;
         db.Transactions.Add(new Transaction
         {
             OwnerId = "user-1", BudgetItemId = salary.Id, Amount = 950m, Type = TransactionType.Income,
@@ -114,7 +121,6 @@ public class BudgetTrendsTests
         await using var db = NewContext();
         var june = SeedMonth(db, "user-1", 2026, 6, spent: 0m);
         var rent = june.Categories.Single(c => c.Kind == CategoryKind.Expense).Items.Single();
-        rent.ActualEntryMode = ActualEntryMode.Tracked;
         db.Transactions.Add(new Transaction
         {
             OwnerId = "user-1", BudgetItemId = rent.Id, Amount = 820m, Type = TransactionType.Expense,

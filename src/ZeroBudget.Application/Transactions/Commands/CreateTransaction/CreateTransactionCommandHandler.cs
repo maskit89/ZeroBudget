@@ -42,9 +42,6 @@ public class CreateTransactionCommandHandler : IRequestHandler<CreateTransaction
             {
                 throw new ForbiddenAccessException();
             }
-
-            // A line with a transaction on it is tracked by transactions.
-            item.ActualEntryMode = ActualEntryMode.Tracked;
         }
 
         Account? account = null;

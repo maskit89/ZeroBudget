@@ -26,10 +26,11 @@ public class AnnualSummaryTests
             .UseInMemoryDatabase($"zbb-annual-{Guid.NewGuid()}")
             .Options);
 
-    /// <summary>A month with a 1000 income line and an 800 Rent line spending `spent` (manual).</summary>
+    /// <summary>A month with a 1000 income line and an 800 Rent line spending `spent`
+    /// (recorded as an assigned expense transaction).</summary>
     private static void SeedMonth(ApplicationDbContext db, string ownerId, int year, int month, decimal spent)
     {
-        db.BudgetMonths.Add(new BudgetMonth
+        var m = new BudgetMonth
         {
             OwnerId = ownerId,
             Year = year,
@@ -47,13 +48,23 @@ public class AnnualSummaryTests
                     Name = "Housing", Kind = CategoryKind.Expense,
                     Items = new List<BudgetItem>
                     {
-                        new() { Name = "Rent", PlannedAmount = 800m,
-                            ActualEntryMode = ActualEntryMode.Manual, ManualActualAmount = spent },
+                        new() { Name = "Rent", PlannedAmount = 800m },
                     },
                 },
             },
-        });
+        };
+        db.BudgetMonths.Add(m);
         db.SaveChanges();
+
+        if (spent != 0m)
+        {
+            var rent = m.Categories.Single(c => c.Kind == CategoryKind.Expense).Items.Single();
+            db.Transactions.Add(new Transaction
+            {
+                OwnerId = ownerId, BudgetItemId = rent.Id, Amount = spent, Type = TransactionType.Expense,
+            });
+            db.SaveChanges();
+        }
     }
 
     [Fact]

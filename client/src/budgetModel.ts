@@ -12,9 +12,8 @@ export interface ItemVM {
   name: string
   displayOrder: number
   plannedMinor: Minor
+  /** Spent (or, for income, received) — always derived from the line's assigned transactions. */
   actualMinor: Minor
-  /** True when the spent amount is driven by transactions (read-only in the UI). */
-  actualIsTracked: boolean
   /** For a fund line, the rolled-over available balance (minor units); null otherwise. */
   fundAvailableMinor: Minor | null
   /** Day of the month (1–31) this bill is due; null when the line isn't a bill. */
@@ -59,7 +58,6 @@ export function fromDto(dto: BudgetMonthDto): MonthVM {
         displayOrder: i.displayOrder,
         plannedMinor: fromAmount(i.plannedAmount),
         actualMinor: fromAmount(i.actualAmount),
-        actualIsTracked: i.isActualTracked,
         fundAvailableMinor: i.fundAvailable == null ? null : fromAmount(i.fundAvailable),
         dueDay: i.dueDay ?? null,
         isPaid: i.isPaid ?? false,
@@ -187,17 +185,6 @@ export function withItemPlanned(m: MonthVM, itemId: string, plannedMinor: Minor)
     categories: m.categories.map((c) => ({
       ...c,
       items: c.items.map((i) => (i.id === itemId ? { ...i, plannedMinor } : i)),
-    })),
-  }
-}
-
-/** Set one line's manual spent amount (only meaningful for non-tracked lines). */
-export function withItemActual(m: MonthVM, itemId: string, actualMinor: Minor): MonthVM {
-  return {
-    ...m,
-    categories: m.categories.map((c) => ({
-      ...c,
-      items: c.items.map((i) => (i.id === itemId ? { ...i, actualMinor } : i)),
     })),
   }
 }

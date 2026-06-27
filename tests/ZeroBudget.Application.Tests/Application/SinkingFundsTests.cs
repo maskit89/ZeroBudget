@@ -64,7 +64,6 @@ public class SinkingFundsTests
             Name = "Holiday",
             FundId = fundId,
             PlannedAmount = planned,
-            ActualEntryMode = ActualEntryMode.Tracked,
         };
         db.BudgetMonths.Add(new BudgetMonth
         {

@@ -93,8 +93,6 @@ public class SplitTransactionTests
         var reloaded = await db.Transactions.Include(t => t.Splits).FirstAsync(t => t.Id == tx.Id);
         reloaded.BudgetItemId.Should().BeNull();
         reloaded.Splits.Should().HaveCount(2);
-        (await db.BudgetItems.FindAsync(s.Groceries.Id))!.ActualEntryMode.Should().Be(ActualEntryMode.Tracked);
-        (await db.BudgetItems.FindAsync(s.Household.Id))!.ActualEntryMode.Should().Be(ActualEntryMode.Tracked);
     }
 
     [Fact]
@@ -177,7 +175,6 @@ public class SplitTransactionTests
         // A whole transaction on Groceries...
         var whole = SeedExpense(db, 20m);
         whole.BudgetItemId = s.Groceries.Id;
-        s.Groceries.ActualEntryMode = ActualEntryMode.Tracked;
         await db.SaveChangesAsync();
 
         // ...plus a split that also lands 70 on Groceries.

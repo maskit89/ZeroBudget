@@ -11,8 +11,8 @@ namespace ZeroBudget.Application.SinkingFunds;
 ///
 /// This is the cross-month, no-ceiling counterpart to
 /// <c>BudgetActuals.ApplyFundBalancesAsync</c> (which is scoped to a viewed month for
-/// the budget grid). Spending matches the line's own kind: Tracked lines roll up their
-/// expense transactions and split slices (at FX); Manual lines use the typed amount.
+/// the budget grid). Spending is the fund line's assigned expense transactions and
+/// split slices (at FX).
 /// </summary>
 public static class FundBalances
 {
@@ -31,8 +31,6 @@ public static class FundBalances
                 FundId = i.FundId!.Value,
                 ItemId = i.Id,
                 i.PlannedAmount,
-                i.ActualEntryMode,
-                i.ManualActualAmount,
             })
             .ToListAsync(cancellationToken);
 
@@ -68,17 +66,9 @@ public static class FundBalances
         var balanceByFund = new Dictionary<Guid, decimal>();
         foreach (var line in lines)
         {
-            decimal spent;
-            if (line.ActualEntryMode == ActualEntryMode.Tracked)
-            {
-                var whole = txByItem.TryGetValue(line.ItemId, out var w) ? w : 0m;
-                var split = splitByItem.TryGetValue(line.ItemId, out var sp) ? sp : 0m;
-                spent = whole + split;
-            }
-            else
-            {
-                spent = line.ManualActualAmount;
-            }
+            var whole = txByItem.TryGetValue(line.ItemId, out var w) ? w : 0m;
+            var split = splitByItem.TryGetValue(line.ItemId, out var sp) ? sp : 0m;
+            var spent = whole + split;
 
             balanceByFund.TryGetValue(line.FundId, out var running);
             balanceByFund[line.FundId] = running + line.PlannedAmount - spent;
