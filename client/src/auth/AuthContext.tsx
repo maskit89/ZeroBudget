@@ -42,6 +42,8 @@ interface AuthState {
   /** Limited and above (i.e. not read-only) — may record day-to-day data. */
   canEnterData: boolean
   isReadOnly: boolean
+  /** True while the app is re-establishing the session from the refresh cookie on a cold load. */
+  bootstrapping: boolean
   /** Households this login can act in (for the switcher). Empty/one ⇒ no switcher shown. */
   households: HouseholdSummary[]
   /** OwnerId of the household currently being viewed. */
@@ -88,12 +90,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<number>(storedRole())
   const [households, setHouseholds] = useState<HouseholdSummary[]>([])
   const [activeOwnerId, setActiveOwnerId] = useState<string | null>(null)
+  // No in-memory access token on a cold load ⇒ try to restore the session from the refresh cookie.
+  const [bootstrapping, setBootstrapping] = useState<boolean>(!getToken())
 
   // Apply the persisted money format on first mount so a hard reload renders amounts in
   // the user's chosen style before /auth/me round-trips.
   useEffect(() => {
     setMoneyFormat(numberFormat)
     // Intentionally run once; numberFormat changes are applied where they're set.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Cold load: the access token lives in memory, so it's gone after a refresh — but the HttpOnly
+  // refresh cookie may still be valid. Try once to restore the session before showing sign-in.
+  useEffect(() => {
+    if (getToken()) {
+      setBootstrapping(false)
+      return
+    }
+    let cancelled = false
+    const request = api.post<AuthResponse>('/auth/refresh')
+    // Guard against a non-promise (e.g. an incomplete test mock) so the provider never throws.
+    if (!request || typeof request.then !== 'function') {
+      setBootstrapping(false)
+      return
+    }
+    request
+      .then((res) => {
+        if (!cancelled && res?.data?.token) apply(res.data)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setBootstrapping(false)
+      })
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -192,7 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     applyPrefs(data.preferredCurrency, data.numberFormat)
   }
 
-  function logout() {
+  function clearAuthState() {
     setToken(null)
     setTokenState(null)
     setEmail(null)
@@ -206,6 +238,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(EMAIL_KEY)
     localStorage.removeItem(ROLE_KEY)
     localStorage.removeItem(NAME_KEY)
+  }
+
+  function logout() {
+    // Revoke the refresh token + clear the cookie server-side; don't block the UI on it.
+    api.post('/auth/logout').catch(() => {})
+    clearAuthState()
   }
 
   const value = useMemo<AuthState>(
@@ -223,6 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       canWrite: role <= HouseholdRole.Admin,
       canEnterData: role <= HouseholdRole.Limited,
       isReadOnly: role === HouseholdRole.ReadOnly,
+      bootstrapping,
       households,
       activeOwnerId,
       switchHousehold,
@@ -233,7 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updatePreferences,
       logout,
     }),
-    [token, email, displayName, firstName, lastName, preferredCurrency, numberFormat, role, households, activeOwnerId],
+    [token, email, displayName, firstName, lastName, preferredCurrency, numberFormat, role, bootstrapping, households, activeOwnerId],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

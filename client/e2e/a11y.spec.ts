@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { AUTHED_ROUTES, authedSetup, FLAGS, mockApi, ONBOARDING_EMAIL } from './mocks'
+import { AUTHED_ROUTES, authedSetup, FLAGS, mockApi, mockSignedIn, ONBOARDING_EMAIL } from './mocks'
 
 // The WCAG 2.x success criteria we assert against (A + AA, through 2.2).
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
@@ -92,6 +92,7 @@ for (const theme of ['light', 'dark'] as const) {
         { t: theme, email: ONBOARDING_EMAIL },
       )
       await page.route('**/api/**', mockApi)
+      await mockSignedIn(page, ONBOARDING_EMAIL)
       await page.goto('/')
 
       // Welcome dialog.
