@@ -73,7 +73,7 @@ jobs:
     environment: production   # optional: add required reviewers in repo settings
     steps:
       - name: Download release artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release
 
