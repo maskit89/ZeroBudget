@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { AppNav, type NavKey } from './AppNav'
+import { HouseholdSwitcher } from './HouseholdSwitcher'
 import { CloseIcon, HelpIcon, LogoMark, LogoutIcon, MenuIcon, SettingsIcon } from './icons'
 import { ThemeToggle } from './ThemeToggle'
 import { EVENTS, track } from '../analytics'
@@ -85,6 +86,8 @@ export function AppShell({
           >
             <MenuIcon className="h-6 w-6" />
           </button>
+
+          <HouseholdSwitcher />
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
