@@ -126,7 +126,7 @@ describe('AccountPage', () => {
     expect(
       await screen.findByRole('button', { name: 'Share this budget' }, { timeout: 5000 }),
     ).toBeInTheDocument()
-    expect(screen.queryByText('Manage members →')).not.toBeInTheDocument()
+    expect(screen.queryByText('Manage people →')).not.toBeInTheDocument()
   })
 
   it('still offers to share when there is a single member (still solo)', async () => {
@@ -137,7 +137,7 @@ describe('AccountPage', () => {
     expect(
       await screen.findByRole('button', { name: 'Share this budget' }, { timeout: 5000 }),
     ).toBeInTheDocument()
-    expect(screen.queryByText('Manage members →')).not.toBeInTheDocument()
+    expect(screen.queryByText('Manage people →')).not.toBeInTheDocument()
   })
 
   it('links to manage members when the budget is shared (2+ members)', async () => {
@@ -145,7 +145,7 @@ describe('AccountPage', () => {
 
     renderPage()
 
-    expect(await screen.findByText('Manage members →', {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(await screen.findByText('Manage people →', {}, { timeout: 5000 })).toBeInTheDocument()
     expect(screen.getByText(/shared between 2 people/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Share this budget' })).not.toBeInTheDocument()
   })

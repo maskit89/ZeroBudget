@@ -236,4 +236,4 @@ export async function authedSetup(page: Page, theme: 'light' | 'dark') {
 }
 
 /** The authenticated routes that render an AppShell page, for full-app scans. */
-export const AUTHED_ROUTES = ['/', '/transactions', '/accounts', '/funds', '/members', '/allocation', '/reports', '/import', '/help', '/access', '/account']
+export const AUTHED_ROUTES = ['/', '/transactions', '/accounts', '/funds', '/people', '/allocation', '/reports', '/import', '/help', '/account']

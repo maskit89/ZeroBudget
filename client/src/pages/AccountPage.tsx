@@ -134,14 +134,14 @@ export function AccountPage() {
             <>
               <p className="mb-4 text-sm text-slate-500">
                 This budget is shared between {members.length}{' '}
-                {members.length === 1 ? 'person' : 'people'}. Manage their incomes, savings, and how
-                shared costs are split on the members page.
+                {members.length === 1 ? 'person' : 'people'}. Manage their incomes, savings, sign-ins
+                and access on the People page.
               </p>
               <Link
-                to="/members"
+                to="/people"
                 className="text-sm font-semibold text-brand-700 hover:text-brand-800 dark:text-brand-200"
               >
-                Manage members →
+                Manage people →
               </Link>
             </>
           ) : (
@@ -150,7 +150,7 @@ export function AccountPage() {
                 You’re budgeting on your own. If you share money with a partner or housemate, you can
                 add them to split shared costs and divide savings between you.
               </p>
-              <Button onClick={() => navigate('/members')}>Share this budget</Button>
+              <Button onClick={() => navigate('/people')}>Share this budget</Button>
             </>
           )}
         </Card>

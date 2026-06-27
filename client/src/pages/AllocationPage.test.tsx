@@ -116,8 +116,8 @@ describe('AllocationPage', () => {
 
     renderWithHousehold()
 
-    expect(await screen.findByText(/Add household members first/, {}, { timeout: 5000 })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add household members' })).toBeInTheDocument()
+    expect(await screen.findByText(/Add people first/, {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add people' })).toBeInTheDocument()
     // The allocation setup form must not render in solo mode.
     expect(screen.queryByText('Allocation settings')).not.toBeInTheDocument()
   })
