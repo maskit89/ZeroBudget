@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, getToken, setToken } from '../lib/api'
 import { setMoneyFormat } from '../lib/money'
-import { HouseholdRole, type AuthResponse, type MeResponse, type PreferencesResponse } from '../types'
+import { HouseholdRole, type AuthResponse, type HouseholdSummary, type MeResponse, type PreferencesResponse } from '../types'
 
 /** What the sign-up form collects. */
 export interface RegisterInput {
@@ -42,6 +42,12 @@ interface AuthState {
   /** Limited and above (i.e. not read-only) — may record day-to-day data. */
   canEnterData: boolean
   isReadOnly: boolean
+  /** Households this login can act in (for the switcher). Empty/one ⇒ no switcher shown. */
+  households: HouseholdSummary[]
+  /** OwnerId of the household currently being viewed. */
+  activeOwnerId: string | null
+  /** Switch the active household and re-bootstrap the app into it. */
+  switchHousehold: (ownerId: string) => Promise<void>
   login: (email: string, password: string) => Promise<void>
   register: (input: RegisterInput) => Promise<void>
   acceptInvite: (token: string, password: string, displayName?: string) => Promise<void>
@@ -80,6 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.getItem(FORMAT_KEY) || DEFAULT_FORMAT,
   )
   const [role, setRole] = useState<number>(storedRole())
+  const [households, setHouseholds] = useState<HouseholdSummary[]>([])
+  const [activeOwnerId, setActiveOwnerId] = useState<string | null>(null)
 
   // Apply the persisted money format on first mount so a hard reload renders amounts in
   // the user's chosen style before /auth/me round-trips.
@@ -129,6 +137,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setDisplayName(data.displayName ?? null)
         setFirstName(data.firstName ?? null)
         setLastName(data.lastName ?? null)
+        setHouseholds(Array.isArray(data.households) ? data.households : [])
+        setActiveOwnerId(typeof data.ownerId === 'string' ? data.ownerId : null)
         applyPrefs(data.preferredCurrency, data.numberFormat)
         localStorage.setItem(ROLE_KEY, String(data.role))
       })
@@ -166,6 +176,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.post('/auth/change-password', { currentPassword, newPassword })
   }
 
+  async function switchHousehold(ownerId: string) {
+    await api.post('/households/switch', { ownerId })
+    // Every screen's data is scoped to the active household, so re-bootstrap the whole app.
+    window.location.assign('/')
+  }
+
   async function updatePreferences(input: PreferencesInput) {
     const { data } = await api.put<PreferencesResponse>('/auth/preferences', input)
     setFirstName(data.firstName)
@@ -184,6 +200,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setFirstName(null)
     setLastName(null)
     setRole(HouseholdRole.Owner)
+    setHouseholds([])
+    setActiveOwnerId(null)
     applyPrefs(DEFAULT_CURRENCY, DEFAULT_FORMAT)
     localStorage.removeItem(EMAIL_KEY)
     localStorage.removeItem(ROLE_KEY)
@@ -205,6 +223,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       canWrite: role <= HouseholdRole.Admin,
       canEnterData: role <= HouseholdRole.Limited,
       isReadOnly: role === HouseholdRole.ReadOnly,
+      households,
+      activeOwnerId,
+      switchHousehold,
       login,
       register,
       acceptInvite,
@@ -212,7 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updatePreferences,
       logout,
     }),
-    [token, email, displayName, firstName, lastName, preferredCurrency, numberFormat, role],
+    [token, email, displayName, firstName, lastName, preferredCurrency, numberFormat, role, households, activeOwnerId],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

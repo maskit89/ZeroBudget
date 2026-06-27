@@ -443,7 +443,16 @@ export interface InviteResultDto {
   inviteToken: string | null
 }
 
-/** GET /auth/me — the current login's identity, household and access level. */
+/** One household the login can act in, for the switcher. The active one has `isActive`. */
+export interface HouseholdSummary {
+  ownerId: string
+  label: string
+  role: number
+  isActive: boolean
+  isOwn: boolean
+}
+
+/** GET /auth/me — the current login's identity, active household, access level and household list. */
 export interface MeResponse {
   userId: string
   email: string
@@ -455,6 +464,7 @@ export interface MeResponse {
   lastName?: string | null
   preferredCurrency?: string
   numberFormat?: string
+  households?: HouseholdSummary[]
 }
 
 /** The login's current name + money-display preferences (GET via /auth/me, PUT /auth/preferences). */
