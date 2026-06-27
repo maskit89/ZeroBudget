@@ -20,24 +20,33 @@ namespace ZeroBudget.Api.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
+    /// <summary>HttpOnly cookie that carries the refresh token; scoped to the auth endpoints only.</summary>
+    private const string RefreshCookieName = "zbb_rt";
+
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IJwtTokenGenerator _tokenGenerator;
+    private readonly IRefreshTokenService _refreshTokens;
     private readonly ApplicationDbContext _db;
     private readonly ISender _mediator;
     private readonly ICurrentUser _currentUser;
+    private readonly IWebHostEnvironment _env;
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
         IJwtTokenGenerator tokenGenerator,
+        IRefreshTokenService refreshTokens,
         ApplicationDbContext db,
         ISender mediator,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IWebHostEnvironment env)
     {
         _userManager = userManager;
         _tokenGenerator = tokenGenerator;
+        _refreshTokens = refreshTokens;
         _db = db;
         _mediator = mediator;
         _currentUser = currentUser;
+        _env = env;
     }
 
     /// <summary>Creates an account, seeds a starter budget + owner membership + owner member, returns a JWT.</summary>
@@ -111,6 +120,7 @@ public class AuthController : ControllerBase
         await OwnerMemberSeeder.EnsureOwnerMemberAsync(
             _db, user.Id, OwnerMemberSeeder.ResolveOwnerName(firstName, user.DisplayName, user.Email), ct);
 
+        await IssueRefreshCookieAsync(user.Id, ct);
         return Ok(await BuildResponseAsync(user, ct));
     }
 
@@ -123,18 +133,24 @@ public class AuthController : ControllerBase
     {
         var result = await _mediator.Send(new LoginCommand(request.Email, request.Password), ct);
 
-        return result.Outcome switch
+        if (result.Outcome == LoginOutcome.Success)
         {
-            LoginOutcome.Success => Ok(new AuthResponse(
-                result.Token!, result.ExpiresAtUtc, result.UserId!, result.Email!, result.Role, result.DisplayName)),
-            LoginOutcome.LockedOut => Unauthorized(new
+            await IssueRefreshCookieAsync(result.UserId!, ct);
+            return Ok(new AuthResponse(
+                result.Token!, result.ExpiresAtUtc, result.UserId!, result.Email!, result.Role, result.DisplayName));
+        }
+
+        if (result.Outcome == LoginOutcome.LockedOut)
+        {
+            return Unauthorized(new
             {
                 error = "Your account is temporarily locked after too many failed sign-in attempts. " +
                         "Please try again in a few minutes."
-            }),
-            // Same response for unknown user and bad password — no account enumeration.
-            _ => Unauthorized(new { error = "Invalid email or password." }),
-        };
+            });
+        }
+
+        // Same response for unknown user and bad password — no account enumeration.
+        return Unauthorized(new { error = "Invalid email or password." });
     }
 
     /// <summary>Redeems a one-time invite link, creates the login and returns a JWT.</summary>
@@ -153,7 +169,57 @@ public class AuthController : ControllerBase
         var user = await _userManager.FindByIdAsync(result.UserId);
         var stamp = user is null ? null : await _userManager.GetSecurityStampAsync(user);
         var (token, expiresAt) = _tokenGenerator.Generate(result.UserId, result.Email, stamp);
+        await IssueRefreshCookieAsync(result.UserId, ct);
         return Ok(new AuthResponse(token, expiresAt, result.UserId, result.Email, result.Role, request.DisplayName));
+    }
+
+    /// <summary>Exchanges the refresh cookie for a fresh access token, rotating the cookie.</summary>
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    [EnableRateLimiting("auth")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Refresh(CancellationToken ct)
+    {
+        var raw = Request.Cookies[RefreshCookieName];
+        if (string.IsNullOrEmpty(raw))
+        {
+            return Unauthorized();
+        }
+
+        var rotation = await _refreshTokens.RotateAsync(raw, ct);
+        if (!rotation.Succeeded)
+        {
+            ClearRefreshCookie();
+            return Unauthorized();
+        }
+
+        var user = await _userManager.FindByIdAsync(rotation.UserId!);
+        if (user is null)
+        {
+            ClearRefreshCookie();
+            return Unauthorized();
+        }
+
+        SetRefreshCookie(rotation.NewRawToken!);
+        return Ok(await BuildResponseAsync(user, ct));
+    }
+
+    /// <summary>Signs the caller out by revoking + clearing the refresh cookie.</summary>
+    [HttpPost("logout")]
+    [AllowAnonymous]
+    [EnableRateLimiting("auth")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Logout(CancellationToken ct)
+    {
+        var raw = Request.Cookies[RefreshCookieName];
+        if (!string.IsNullOrEmpty(raw))
+        {
+            await _refreshTokens.RevokeAsync(raw, ct);
+        }
+
+        ClearRefreshCookie();
+        return NoContent();
     }
 
     /// <summary>Changes the authenticated login's own password.</summary>
@@ -328,6 +394,34 @@ public class AuthController : ControllerBase
 
     private static string ResolveNumberFormat(string? value) =>
         UserPreferences.NormalizeNumberFormat(value) ?? UserPreferences.DefaultNumberFormat;
+
+    /// <summary>Issues a fresh refresh token and writes it to the HttpOnly cookie.</summary>
+    private async Task IssueRefreshCookieAsync(string userId, CancellationToken ct)
+    {
+        var raw = await _refreshTokens.IssueAsync(userId, ct);
+        SetRefreshCookie(raw);
+    }
+
+    private void SetRefreshCookie(string rawToken) =>
+        Response.Cookies.Append(RefreshCookieName, rawToken, new CookieOptions
+        {
+            HttpOnly = true,
+            // Secure requires HTTPS, which we always have in prod (Cloudflare); local dev is plain http.
+            Secure = !_env.IsDevelopment(),
+            SameSite = SameSiteMode.Strict,
+            Path = "/api/auth",
+            Expires = DateTimeOffset.UtcNow.AddDays(RefreshTokenService.LifetimeDays),
+            IsEssential = true,
+        });
+
+    private void ClearRefreshCookie() =>
+        Response.Cookies.Delete(RefreshCookieName, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !_env.IsDevelopment(),
+            SameSite = SameSiteMode.Strict,
+            Path = "/api/auth",
+        });
 
     private async Task<AuthResponse> BuildResponseAsync(ApplicationUser user, CancellationToken ct)
     {
