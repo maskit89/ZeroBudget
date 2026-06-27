@@ -85,6 +85,22 @@ describe('PeoplePage', () => {
     expect(screen.getByRole('button', { name: 'Invite to sign in' })).toBeInTheDocument()
   })
 
+  it('lets the signed-in owner claim their own budget person when their login is unlinked', { timeout: 15000 }, async () => {
+    membersData = [member()] // "Chris" person, not linked to any login
+    membershipsData = [membership({ memberId: null })] // the owner's own login, unlinked
+    mockPut.mockResolvedValue({ data: membership({ memberId: 'm1' }) })
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await screen.findByRole('table', {}, { timeout: 5000 })
+    await user.click(screen.getByRole('button', { name: 'This is me' }))
+
+    await waitFor(() =>
+      expect(mockPut).toHaveBeenCalledWith('/access/members/mem1/link', { memberId: 'm1' }),
+    )
+  })
+
   it('adds a person (no account needed)', { timeout: 15000 }, async () => {
     membersData = []
     mockPost.mockResolvedValue({ data: member({ id: 'm9' }) })
