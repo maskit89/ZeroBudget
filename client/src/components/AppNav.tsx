@@ -10,10 +10,10 @@ export type NavKey = 'budget' | 'transactions' | 'accounts' | 'funds' | 'people'
 /**
  * The primary navigation, rendered as a vertical list inside the sidebar. The
  * active item is highlighted (brand-tinted, `aria-current="page"`); the rest are
- * plain links. Accounts and Reports are hidden when their feature flag is off, and
- * the multi-member items (Members, Allocation) only appear once the budget is
- * shared — a solo user never sees them. `onNavigate` lets the shell close the
- * mobile drawer when a link is tapped.
+ * plain links. Accounts and Reports are hidden when their feature flag is off.
+ * People is always available (it's where you add/invite people), but Allocation —
+ * which only makes sense with two or more people — appears only once the budget is
+ * shared. `onNavigate` lets the shell close the mobile drawer when a link is tapped.
  */
 export function AppNav({
   active,
@@ -36,7 +36,7 @@ export function AppNav({
     { key: 'transactions', to: '/transactions', label: 'Transactions', icon: TransactionsIcon, show: true },
     { key: 'accounts', to: '/accounts', label: 'Accounts', icon: AccountsIcon, show: features.accounts },
     { key: 'funds', to: '/funds', label: 'Funds', icon: FundsIcon, show: features.sinkingFunds },
-    { key: 'people', to: '/people', label: 'People', icon: MembersIcon, show: features.householdAllocation && isShared },
+    { key: 'people', to: '/people', label: 'People', icon: MembersIcon, show: features.householdAllocation },
     { key: 'allocation', to: '/allocation', label: 'Allocation', icon: AllocationIcon, show: features.householdAllocation && isShared },
     { key: 'reports', to: '/reports', label: 'Reports', icon: ReportsIcon, show: features.reports },
   ]
